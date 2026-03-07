@@ -74,6 +74,11 @@
       await loadTracks();
       status = `Library updated. ${tracks.length} tracks.`;
     });
+
+    await listen("scan:error", (event: any) => {
+        status = `Scan error: ${event.payload}`;
+        loading = false;
+    });
   });
 </script>
 

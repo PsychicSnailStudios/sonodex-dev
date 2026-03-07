@@ -21,8 +21,10 @@ fn add_path(app: AppHandle, path: String) -> Result<(), String> {
     let app_clone = app.clone();
     let path_clone = path.clone();
     std::thread::spawn(move || {
+        eprintln!("Starting scan of: {}", path_clone);
         let conn = open_conn();
         scanner::scan_directory_with_progress(&conn, &path_clone, &app_clone);
+        eprintln!("Scan complete");
         let paths = get_library_paths(&conn)
             .unwrap_or_default()
             .into_iter()
@@ -70,6 +72,18 @@ fn rescan(app: AppHandle) -> Result<(), String> {
     Ok(())
 }
 
+#[tauri::command]
+fn get_settings() -> Result<Vec<db::Setting>, String> {
+    let conn = open_conn();
+    db::get_all_settings(&conn).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn save_setting(key: String, value: String) -> Result<(), String> {
+    let conn = open_conn();
+    db::set_setting(&conn, &key, &value).map_err(|e| e.to_string())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let conn = open_conn();
@@ -83,6 +97,8 @@ pub fn run() {
             get_tracks,
             get_paths,
             rescan,
+            get_settings,
+            save_setting,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

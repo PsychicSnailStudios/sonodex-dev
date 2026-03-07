@@ -8,15 +8,16 @@ pub struct Track {
     pub path: String,
     pub last_modified: i64,
     pub title: Option<String>,
-    pub artist: Option<String>,
-    pub album: Option<String>,
+    pub artists: Option<String>,
     pub album_artist: Option<String>,
-    pub genre: Option<String>,
-    pub year: Option<i32>,
+    pub albums: Option<String>,
+    pub genres: Option<String>,
+    pub year: Option<String>,
+    pub rating: Option<f32>,
+    pub tags: Option<String>,
     pub duration_ms: Option<i64>,
     pub bpm: Option<f32>,
     pub key: Option<String>,
-    pub track_number: Option<i32>,
     pub artwork: Option<Vec<u8>>,
 }
 
@@ -24,6 +25,12 @@ pub struct Track {
 pub struct LibraryPath {
     pub id: Option<i64>,
     pub path: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct Setting {
+    pub key: String,
+    pub value: String,
 }
 
 pub fn get_db_path() -> PathBuf {
@@ -46,45 +53,57 @@ pub fn init_db(conn: &Connection) -> Result<()> {
             path TEXT NOT NULL UNIQUE,
             last_modified INTEGER NOT NULL,
             title TEXT,
-            artist TEXT,
-            album TEXT,
+            artists TEXT,
             album_artist TEXT,
-            genre TEXT,
-            year INTEGER,
+            albums TEXT,
+            genres TEXT,
+            year TEXT,
+            rating REAL,
+            tags TEXT DEFAULT '[]',
             duration_ms INTEGER,
             bpm REAL,
             key TEXT,
-            track_number INTEGER,
             artwork BLOB
         );
 
-        CREATE INDEX IF NOT EXISTS idx_tracks_artist ON tracks(artist);
-        CREATE INDEX IF NOT EXISTS idx_tracks_album ON tracks(album);
+        CREATE TABLE IF NOT EXISTS settings (
+            key TEXT PRIMARY KEY,
+            value TEXT NOT NULL
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_tracks_album_artist ON tracks(album_artist);
         CREATE INDEX IF NOT EXISTS idx_tracks_path ON tracks(path);
+
+        INSERT OR IGNORE INTO settings (key, value) VALUES
+            ('filename_priority_title', 'tag'),
+            ('filename_priority_artist', 'tag'),
+            ('filename_priority_album', 'tag'),
+            ('filename_priority_year', 'tag'),
+            ('filename_custom_pattern', '');
     ")
 }
 
 pub fn upsert_track(conn: &Connection, track: &Track) -> Result<()> {
     conn.execute(
-        "INSERT INTO tracks (path, last_modified, title, artist, album, album_artist, genre, year, duration_ms, bpm, key, track_number, artwork)
+        "INSERT INTO tracks (path, last_modified, title, artists, album_artist, albums, genres, year, rating, duration_ms, bpm, key, artwork)
          VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)
          ON CONFLICT(path) DO UPDATE SET
             last_modified = excluded.last_modified,
             title = excluded.title,
-            artist = excluded.artist,
-            album = excluded.album,
+            artists = excluded.artists,
             album_artist = excluded.album_artist,
-            genre = excluded.genre,
+            albums = excluded.albums,
+            genres = excluded.genres,
             year = excluded.year,
+            rating = excluded.rating,
             duration_ms = excluded.duration_ms,
             bpm = excluded.bpm,
             key = excluded.key,
-            track_number = excluded.track_number,
             artwork = excluded.artwork",
         params![
-            track.path, track.last_modified, track.title, track.artist,
-            track.album, track.album_artist, track.genre, track.year,
-            track.duration_ms, track.bpm, track.key, track.track_number,
+            track.path, track.last_modified, track.title, track.artists,
+            track.album_artist, track.albums, track.genres, track.year,
+            track.rating, track.duration_ms, track.bpm, track.key,
             track.artwork
         ],
     )?;
@@ -98,7 +117,8 @@ pub fn delete_track(conn: &Connection, path: &str) -> Result<()> {
 
 pub fn get_all_tracks(conn: &Connection) -> Result<Vec<Track>> {
     let mut stmt = conn.prepare(
-        "SELECT id, path, last_modified, title, artist, album, album_artist, genre, year, duration_ms, bpm, key, track_number, artwork FROM tracks ORDER BY artist, album, track_number"
+        "SELECT id, path, last_modified, title, artists, album_artist, albums, genres, year, rating, tags, duration_ms, bpm, key, artwork
+         FROM tracks ORDER BY album_artist, albums, title"
     )?;
     let tracks = stmt.query_map([], |row| {
         Ok(Track {
@@ -106,16 +126,17 @@ pub fn get_all_tracks(conn: &Connection) -> Result<Vec<Track>> {
             path: row.get(1)?,
             last_modified: row.get(2)?,
             title: row.get(3)?,
-            artist: row.get(4)?,
-            album: row.get(5)?,
-            album_artist: row.get(6)?,
-            genre: row.get(7)?,
+            artists: row.get(4)?,
+            album_artist: row.get(5)?,
+            albums: row.get(6)?,
+            genres: row.get(7)?,
             year: row.get(8)?,
-            duration_ms: row.get(9)?,
-            bpm: row.get(10)?,
-            key: row.get(11)?,
-            track_number: row.get(12)?,
-            artwork: row.get(13)?,
+            rating: row.get(9)?,
+            tags: row.get(10)?,
+            duration_ms: row.get(11)?,
+            bpm: row.get(12)?,
+            key: row.get(13)?,
+            artwork: row.get(14)?,
         })
     })?
     .collect::<Result<Vec<_>>>()?;
@@ -146,4 +167,34 @@ pub fn get_library_paths(conn: &Connection) -> Result<Vec<LibraryPath>> {
     })?
     .collect::<Result<Vec<_>>>()?;
     Ok(paths)
+}
+
+pub fn get_setting(conn: &Connection, key: &str) -> Result<Option<String>> {
+    let mut stmt = conn.prepare("SELECT value FROM settings WHERE key = ?1")?;
+    let mut rows = stmt.query(params![key])?;
+    if let Some(row) = rows.next()? {
+        Ok(Some(row.get(0)?))
+    } else {
+        Ok(None)
+    }
+}
+
+pub fn set_setting(conn: &Connection, key: &str, value: &str) -> Result<()> {
+    conn.execute(
+        "INSERT INTO settings (key, value) VALUES (?1, ?2) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+        params![key, value],
+    )?;
+    Ok(())
+}
+
+pub fn get_all_settings(conn: &Connection) -> Result<Vec<Setting>> {
+    let mut stmt = conn.prepare("SELECT key, value FROM settings")?;
+    let settings = stmt.query_map([], |row| {
+        Ok(Setting {
+            key: row.get(0)?,
+            value: row.get(1)?,
+        })
+    })?
+    .collect::<Result<Vec<_>>>()?;
+    Ok(settings)
 }
