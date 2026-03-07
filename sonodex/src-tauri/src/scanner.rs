@@ -7,6 +7,7 @@ use rusqlite::Connection;
 use std::path::Path;
 use std::time::UNIX_EPOCH;
 use walkdir::WalkDir;
+use tauri::{AppHandle, Emitter};
 
 const SUPPORTED_EXTENSIONS: &[&str] = &["mp3", "flac", "m4a", "aac", "wav", "aiff", "ogg"];
 
@@ -110,4 +111,30 @@ pub fn scan_directory(conn: &Connection, dir: &str) -> (usize, usize) {
     }
 
     (scanned, failed)
+}
+
+pub fn scan_directory_with_progress(conn: &Connection, dir: &str, app: &AppHandle) {
+    let all_files: Vec<_> = WalkDir::new(dir)
+        .follow_links(true)
+        .into_iter()
+        .filter_map(|e| e.ok())
+        .filter(|e| e.file_type().is_file() && is_supported(e.path()))
+        .collect();
+
+    let total = all_files.len();
+    let mut scanned = 0;
+
+    app.emit("scan:progress", serde_json::json!({ "scanned": 0, "total": total })).ok();
+
+    for entry in all_files {
+        if let Some(track) = read_track(entry.path()) {
+            upsert_track(conn, &track).ok();
+        }
+        scanned += 1;
+        if scanned % 25 == 0 || scanned == total {
+            app.emit("scan:progress", serde_json::json!({ "scanned": scanned, "total": total })).ok();
+        }
+    }
+
+    app.emit("scan:done", ()).ok();
 }

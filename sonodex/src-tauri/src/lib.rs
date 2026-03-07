@@ -17,13 +17,20 @@ fn open_conn() -> Connection {
 fn add_path(app: AppHandle, path: String) -> Result<(), String> {
     let conn = open_conn();
     add_library_path(&conn, &path).map_err(|e| e.to_string())?;
-    scanner::scan_directory(&conn, &path);
-    let paths = get_library_paths(&conn)
-        .map_err(|e| e.to_string())?
-        .into_iter()
-        .map(|p| p.path)
-        .collect();
-    watcher::start_watcher(app, paths);
+
+    let app_clone = app.clone();
+    let path_clone = path.clone();
+    std::thread::spawn(move || {
+        let conn = open_conn();
+        scanner::scan_directory_with_progress(&conn, &path_clone, &app_clone);
+        let paths = get_library_paths(&conn)
+            .unwrap_or_default()
+            .into_iter()
+            .map(|p| p.path)
+            .collect();
+        watcher::start_watcher(app_clone, paths);
+    });
+
     Ok(())
 }
 
@@ -49,11 +56,17 @@ fn get_paths() -> Result<Vec<LibraryPath>, String> {
 fn rescan(app: AppHandle) -> Result<(), String> {
     let conn = open_conn();
     let paths = get_library_paths(&conn).map_err(|e| e.to_string())?;
-    for p in &paths {
-        scanner::scan_directory(&conn, &p.path);
-    }
-    let path_strings = paths.into_iter().map(|p| p.path).collect();
-    watcher::start_watcher(app, path_strings);
+
+    let app_clone = app.clone();
+    let path_strings: Vec<String> = paths.into_iter().map(|p| p.path).collect();
+    std::thread::spawn(move || {
+        let conn = open_conn();
+        for p in &path_strings {
+            scanner::scan_directory_with_progress(&conn, p, &app_clone);
+        }
+        watcher::start_watcher(app_clone, path_strings);
+    });
+
     Ok(())
 }
 

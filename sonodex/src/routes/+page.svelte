@@ -3,12 +3,15 @@
   import { listen } from "@tauri-apps/api/event";
   import { onMount } from "svelte";
   import { Button } from "$lib/components/ui/button/index.js";
+  import VirtualList from "svelte-virtual-list";
 
   let paths: { id: number; path: string }[] = [];
   let tracks: any[] = [];
   let newPath = "";
   let status = "";
   let loading = false;
+  let scanProgress = 0;
+  let scanTotal = 0;
 
   async function loadPaths() {
     paths = await invoke("get_paths");
@@ -22,16 +25,16 @@
     if (!newPath.trim()) return;
     loading = true;
     status = "Scanning...";
+    scanProgress = 0;
+    scanTotal = 0;
     try {
       await invoke("add_path", { path: newPath.trim() });
       newPath = "";
       await loadPaths();
-      await loadTracks();
-      status = `Done. ${tracks.length} tracks in library.`;
     } catch (e) {
       status = `Error: ${e}`;
+      loading = false;
     }
-    loading = false;
   }
 
   async function removePath(path: string) {
@@ -44,15 +47,29 @@
   async function rescan() {
     loading = true;
     status = "Rescanning...";
+    scanProgress = 0;
+    scanTotal = 0;
     await invoke("rescan");
-    await loadTracks();
-    status = `Done. ${tracks.length} tracks in library.`;
-    loading = false;
   }
 
   onMount(async () => {
     await loadPaths();
     await loadTracks();
+
+    await listen("scan:progress", async (event: any) => {
+      scanProgress = event.payload.scanned;
+      scanTotal = event.payload.total;
+      status = `Scanning... ${scanProgress} / ${scanTotal}`;
+    });
+
+    await listen("scan:done", async () => {
+      await loadTracks();
+      status = `Done. ${tracks.length} tracks in library.`;
+      loading = false;
+      scanProgress = 0;
+      scanTotal = 0;
+    });
+
     await listen("library:updated", async () => {
       await loadTracks();
       status = `Library updated. ${tracks.length} tracks.`;
@@ -94,33 +111,35 @@
     {/if}
   </div>
 
-  <div class="space-y-2">
-    <h2 class="text-lg font-semibold">Tracks ({tracks.length})</h2>
-    <div class="border rounded overflow-auto max-h-96">
-      <table class="w-full text-sm">
-        <thead class="bg-muted sticky top-0">
-          <tr>
-            <th class="text-left px-3 py-2">Title</th>
-            <th class="text-left px-3 py-2">Artist</th>
-            <th class="text-left px-3 py-2">Album</th>
-            <th class="text-left px-3 py-2">Duration</th>
-          </tr>
-        </thead>
-        <tbody>
-          {#each tracks as track}
-            <tr class="border-t hover:bg-muted/50">
-              <td class="px-3 py-2">{track.title ?? "Unknown"}</td>
-              <td class="px-3 py-2">{track.artist ?? "Unknown"}</td>
-              <td class="px-3 py-2">{track.album ?? "Unknown"}</td>
-              <td class="px-3 py-2">{track.duration_ms ? Math.round(track.duration_ms / 1000) + "s" : "—"}</td>
-            </tr>
-          {:else}
-            <tr>
-              <td colspan="4" class="px-3 py-2 text-muted-foreground">No tracks yet.</td>
-            </tr>
-          {/each}
-        </tbody>
-      </table>
+  {#if loading && scanTotal > 0}
+    <div class="space-y-1">
+      <div class="w-full bg-muted rounded-full h-2">
+        <div
+          class="bg-primary h-2 rounded-full transition-all"
+          style="width: {Math.round((scanProgress / scanTotal) * 100)}%"
+        ></div>
+      </div>
+      <p class="text-xs text-muted-foreground">{scanProgress} / {scanTotal} files</p>
     </div>
+  {/if}
+
+  <div class="space-y-2">
+  <h2 class="text-lg font-semibold">Tracks ({tracks.length})</h2>
+  <div class="border rounded" style="height: 400px;">
+    <div class="grid grid-cols-4 bg-muted sticky top-0 text-sm font-medium">
+      <span class="px-3 py-2">Title</span>
+      <span class="px-3 py-2">Artist</span>
+      <span class="px-3 py-2">Album</span>
+      <span class="px-3 py-2">Duration</span>
+    </div>
+    <VirtualList items={tracks} let:item style="height: 360px;">
+      <div class="grid grid-cols-4 text-sm border-t hover:bg-muted/50">
+        <span class="px-3 py-2 truncate">{item.title ?? "Unknown"}</span>
+        <span class="px-3 py-2 truncate">{item.artist ?? "Unknown"}</span>
+        <span class="px-3 py-2 truncate">{item.album ?? "Unknown"}</span>
+        <span class="px-3 py-2">{item.duration_ms ? Math.round(item.duration_ms / 1000) + "s" : "—"}</span>
+      </div>
+    </VirtualList>
   </div>
+</div>
 </div>
