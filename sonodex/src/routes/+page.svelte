@@ -20,6 +20,10 @@
   let scanTotal = 0;
   let duplicateGroups: { tracks: any[] }[] = [];
   let duplicatesCount = 0;
+  let enriching = false;
+  let enrichDone = 0;
+  let enrichTotal = 0;
+  let enrichErrors = 0;
 
   let darkMode = document.documentElement.classList.contains("dark");
 
@@ -76,6 +80,19 @@
   async function deleteFile(id: number, path: string) {
     await invoke("delete_track_file", { id, path });
     await loadDuplicates();
+  }
+
+  async function enrichAll() {
+    enriching = true;
+    enrichDone = 0;
+    enrichTotal = 0;
+    enrichErrors = 0;
+    try {
+      await invoke("enrich_all");
+    } catch (e) {
+      status = `Enrich error: ${e}`;
+      enriching = false;
+    }
   }
 
   async function loadSettings() {
@@ -137,6 +154,18 @@
 
     darkMode = (settings["dark_mode"] ?? "false") === "true";
     document.documentElement.classList.toggle("dark", darkMode);
+
+    await listen("enrich:progress", (event: any) => {
+      enrichDone = event.payload.done;
+      enrichTotal = event.payload.total;
+      enrichErrors = event.payload.errors;
+    });
+
+    await listen("enrich:done", (event: any) => {
+      enriching = false;
+      enrichErrors = event.payload.errors;
+      status = `Enrichment done. ${event.payload.total - event.payload.errors} updated, ${event.payload.errors} not found.`;
+    });
 
     await listen("library:updated", async () => {
       console.log("library:updated received");
@@ -331,6 +360,89 @@
             />
           </div>
         {/each}
+      </div>
+
+      <div class="space-y-2">
+        <h2 class="text-sm font-semibold">Online Metadata Enrichment</h2>
+        <p class="text-xs text-muted-foreground">Fetch missing metadata from MusicBrainz and TheAudioDB. Primary API is tried first; falls back to the other if not found. AcousticBrainz is always used for BPM/key via MusicBrainz ID.</p>
+
+        <div class="flex items-center justify-between gap-4">
+          <label class="text-sm">Primary API</label>
+          <select
+            class="flex-1 border rounded px-3 py-2 text-sm bg-background"
+            value={settings["enrich_primary_api"] ?? "musicbrainz"}
+            onchange={(e) => saveSetting("enrich_primary_api", (e.target as HTMLSelectElement).value)}
+          >
+            <option value="musicbrainz">MusicBrainz</option>
+            <option value="audiodb">TheAudioDB</option>
+          </select>
+        </div>
+
+        <div class="space-y-1">
+          <label class="text-sm font-medium">TheAudioDB API Key</label>
+          <p class="text-xs text-muted-foreground">Leave blank to use the free tier.</p>
+          <input
+            class="w-full border rounded px-3 py-2 text-sm bg-background"
+            placeholder="Pro API key (optional)"
+            value={settings["api_audiodb_key"] ?? ""}
+            onchange={(e) => saveSetting("api_audiodb_key", (e.target as HTMLInputElement).value)}
+          />
+        </div>
+      </div>
+
+      <div class="space-y-2">
+        <h2 class="text-sm font-semibold">Enrichment Field Priority</h2>
+        <p class="text-xs text-muted-foreground">
+          "Local" keeps your existing value and only fills blanks. "API" overwrites with API data if available.
+        </p>
+
+        {#each [
+          { key: "enrich_priority_title", label: "Title" },
+          { key: "enrich_priority_artists", label: "Artists" },
+          { key: "enrich_priority_album_artist", label: "Album Artist" },
+          { key: "enrich_priority_album", label: "Album" },
+          { key: "enrich_priority_year", label: "Year" },
+          { key: "enrich_priority_genres", label: "Genres" },
+          { key: "enrich_priority_bpm", label: "BPM" },
+          { key: "enrich_priority_key", label: "Key" },
+          { key: "enrich_priority_artwork", label: "Artwork" },
+        ] as { key, label }}
+          <div class="flex items-center justify-between gap-4">
+            <label class="text-sm w-28">{label}</label>
+            <select
+              class="flex-1 border rounded px-3 py-2 text-sm bg-background"
+              value={settings[key] ?? "local"}
+              onchange={(e) => saveSetting(key, (e.target as HTMLSelectElement).value)}
+            >
+              <option value="local">Local (fill blanks only)</option>
+              <option value="api">API (overwrite)</option>
+            </select>
+          </div>
+        {/each}
+      </div>
+
+      <div class="space-y-2">
+        <h2 class="text-sm font-semibold">Enrich Library</h2>
+        <p class="text-xs text-muted-foreground">Fetch online metadata for all tracks. This runs separately from scanning and respects the priority settings above.</p>
+        <div class="flex items-center gap-4">
+          <Button onclick={enrichAll} disabled={enriching}>
+            {enriching ? `Enriching... ${enrichDone}/${enrichTotal}` : "Enrich All Tracks"}
+          </Button>
+          {#if enrichErrors > 0}
+            <span class="text-xs text-muted-foreground">{enrichErrors} tracks not found</span>
+          {/if}
+        </div>
+        {#if enriching && enrichTotal > 0}
+          <div class="space-y-1">
+            <div class="w-full bg-muted rounded-full h-2">
+              <div
+                class="bg-primary h-2 rounded-full transition-all"
+                style="width: {Math.round((enrichDone / enrichTotal) * 100)}%"
+              ></div>
+            </div>
+            <p class="text-xs text-muted-foreground">{enrichDone} / {enrichTotal} tracks</p>
+          </div>
+        {/if}
       </div>
 
       <Button onclick={rescan} disabled={loading}>Apply & Rescan</Button>

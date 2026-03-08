@@ -15,6 +15,22 @@
   let bpm: number | null = null;
   let rating: number | null = null;
   let tags: string[] = [];
+  let enriching = false;
+  let enrichStatus = "";
+
+  async function enrichTrack() {
+    enriching = true;
+    enrichStatus = "";
+    try {
+      await invoke("enrich_track", { id: track.id });
+      enrichStatus = "Done — reopen track to see updated values.";
+      onSaved();
+    } catch (e) {
+      enrichStatus = `Not found: ${e}`;
+    } finally {
+      enriching = false;
+    }
+  }
 
   function parseJson(val: string | null): any[] {
     if (!val) return [];
@@ -189,6 +205,18 @@
             <button class="text-xs text-muted-foreground hover:text-destructive" onclick={() => removeTag(i)}>✕</button>
           </div>
         {/each}
+      </div>
+
+      <div class="border-t pt-4 space-y-2">
+        <div class="flex items-center gap-3">
+          <Button variant="outline" onclick={enrichTrack} disabled={enriching}>
+            {enriching ? "Fetching..." : "Enrich from Online APIs"}
+          </Button>
+          {#if enrichStatus}
+            <span class="text-xs text-muted-foreground">{enrichStatus}</span>
+          {/if}
+        </div>
+        <p class="text-xs text-muted-foreground">Fetches metadata from MusicBrainz / TheAudioDB using your priority settings. Saves directly to library.</p>
       </div>
 
       <div class="flex gap-2 pt-2">

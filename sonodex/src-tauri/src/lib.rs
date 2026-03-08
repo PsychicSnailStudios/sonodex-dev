@@ -1,6 +1,7 @@
 mod db;
 mod scanner;
 mod watcher;
+mod enrichment;
 
 use db::{
   add_library_path, get_all_tracks, get_db_path, get_library_paths, init_db, remove_library_path,
@@ -169,6 +170,140 @@ fn rescan(app: AppHandle) -> Result<(), String> {
     Ok(())
 }
 
+fn load_enrich_settings(conn: &Connection) -> enrichment::EnrichSettings {
+    let g = |key: &str, default: &str| {
+        db::get_setting(conn, key).ok().flatten().unwrap_or_else(|| default.to_string())
+    };
+    enrichment::EnrichSettings {
+        primary_api: g("enrich_primary_api", "musicbrainz"),
+        audiodb_key: g("api_audiodb_key", ""),
+        priority_title: g("enrich_priority_title", "local"),
+        priority_artists: g("enrich_priority_artists", "local"),
+        priority_album_artist: g("enrich_priority_album_artist", "local"),
+        priority_album: g("enrich_priority_album", "local"),
+        priority_year: g("enrich_priority_year", "local"),
+        priority_genres: g("enrich_priority_genres", "local"),
+        priority_bpm: g("enrich_priority_bpm", "local"),
+        priority_key: g("enrich_priority_key", "local"),
+        priority_artwork: g("enrich_priority_artwork", "local"),
+    }
+}
+
+#[tauri::command]
+async fn enrich_track(app: AppHandle, id: i64) -> Result<(), String> {
+    let (track_input, settings) = {
+        let conn = open_conn();
+        let tracks = db::get_all_tracks(&conn).map_err(|e| e.to_string())?;
+        let track = tracks.into_iter().find(|t| t.id == Some(id))
+            .ok_or("Track not found")?;
+        let artwork = db::get_track_artwork(&conn, id).ok().flatten();
+        let settings = load_enrich_settings(&conn);
+        let input = enrichment::TrackInput {
+            id,
+            title: track.title,
+            artists: track.artists,
+            album_artist: track.album_artist,
+            albums: track.albums,
+            year: track.year,
+            genres: track.genres,
+            bpm: track.bpm,
+            key: track.key,
+            existing_artwork: artwork,
+        };
+        (input, settings)
+    };
+
+    let client = enrichment::make_client()?;
+    let result = enrichment::enrich_track_async(&client, &track_input, &settings).await?;
+
+    {
+        let conn = open_conn();
+        let update = db::MetadataUpdate {
+            title: result.title,
+            artists: result.artists,
+            album_artist: result.album_artist,
+            albums: result.albums,
+            year: result.year,
+            genres: result.genres,
+            bpm: result.bpm,
+            rating: None,
+            tags: None,
+            key: result.key,
+            artwork: result.artwork,
+        };
+        db::update_track_metadata(&conn, id, &update).map_err(|e| e.to_string())?;
+    }
+
+    app.emit("library:updated", ()).ok();
+    Ok(())
+}
+
+#[tauri::command]
+async fn enrich_all(app: AppHandle) -> Result<(), String> {
+    let (track_inputs, settings) = {
+        let conn = open_conn();
+        let tracks = db::get_all_tracks(&conn).map_err(|e| e.to_string())?;
+        let settings = load_enrich_settings(&conn);
+        let inputs: Vec<enrichment::TrackInput> = tracks.into_iter().filter_map(|t| {
+            let id = t.id?;
+            let artwork = db::get_track_artwork(&conn, id).ok().flatten();
+            Some(enrichment::TrackInput {
+                id,
+                title: t.title,
+                artists: t.artists,
+                album_artist: t.album_artist,
+                albums: t.albums,
+                year: t.year,
+                genres: t.genres,
+                bpm: t.bpm,
+                key: t.key,
+                existing_artwork: artwork,
+            })
+        }).collect();
+        (inputs, settings)
+    };
+
+    let total = track_inputs.len();
+    let mut done = 0usize;
+    let mut errors = 0usize;
+
+    app.emit("enrich:progress", serde_json::json!({ "done": 0, "total": total, "errors": 0 })).ok();
+
+    let client = enrichment::make_client()?;
+
+    for track_input in &track_inputs {
+        let id = track_input.id;
+        match enrichment::enrich_track_async(&client, track_input, &settings).await {
+            Ok(result) => {
+                let conn = open_conn();
+                let update = db::MetadataUpdate {
+                    title: result.title,
+                    artists: result.artists,
+                    album_artist: result.album_artist,
+                    albums: result.albums,
+                    year: result.year,
+                    genres: result.genres,
+                    bpm: result.bpm,
+                    rating: None,
+                    tags: None,
+                    key: result.key,
+                    artwork: result.artwork,
+                };
+                db::update_track_metadata(&conn, id, &update).ok();
+            }
+            Err(_) => errors += 1,
+        }
+        done += 1;
+        if done % 5 == 0 || done == total {
+            app.emit("enrich:progress", serde_json::json!({ "done": done, "total": total, "errors": errors })).ok();
+        }
+    }
+
+    app.emit("enrich:done", serde_json::json!({ "total": total, "errors": errors })).ok();
+    app.emit("library:updated", ()).ok();
+    Ok(())
+}
+
 #[tauri::command]
 fn get_settings() -> Result<Vec<db::Setting>, String> {
     let conn = open_conn();
@@ -214,6 +349,8 @@ pub fn run() {
             delete_track_file,
             update_track_metadata,
             write_track_tags,
+            enrich_track,
+            enrich_all,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

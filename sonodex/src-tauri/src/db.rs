@@ -84,6 +84,18 @@ pub fn init_db(conn: &Connection) -> Result<()> {
             ('folder_fallback_artist', 'false'),
             ('folder_fallback_album', 'false'),
             ('folder_fallback_year', 'false');
+		INSERT OR IGNORE INTO settings (key, value) VALUES
+			('enrich_primary_api', 'musicbrainz'),
+			('enrich_priority_title', 'local'),
+			('enrich_priority_artists', 'local'),
+			('enrich_priority_album_artist', 'local'),
+			('enrich_priority_album', 'local'),
+			('enrich_priority_year', 'local'),
+			('enrich_priority_genres', 'local'),
+			('enrich_priority_bpm', 'local'),
+			('enrich_priority_key', 'local'),
+			('enrich_priority_artwork', 'local'),
+			('api_audiodb_key', '');
     ")
 }
 
@@ -252,6 +264,9 @@ pub struct MetadataUpdate {
     pub bpm: Option<f32>,
     pub rating: Option<f32>,
     pub tags: Option<String>,
+    pub key: Option<String>,
+    #[serde(skip)]
+    pub artwork: Option<Vec<u8>>,
 }
 
 pub fn update_track_metadata(conn: &Connection, id: i64, update: &MetadataUpdate) -> Result<()> {
@@ -265,19 +280,14 @@ pub fn update_track_metadata(conn: &Connection, id: i64, update: &MetadataUpdate
             genres = COALESCE(?6, genres),
             bpm = COALESCE(?7, bpm),
             rating = COALESCE(?8, rating),
-            tags = COALESCE(?9, tags)
-        WHERE id = ?10",
+            tags = COALESCE(?9, tags),
+            key = COALESCE(?10, key),
+            artwork = COALESCE(?11, artwork)
+        WHERE id = ?12",
         params![
-            update.title,
-            update.artists,
-            update.album_artist,
-            update.albums,
-            update.year,
-            update.genres,
-            update.bpm,
-            update.rating,
-            update.tags,
-            id,
+            update.title, update.artists, update.album_artist, update.albums,
+            update.year, update.genres, update.bpm, update.rating, update.tags,
+            update.key, update.artwork, id,
         ],
     )?;
     Ok(())
