@@ -159,7 +159,71 @@ fn parse_custom_pattern(stem: &str, pattern: &str) -> FilenameMetadata {
     meta
 }
 
+fn parse_folder_path(path: &Path) -> FilenameMetadata {
+    let components: Vec<&str> = path
+        .parent()
+        .map(|p| p.components().filter_map(|c| c.as_os_str().to_str()).collect())
+        .unwrap_or_default();
+
+    if components.len() < 2 {
+        return FilenameMetadata { title: None, artist: None, album: None, year: None };
+    }
+
+    let folder = components[components.len() - 1];
+    let artist = components[components.len() - 2].to_string();
+
+    if components.len() >= 3 {
+        let maybe_year = components[components.len() - 3];
+        if maybe_year.len() == 4 && maybe_year.parse::<u32>().is_ok() {
+            return FilenameMetadata {
+                title: None,
+                artist: Some(artist),
+                album: Some(folder.to_string()),
+                year: Some(maybe_year.to_string()),
+            };
+        }
+    }
+
+    if let Some(captures) = extract_year_from_folder(folder) {
+        return FilenameMetadata {
+            title: None,
+            artist: Some(artist),
+            album: Some(captures.0),
+            year: Some(captures.1),
+        };
+    }
+
+    FilenameMetadata {
+        title: None,
+        artist: Some(artist),
+        album: Some(folder.to_string()),
+        year: None,
+    }
+}
+
+fn extract_year_from_folder(folder: &str) -> Option<(String, String)> {
+    if let Some(pos) = folder.find(" - ") {
+        let maybe_year = &folder[..pos];
+        if maybe_year.len() == 4 && maybe_year.parse::<u32>().is_ok() {
+            return Some((folder[pos + 3..].trim().to_string(), maybe_year.to_string()));
+        }
+    }
+
+    if folder.ends_with(')') {
+        if let Some(open) = folder.rfind('(') {
+            let maybe_year = &folder[open + 1..folder.len() - 1];
+            if maybe_year.len() == 4 && maybe_year.parse::<u32>().is_ok() {
+                return Some((folder[..open].trim().to_string(), maybe_year.to_string()));
+            }
+        }
+    }
+
+    None
+}
+
 fn resolve_field(tag_value: Option<String>, filename_value: Option<String>, priority: &str) -> Option<String> {
+    let tag_value = tag_value.filter(|s| !s.trim().is_empty());
+    let filename_value = filename_value.filter(|s| !s.trim().is_empty());
     match priority {
         "filename" => filename_value.or(tag_value),
         "filename_fallback" => tag_value.or(filename_value),
@@ -168,7 +232,7 @@ fn resolve_field(tag_value: Option<String>, filename_value: Option<String>, prio
 }
 
 pub fn read_track(path: &Path) -> Option<Track> {
-    read_track_with_settings(path, "tag", "tag", "tag", "tag", "")
+    read_track_with_settings(path, "tag", "tag", "tag", "tag", "", false, false, false)
 }
 
 pub fn read_track_with_settings(
@@ -178,6 +242,9 @@ pub fn read_track_with_settings(
     priority_album: &str,
     priority_year: &str,
     custom_pattern: &str,
+    folder_fallback_artist: bool,
+    folder_fallback_album: bool,
+    folder_fallback_year: bool,
 ) -> Option<Track> {
     let last_modified = get_last_modified(path);
     let path_str = path.to_string_lossy().to_string();
@@ -200,8 +267,8 @@ pub fn read_track_with_settings(
         if let Some(tag) = tag {
             let artwork = tag.pictures().first().map(|p| p.data().to_vec());
             let rating = tag
-				.get_string(&lofty::tag::ItemKey::Popularimeter)
-				.and_then(|s| normalize_rating(s));
+                .get_string(&lofty::tag::ItemKey::Popularimeter)
+                .and_then(|s| normalize_rating(s));
             (
                 tag.title().map(|s| s.to_string()),
                 tag.artist().map(|s| s.to_string()),
@@ -219,9 +286,13 @@ pub fn read_track_with_settings(
             (None, None, None, None, None, None, None, None, None, None)
         };
 
+    let folder_meta = parse_folder_path(path);
+	
     let title = resolve_field(tag_title, filename_meta.title, priority_title);
 
-    let artist_str = resolve_field(tag_artist, filename_meta.artist, priority_artist);
+    let artist_str = resolve_field(tag_artist, filename_meta.artist, priority_artist)
+        .or_else(|| if folder_fallback_artist { folder_meta.artist.clone() } else { None });
+
     let artists = artist_str
         .as_deref()
         .map(|s| {
@@ -229,7 +300,9 @@ pub fn read_track_with_settings(
             serde_json::to_string(&parts).unwrap_or_else(|_| "[]".to_string())
         });
 
-    let album_str = resolve_field(tag_album, filename_meta.album, priority_album);
+    let album_str = resolve_field(tag_album, filename_meta.album, priority_album)
+        .or_else(|| if folder_fallback_album { folder_meta.album.clone() } else { None });
+
     let album_artist = tag_album_artist.or_else(|| {
         artists
             .as_deref()
@@ -247,7 +320,8 @@ pub fn read_track_with_settings(
         serde_json::to_string(&parts).unwrap_or_else(|_| "[]".to_string())
     });
 
-    let year = resolve_field(tag_year, filename_meta.year, priority_year);
+    let year = resolve_field(tag_year, filename_meta.year, priority_year)
+        .or_else(|| if folder_fallback_year { folder_meta.year.clone() } else { None });
 
     Some(Track {
         id: None,
@@ -274,6 +348,9 @@ pub fn scan_directory_with_progress(conn: &Connection, dir: &str, app: &AppHandl
     let priority_album = get_setting(conn, "filename_priority_album").ok().flatten().unwrap_or_else(|| "tag".to_string());
     let priority_year = get_setting(conn, "filename_priority_year").ok().flatten().unwrap_or_else(|| "tag".to_string());
     let custom_pattern = get_setting(conn, "filename_custom_pattern").ok().flatten().unwrap_or_default();
+	let folder_fallback_artist = get_setting(conn, "folder_fallback_artist").ok().flatten().map(|v| v == "true").unwrap_or(false);
+    let folder_fallback_album = get_setting(conn, "folder_fallback_album").ok().flatten().map(|v| v == "true").unwrap_or(false);
+    let folder_fallback_year = get_setting(conn, "folder_fallback_year").ok().flatten().map(|v| v == "true").unwrap_or(false);
 
     let all_files: Vec<_> = WalkDir::new(dir)
         .follow_links(true)
@@ -295,6 +372,9 @@ pub fn scan_directory_with_progress(conn: &Connection, dir: &str, app: &AppHandl
             &priority_album,
             &priority_year,
             &custom_pattern,
+            folder_fallback_artist,
+            folder_fallback_album,
+            folder_fallback_year,
         ) {
             upsert_track(conn, &track).ok();
         }
@@ -303,6 +383,11 @@ pub fn scan_directory_with_progress(conn: &Connection, dir: &str, app: &AppHandl
             app.emit("scan:progress", serde_json::json!({ "scanned": scanned, "total": total })).ok();
         }
     }
+
+	let duplicates = crate::db::find_duplicates(conn).unwrap_or_default();
+	if !duplicates.is_empty() {
+		app.emit("duplicates:found", duplicates.len()).ok();
+	}
 
     app.emit("scan:done", ()).ok();
 }

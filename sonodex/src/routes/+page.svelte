@@ -268,6 +268,26 @@
         />
       </div>
 
+      <div class="space-y-2">
+        <h2 class="text-sm font-semibold">Folder Path Fallback</h2>
+        <p class="text-xs text-muted-foreground">If a field is missing from tags and filename, infer it from the folder structure (e.g. /Artist/Album/track).</p>
+
+        {#each [
+          { key: "folder_fallback_artist", label: "Artist" },
+          { key: "folder_fallback_album", label: "Album" },
+          { key: "folder_fallback_year", label: "Year" },
+        ] as { key, label }}
+          <div class="flex items-center justify-between gap-4">
+            <label class="text-sm">{label}</label>
+            <input
+              type="checkbox"
+              checked={settings[key] === "true"}
+              onchange={(e) => saveSetting(key, (e.target as HTMLInputElement).checked ? "true" : "false")}
+            />
+          </div>
+        {/each}
+      </div>
+
       <Button onclick={rescan} disabled={loading}>Apply & Rescan</Button>
       {#if status}<span class="text-sm text-muted-foreground">{status}</span>{/if}
     </div>

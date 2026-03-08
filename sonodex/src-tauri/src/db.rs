@@ -79,7 +79,10 @@ pub fn init_db(conn: &Connection) -> Result<()> {
             ('filename_priority_artist', 'tag'),
             ('filename_priority_album', 'tag'),
             ('filename_priority_year', 'tag'),
-            ('filename_custom_pattern', '');
+            ('filename_custom_pattern', ''),
+            ('folder_fallback_artist', 'false'),
+            ('folder_fallback_album', 'false'),
+            ('folder_fallback_year', 'false');
     ")
 }
 
