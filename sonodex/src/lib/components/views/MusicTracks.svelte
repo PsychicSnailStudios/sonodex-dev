@@ -1,8 +1,7 @@
 <script lang="ts">
-	import { invoke } from "@tauri-apps/api/core";
-	import { onMount } from "svelte";
 	import VirtualList from "svelte-virtual-list";
 	import { Button } from "$lib/components/ui/button/index.js";
+  import TrackArtwork from "$lib/components/TrackArtwork.svelte";
 
 	type Track = {
 		id: number;
@@ -21,7 +20,7 @@
 		key: string | null;
 	};
 
-	let tracks: Track[] = $state([]);
+	let { tracks }: { tracks: Track[] } = $props();
 
 	function parseArtists(artists: string | null): string {
 		if (!artists) return "Unknown Artist";
@@ -56,15 +55,11 @@
 		const stars = Math.round(rating / 2);
 		return "★".repeat(stars) + "☆".repeat(5 - stars);
 	}
-
-	onMount(async () => {
-		tracks = await invoke("get_tracks");
-	});
 </script>
 
 <div class="flex flex-col h-full">
 	<div class="grid text-xs font-medium text-muted-foreground px-3 py-2 border-b" style="grid-template-columns: 40px 1fr 1fr 60px 120px 60px 40px;">
-		<span>#</span>
+		<span></span>
 		<span>Title</span>
 		<span>Album</span>
 		<span>Year</span>
@@ -74,19 +69,19 @@
 	</div>
 
 	<div class="flex-1 overflow-hidden">
-		<VirtualList items={tracks} itemHeight={56} let:item={track} let:index>
+		<VirtualList items={tracks} itemHeight={56} let:item={track}>
 			<div class="grid items-center px-3 border-b hover:bg-muted/50" style="grid-template-columns: 40px 1fr 1fr 60px 120px 60px 40px; height: 56px;">
-				<span class="text-sm text-muted-foreground">{index + 1}</span>
-				<div class="flex flex-col min-w-0 pr-4">
-					<span class="text-sm truncate">{track.title ?? "Unknown Title"}</span>
-					<span class="text-xs text-muted-foreground truncate">{parseArtists(track.artists)}</span>
-				</div>
-				<span class="text-sm truncate pr-4">{parseAlbum(track.albums)}</span>
-				<span class="text-sm">{track.year ?? "—"}</span>
-				<span class="text-sm font-mono">{formatRating(track.rating)}</span>
-				<span class="text-sm font-mono">{formatDuration(track.duration_ms)}</span>
-				<Button variant="ghost" size="icon">⋯</Button>
-			</div>
+        <TrackArtwork id={track.id} />
+        <div class="flex flex-col min-w-0">
+          <span class="text-sm truncate">{track.title ?? "Unknown Title"}</span>
+          <span class="text-xs text-muted-foreground truncate">{parseArtists(track.artists)}</span>
+        </div>
+        <span class="text-sm truncate pr-4">{parseAlbum(track.albums)}</span>
+        <span class="text-sm">{track.year ?? "—"}</span>
+        <span class="text-sm font-mono">{formatRating(track.rating)}</span>
+        <span class="text-sm font-mono">{formatDuration(track.duration_ms)}</span>
+        <Button variant="ghost" size="icon">⋯</Button>
+      </div>
 		</VirtualList>
 	</div>
 </div>

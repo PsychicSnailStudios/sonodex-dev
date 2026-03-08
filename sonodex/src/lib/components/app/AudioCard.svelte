@@ -1,26 +1,21 @@
 <script lang="ts">
 	import { invoke } from "@tauri-apps/api/core";
 
-	let { track } = $props<{ track: any }>();
+	let { album } = $props<{ album: { name: string; artist: string | null; year: string | null; artworkTrackId: number } }>();
 
 	let artworkUrl: string | null = $state(null);
 	let loaded = $state(false);
 	let cardEl: HTMLDivElement;
 
-	function parseJson(val: string | null): string[] {
-		if (!val) return [];
-		try { return JSON.parse(val); } catch { return []; }
-	}
-
-	const artist = $derived(track.album_artist ?? parseJson(track.artists)[0] ?? "Unknown Artist");
-	const title = $derived(track.title ?? "Unknown Title");
+	const artist = $derived(album.artist ?? "Unknown Artist");
+	const title = $derived(album.name);
 
 	$effect(() => {
 		const observer = new IntersectionObserver(async ([entry]) => {
 			if (entry.isIntersecting) {
 				observer.disconnect();
 				try {
-					const bytes: number[] | null = await invoke("get_track_artwork", { id: track.id });
+					const bytes: number[] | null = await invoke("get_track_artwork", { id: album.artworkTrackId });
 					if (bytes) {
 						const blob = new Blob([new Uint8Array(bytes)], { type: "image/jpeg" });
 						artworkUrl = URL.createObjectURL(blob);
