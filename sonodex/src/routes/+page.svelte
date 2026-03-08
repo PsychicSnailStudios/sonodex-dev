@@ -45,9 +45,9 @@
 
   </div>
 
-  <div class="app-body grid gap-2">
+  <div class="app-body h-full w-full overflow-hidden grid gap-2">
 
-    <div class="app-views flex gap-2">
+    <div class="app-views h-full w-full overflow-hidden flex gap-2">
 
       {#if activeView === "home"}
         <HomeVeiw />

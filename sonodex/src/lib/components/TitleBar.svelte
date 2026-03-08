@@ -1,7 +1,13 @@
 <script lang="ts">
   import { getCurrentWindow } from '@tauri-apps/api/window';
+  import { onMount } from 'svelte';
+
+  import { CircleSmall, CircleDashed, Minus, X } from 'lucide-svelte';
+
+  import * as DropdownMenu from "$lib/components/ui/dropdown-menu/index.js";
 
   const appWindow = getCurrentWindow();
+  let isMaximized = $state(false);
 
   async function startDrag() {
     await appWindow.startDragging();
@@ -23,23 +29,40 @@
   async function close() {
     await appWindow.close();
   }
+
+  onMount(async () => {
+    isMaximized = await appWindow.isMaximized();
+
+    await appWindow.onResized(async () => {
+      isMaximized = await appWindow.isMaximized();
+    });
+  });
+
 </script>
 
 <div
   class="flex h-9 w-full select-none items-center justify-between bg-background px-4"
-  onmousedown={startDrag}
->
-  <span class="text-sm font-medium text-foreground pointer-events-none">sonodex</span>
+  role="presentation"
+  tabindex="-1"
+  onmousedown={startDrag}>
 
-  <div class="flex items-center gap-1" onmousedown={(e) => e.stopPropagation()}>
+  <DropdownMenu.Root>
+    <DropdownMenu.Trigger>...</DropdownMenu.Trigger>
+    <DropdownMenu.Content>
+      <DropdownMenu.Group>
+        <DropdownMenu.Item>Settings</DropdownMenu.Item>
+      </DropdownMenu.Group>
+    </DropdownMenu.Content>
+  </DropdownMenu.Root>
+
+  <div class="flex items-center gap-1" role="presentation" onmousedown={(e) => e.stopPropagation()}>
+    
     <button
       onclick={minimize}
       class="flex h-7 w-7 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
       aria-label="Minimize"
     >
-      <svg width="10" height="1" viewBox="0 0 10 1" fill="currentColor">
-        <rect width="10" height="1" />
-      </svg>
+      <Minus size={16} />
     </button>
 
     <button
@@ -47,9 +70,11 @@
       class="flex h-7 w-7 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
       aria-label="Maximize"
     >
-      <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1">
-        <rect x="0.5" y="0.5" width="9" height="9" />
-      </svg>
+      {#if isMaximized}
+      <CircleDashed size={12} />
+      {:else}
+      <CircleSmall size={16} />
+      {/if}
     </button>
 
     <button
@@ -57,10 +82,9 @@
       class="flex h-7 w-7 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-destructive hover:text-destructive-foreground"
       aria-label="Close"
     >
-      <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5">
-        <line x1="0" y1="0" x2="10" y2="10" />
-        <line x1="10" y1="0" x2="0" y2="10" />
-      </svg>
+      <X size={16} />
     </button>
+
   </div>
+
 </div>
