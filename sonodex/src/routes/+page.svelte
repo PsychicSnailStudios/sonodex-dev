@@ -17,6 +17,14 @@
   let duplicateGroups: { tracks: any[] }[] = [];
   let duplicatesCount = 0;
 
+  let darkMode = document.documentElement.classList.contains("dark");
+
+  function toggleDarkMode(enabled: boolean) {
+    darkMode = enabled;
+    document.documentElement.classList.toggle("dark", enabled);
+    saveSetting("dark_mode", enabled ? "true" : "false");
+  }
+
   let settings: Record<string, string> = {};
 
   const PRIORITY_OPTIONS = [
@@ -112,6 +120,9 @@
     await loadTracks();
     await loadSettings();
     await loadDuplicates();
+
+    darkMode = (settings["dark_mode"] ?? "false") === "true";
+    document.documentElement.classList.toggle("dark", darkMode);
 
     await listen("library:updated", async () => {
       console.log("library:updated received");
@@ -238,7 +249,18 @@
     </div>
 
   {:else if activeTab === "settings"}
-    <div class="p-6 space-y-6 max-w-xl">
+      <div class="p-6 space-y-6 max-w-xl">
+          <div class="flex items-center justify-between">
+        <div>
+          <h2 class="text-sm font-semibold">Appearance</h2>
+          <p class="text-xs text-muted-foreground">Toggle dark mode.</p>
+        </div>
+        <input
+          type="checkbox"
+          checked={darkMode}
+          onchange={(e) => toggleDarkMode((e.target as HTMLInputElement).checked)}
+        />
+      </div>
       <h2 class="text-sm font-semibold">Metadata Priority</h2>
       <p class="text-xs text-muted-foreground">Choose whether each field should prefer file tags or be parsed from the filename.</p>
 

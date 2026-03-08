@@ -75,6 +75,7 @@ pub fn init_db(conn: &Connection) -> Result<()> {
         CREATE INDEX IF NOT EXISTS idx_tracks_path ON tracks(path);
 
         INSERT OR IGNORE INTO settings (key, value) VALUES
+			('dark_mode', 'false'),
             ('filename_priority_title', 'tag'),
             ('filename_priority_artist', 'tag'),
             ('filename_priority_album', 'tag'),
