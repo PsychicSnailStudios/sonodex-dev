@@ -5,6 +5,9 @@
   import { Button } from "$lib/components/ui/button/index.js";
   import VirtualList from "svelte-virtual-list";
   import { open } from "@tauri-apps/plugin-dialog";
+  import TrackEditModal from "$lib/components/TrackEditModal.svelte";
+
+  let editingTrack: any = null;
 
   let activeTab: "library" | "settings" | "duplicates" = "library";
 
@@ -238,21 +241,23 @@
       <div class="space-y-1">
         <h2 class="text-sm font-semibold">Tracks ({tracks.length})</h2>
         <div class="border rounded">
-          <div class="grid text-xs font-medium bg-muted px-3 py-2" style="grid-template-columns: 2fr 1fr 1fr 1fr;">
+          <div class="grid text-xs font-medium bg-muted px-3 py-2" style="grid-template-columns: 2fr 1fr 1fr 1fr auto;">
             <span>Title</span>
-            <span>Album(s)</span>
             <span>Main Artist</span>
+            <span>Album(s)</span>
             <span>Other Artists</span>
+            <span></span>
           </div>
           <div style="height: 420px;" class="overflow-hidden">
             <VirtualList items={tracks} itemHeight={36} let:item>
-              <div class="grid text-sm border-t hover:bg-muted/50 px-3 py-2" style="grid-template-columns: 2fr 1fr 1fr 1fr;">
+              <div class="grid text-sm border-t hover:bg-muted/50 px-3 py-2" style="grid-template-columns: 2fr 1fr 1fr 1fr auto;">
                 <span class="truncate pr-2">{item.title ?? "—"}</span>
-                <span class="truncate pr-2">{formatAlbums(item.albums)}</span>
                 <span class="truncate pr-2">{item.album_artist ?? parseJson(item.artists)[0] ?? "—"}</span>
+                <span class="truncate pr-2">{formatAlbums(item.albums)}</span>
                 <span class="truncate text-muted-foreground text-xs">
                   {parseJson(item.artists).filter((a: string) => a !== item.album_artist).join(", ") || "—"}
                 </span>
+                <button class="text-muted-foreground hover:text-foreground text-xs px-1" onclick={() => editingTrack = item}>✎</button>
               </div>
             </VirtualList>
           </div>
@@ -360,4 +365,10 @@
       </div>
 
     {/if}
+
+  <TrackEditModal
+    track={editingTrack}
+    onClose={() => editingTrack = null}
+    onSaved={async () => { await loadTracks(); await loadDuplicates(); }}
+  />
 </div>

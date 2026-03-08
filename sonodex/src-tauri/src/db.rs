@@ -241,6 +241,48 @@ pub fn delete_track_by_id(conn: &Connection, id: i64) -> Result<()> {
     Ok(())
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct MetadataUpdate {
+    pub title: Option<String>,
+    pub artists: Option<String>,
+    pub album_artist: Option<String>,
+    pub albums: Option<String>,
+    pub year: Option<String>,
+    pub genres: Option<String>,
+    pub bpm: Option<f32>,
+    pub rating: Option<f32>,
+    pub tags: Option<String>,
+}
+
+pub fn update_track_metadata(conn: &Connection, id: i64, update: &MetadataUpdate) -> Result<()> {
+    conn.execute(
+        "UPDATE tracks SET
+            title = COALESCE(?1, title),
+            artists = COALESCE(?2, artists),
+            album_artist = COALESCE(?3, album_artist),
+            albums = COALESCE(?4, albums),
+            year = COALESCE(?5, year),
+            genres = COALESCE(?6, genres),
+            bpm = COALESCE(?7, bpm),
+            rating = COALESCE(?8, rating),
+            tags = COALESCE(?9, tags)
+        WHERE id = ?10",
+        params![
+            update.title,
+            update.artists,
+            update.album_artist,
+            update.albums,
+            update.year,
+            update.genres,
+            update.bpm,
+            update.rating,
+            update.tags,
+            id,
+        ],
+    )?;
+    Ok(())
+}
+
 pub fn add_library_path(conn: &Connection, path: &str) -> Result<()> {
     conn.execute(
         "INSERT OR IGNORE INTO library_paths (path) VALUES (?1)",
