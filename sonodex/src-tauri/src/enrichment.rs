@@ -102,28 +102,10 @@ struct MbTag {
 }
 
 #[derive(Debug, Deserialize)]
-struct AcousticBrainzResponse {
-    rhythm: Option<AcousticRhythm>,
-    tonal: Option<AcousticTonal>,
-}
-
-#[derive(Debug, Deserialize)]
-struct AcousticRhythm {
-    bpm: Option<f64>,
-}
-
-#[derive(Debug, Deserialize)]
-struct AcousticTonal {
-    key_key: Option<String>,
-    key_scale: Option<String>,
-}
-
-#[derive(Debug, Deserialize)]
 struct AudioDbSearchResponse {
     track: Option<Vec<AudioDbTrack>>,
 }
 
-#[derive(Debug, Deserialize)]
 #[derive(Debug, Deserialize)]
 struct AudioDbTrack {
     #[serde(rename = "strTrack")]
@@ -154,22 +136,6 @@ pub fn make_client() -> Result<Client, String> {
         .timeout(Duration::from_secs(10))
         .build()
         .map_err(|e| e.to_string())
-}
-
-async fn fetch_acousticbrainz(client: &Client, mbid: &str) -> Option<(Option<f32>, Option<String>)> {
-    let url = format!("{}/{}/low-level", ACOUSTICBRAINZ_BASE, mbid);
-    let resp = client.get(&url).send().await.ok()?;
-    if !resp.status().is_success() {
-        return None;
-    }
-    let data: AcousticBrainzResponse = resp.json().await.ok()?;
-    let bpm = data.rhythm.as_ref().and_then(|r| r.bpm).map(|b| b as f32);
-    let key = data.tonal.as_ref().and_then(|t| match (&t.key_key, &t.key_scale) {
-        (Some(k), Some(s)) => Some(format!("{} {}", k, s)),
-        (Some(k), None) => Some(k.clone()),
-        _ => None,
-    });
-    Some((bpm, key))
 }
 
 async fn search_musicbrainz(client: &Client, title: &str, artist: &str) -> Option<EnrichedMetadata> {
@@ -286,7 +252,6 @@ async fn search_audiodb(
         serde_json::to_string(&vec![g.to_string()]).unwrap_or_else(|_| "[]".to_string())
     });
     let mbid = track.str_music_brainz_id;
-
     let bpm = track.int_track_bpm.as_deref().and_then(|s| s.parse::<f32>().ok());
 
     let artwork_url = track.str_track_thumb.or(track.str_artist_thumb);
@@ -373,7 +338,7 @@ pub async fn enrich_track_async(
         return Err("Track missing title or artist".to_string());
     }
 
-    let mut enriched = match settings.primary_api.as_str() {
+    let enriched = match settings.primary_api.as_str() {
         "audiodb" => {
             let result = search_audiodb(client, &title, &artist, &settings.audiodb_key).await;
             if result.is_none() {

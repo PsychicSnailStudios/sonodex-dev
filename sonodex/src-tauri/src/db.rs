@@ -270,26 +270,39 @@ pub struct MetadataUpdate {
 }
 
 pub fn update_track_metadata(conn: &Connection, id: i64, update: &MetadataUpdate) -> Result<()> {
-    conn.execute(
-        "UPDATE tracks SET
-            title = COALESCE(?1, title),
-            artists = COALESCE(?2, artists),
-            album_artist = COALESCE(?3, album_artist),
-            albums = COALESCE(?4, albums),
-            year = COALESCE(?5, year),
-            genres = COALESCE(?6, genres),
-            bpm = COALESCE(?7, bpm),
-            rating = COALESCE(?8, rating),
-            tags = COALESCE(?9, tags),
-            key = COALESCE(?10, key),
-            artwork = COALESCE(?11, artwork)
-        WHERE id = ?12",
-        params![
-            update.title, update.artists, update.album_artist, update.albums,
-            update.year, update.genres, update.bpm, update.rating, update.tags,
-            update.key, update.artwork, id,
-        ],
-    )?;
+    if let Some(ref title) = update.title {
+        conn.execute("UPDATE tracks SET title = ?1 WHERE id = ?2", params![title, id])?;
+    }
+    if let Some(ref artists) = update.artists {
+        conn.execute("UPDATE tracks SET artists = ?1 WHERE id = ?2", params![artists, id])?;
+    }
+    if let Some(ref album_artist) = update.album_artist {
+        conn.execute("UPDATE tracks SET album_artist = ?1 WHERE id = ?2", params![album_artist, id])?;
+    }
+    if let Some(ref albums) = update.albums {
+        conn.execute("UPDATE tracks SET albums = ?1 WHERE id = ?2", params![albums, id])?;
+    }
+    if let Some(ref year) = update.year {
+        conn.execute("UPDATE tracks SET year = ?1 WHERE id = ?2", params![year, id])?;
+    }
+    if let Some(ref genres) = update.genres {
+        conn.execute("UPDATE tracks SET genres = ?1 WHERE id = ?2", params![genres, id])?;
+    }
+    if let Some(bpm) = update.bpm {
+        conn.execute("UPDATE tracks SET bpm = ?1 WHERE id = ?2", params![bpm, id])?;
+    }
+    if let Some(rating) = update.rating {
+        conn.execute("UPDATE tracks SET rating = ?1 WHERE id = ?2", params![rating, id])?;
+    }
+    if let Some(ref tags) = update.tags {
+        conn.execute("UPDATE tracks SET tags = ?1 WHERE id = ?2", params![tags, id])?;
+    }
+    if let Some(ref key) = update.key {
+        conn.execute("UPDATE tracks SET key = ?1 WHERE id = ?2", params![key, id])?;
+    }
+    if let Some(ref artwork) = update.artwork {
+        conn.execute("UPDATE tracks SET artwork = ?1 WHERE id = ?2", params![artwork, id])?;
+    }
     Ok(())
 }
 
