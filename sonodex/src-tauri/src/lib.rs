@@ -3,11 +3,11 @@ mod scanner;
 mod watcher;
 
 use db::{
-    add_library_path, get_all_tracks, get_db_path, get_library_paths, init_db, remove_library_path,
-    LibraryPath, Track,
+  add_library_path, get_all_tracks, get_db_path, get_library_paths, init_db, remove_library_path,
+  LibraryPath, Track,
 };
 use rusqlite::Connection;
-use tauri::AppHandle;
+use tauri::{AppHandle, Emitter};
 
 fn open_conn() -> Connection {
     Connection::open(get_db_path()).expect("Failed to open database")
@@ -46,6 +46,33 @@ fn remove_path(path: String) -> Result<(), String> {
 fn get_tracks() -> Result<Vec<Track>, String> {
     let conn = open_conn();
     get_all_tracks(&conn).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn get_track_artwork(id: i64) -> Result<Option<Vec<u8>>, String> {
+    let conn = open_conn();
+    db::get_track_artwork(&conn, id).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn get_duplicates() -> Result<Vec<db::DuplicateGroup>, String> {
+    let conn = open_conn();
+    db::find_duplicates(&conn).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn remove_track_from_library(id: i64) -> Result<(), String> {
+    let conn = open_conn();
+    db::delete_track_by_id(&conn, id).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn delete_track_file(app: AppHandle, id: i64, path: String) -> Result<(), String> {
+    let conn = open_conn();
+    std::fs::remove_file(&path).map_err(|e| e.to_string())?;
+    db::delete_track_by_id(&conn, id).map_err(|e| e.to_string())?;
+    app.emit("library:updated", ()).ok();
+    Ok(())
 }
 
 #[tauri::command]
@@ -91,6 +118,17 @@ pub fn run() {
 
     tauri::Builder::default()
         .plugin(tauri_plugin_log::Builder::new().build())
+        .setup(|app| {
+            let handle = app.handle().clone();
+            let conn = open_conn();
+            let paths = db::get_library_paths(&conn)
+                .unwrap_or_default()
+                .into_iter()
+                .map(|p| p.path)
+                .collect();
+            watcher::start_watcher(handle, paths);
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             add_path,
             remove_path,
@@ -99,6 +137,10 @@ pub fn run() {
             rescan,
             get_settings,
             save_setting,
+            get_track_artwork,
+            get_duplicates,
+            remove_track_from_library,
+            delete_track_file,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
