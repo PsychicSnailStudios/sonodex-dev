@@ -153,7 +153,17 @@ async fn search_musicbrainz(client: &Client, title: &str, artist: &str) -> Optio
         return None;
     }
 
-    let data: MbSearchResponse = resp.json().await.ok()?;
+    eprintln!("[musicbrainz] status={} url={}", resp.status(), url);
+    let body = resp.text().await.unwrap_or_default();
+    eprintln!("[musicbrainz] body preview: {}", &body[..body.len().min(500)]);
+    let data: MbSearchResponse = match serde_json::from_str(&body) {
+        Ok(d) => d,
+        Err(e) => {
+            eprintln!("[musicbrainz] parse error: {}", e);
+            return None;
+        }
+    };
+
     let recording = data.recordings.into_iter().next()?;
     let mbid = recording.id.clone();
     let title = recording.title.clone();
@@ -334,6 +344,8 @@ pub async fn enrich_track_async(
         })
         .unwrap_or_default();
 
+    eprintln!("[enrich] title='{}' artist='{}' primary_api='{}'", title, artist, settings.primary_api);
+
     if title.is_empty() || artist.is_empty() {
         return Err("Track missing title or artist".to_string());
     }
@@ -341,22 +353,35 @@ pub async fn enrich_track_async(
     let enriched = match settings.primary_api.as_str() {
         "audiodb" => {
             let result = search_audiodb(client, &title, &artist, &settings.audiodb_key).await;
+            eprintln!("[enrich] audiodb result: {}", if result.is_some() { "found" } else { "not found" });
             if result.is_none() {
-                search_musicbrainz(client, &title, &artist).await
+                let mb = search_musicbrainz(client, &title, &artist).await;
+                eprintln!("[enrich] musicbrainz fallback: {}", if mb.is_some() { "found" } else { "not found" });
+                mb
             } else {
                 result
             }
         }
         _ => {
             let result = search_musicbrainz(client, &title, &artist).await;
+            eprintln!("[enrich] musicbrainz result: {}", if result.is_some() { "found" } else { "not found" });
             if result.is_none() {
-                search_audiodb(client, &title, &artist, &settings.audiodb_key).await
+                let adb = search_audiodb(client, &title, &artist, &settings.audiodb_key).await;
+                eprintln!("[enrich] audiodb fallback: {}", if adb.is_some() { "found" } else { "not found" });
+                adb
             } else {
                 result
             }
         }
+    };
+
+    if enriched.is_none() {
+        return Err("Track not found in any API".to_string());
     }
-    .ok_or_else(|| "Track not found in any API".to_string())?;
+    let enriched = enriched.unwrap();
+
+    eprintln!("[enrich] enriched title={:?} artists={:?} year={:?} genres={:?} bpm={:?}",
+        enriched.title, enriched.artists, enriched.year, enriched.genres, enriched.bpm);
 
     Ok(EnrichResult {
         title: apply_string(enriched.title, track.title.clone(), &settings.priority_title),

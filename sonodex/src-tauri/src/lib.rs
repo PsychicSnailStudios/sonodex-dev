@@ -218,19 +218,26 @@ async fn enrich_track(app: AppHandle, id: i64) -> Result<(), String> {
 
     {
         let conn = open_conn();
+        
         let update = db::MetadataUpdate {
-            title: result.title,
-            artists: result.artists,
-            album_artist: result.album_artist,
-            albums: result.albums,
-            year: result.year,
-            genres: result.genres,
-            bpm: result.bpm,
-            rating: None,
-            tags: None,
-            key: result.key,
-            artwork: result.artwork,
+          title: result.title,
+          artists: result.artists,
+          album_artist: result.album_artist,
+          albums: result.albums,
+          year: result.year,
+          genres: result.genres,
+          bpm: result.bpm,
+          rating: None,
+          tags: None,
+          key: result.key,
+          artwork: result.artwork,
         };
+        
+        eprintln!("[enrich_track] writing id={} title={:?} artists={:?} year={:?} genres={:?}",
+          id, update.title, update.artists, update.year, update.genres);
+        let write_result = db::update_track_metadata(&conn, id, &update);
+        eprintln!("[enrich_track] write result: {:?}", write_result);
+
         db::update_track_metadata(&conn, id, &update).map_err(|e| e.to_string())?;
     }
 
