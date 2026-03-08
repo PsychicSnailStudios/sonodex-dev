@@ -4,6 +4,7 @@
   import { onMount } from "svelte";
   import { Button } from "$lib/components/ui/button/index.js";
   import VirtualList from "svelte-virtual-list";
+  import { open } from "@tauri-apps/plugin-dialog";
 
   let activeTab: "library" | "settings" | "duplicates" = "library";
 
@@ -40,6 +41,16 @@
     filename_priority_year: "Year",
     filename_custom_pattern: "Custom Filename Pattern",
   };
+
+  async function browsePath() {
+    const selected = await open({
+      directory: true,
+      multiple: false,
+    });
+    if (selected) {
+      newPath = selected as string;
+    }
+  }
 
   async function loadPaths() {
     paths = await invoke("get_paths");
@@ -188,6 +199,7 @@
             placeholder="C:\Music or \\NAS\Music"
             class="flex-1 border rounded px-3 py-2 text-sm bg-background"
           />
+          <Button variant="outline" onclick={browsePath}>Browse</Button>
           <Button onclick={addPath} disabled={loading}>Add & Scan</Button>
         </div>
       </div>
