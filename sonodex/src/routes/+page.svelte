@@ -194,6 +194,39 @@
 
   {#if activeTab === "library"}
     <div class="p-6 space-y-6 flex-1 overflow-auto">
+      
+      <div class="space-y-1">
+        <h2 class="text-sm font-semibold">Tracks ({tracks.length})</h2>
+        <div class="border rounded">
+          <div class="grid text-xs font-medium bg-muted px-3 py-2" style="grid-template-columns: 2fr 1fr 1fr 1fr auto;">
+            <span>Title</span>
+            <span>Main Artist</span>
+            <span>Album(s)</span>
+            <span>Other Artists</span>
+            <span></span>
+          </div>
+          <div style="height: 440px;" class="overflow-hidden">
+            <VirtualList items={tracks} itemHeight={36} let:item>
+              <div class="grid text-sm border-t hover:bg-muted/50 px-3 py-2" style="grid-template-columns: 2fr 1fr 1fr 1fr auto;">
+                <span class="truncate pr-2">{item.title ?? "—"}</span>
+                <span class="truncate pr-2">{item.album_artist ?? parseJson(item.artists)[0] ?? "—"}</span>
+                <span class="truncate pr-2">{formatAlbums(item.albums)}</span>
+                <span class="truncate text-muted-foreground text-xs">
+                  {parseJson(item.artists).filter((a: string) => a !== item.album_artist).join(", ") || "—"}
+                </span>
+                <button class="text-muted-foreground hover:text-foreground text-xs px-1" onclick={() => editingTrack = item}>✎</button>
+              </div>
+            </VirtualList>
+          </div>
+        </div>
+        {#if tracks.length > 0}
+          <pre class="text-xs bg-muted p-2 rounded overflow-auto max-h-80">{JSON.stringify(tracks[0], null, 2)}</pre>
+        {/if}
+      </div>
+    </div>
+
+  {:else if activeTab === "settings"}
+  <div class="p-6 space-y-6 flex-1">
       <div class="space-y-2">
         <h2 class="text-sm font-semibold">Add Library Path</h2>
         <div class="flex gap-2">
@@ -237,38 +270,8 @@
           <p class="text-xs text-muted-foreground">{scanProgress} / {scanTotal} files</p>
         </div>
       {/if}
-
-      <div class="space-y-1">
-        <h2 class="text-sm font-semibold">Tracks ({tracks.length})</h2>
-        <div class="border rounded">
-          <div class="grid text-xs font-medium bg-muted px-3 py-2" style="grid-template-columns: 2fr 1fr 1fr 1fr auto;">
-            <span>Title</span>
-            <span>Main Artist</span>
-            <span>Album(s)</span>
-            <span>Other Artists</span>
-            <span></span>
-          </div>
-          <div style="height: 420px;" class="overflow-hidden">
-            <VirtualList items={tracks} itemHeight={36} let:item>
-              <div class="grid text-sm border-t hover:bg-muted/50 px-3 py-2" style="grid-template-columns: 2fr 1fr 1fr 1fr auto;">
-                <span class="truncate pr-2">{item.title ?? "—"}</span>
-                <span class="truncate pr-2">{item.album_artist ?? parseJson(item.artists)[0] ?? "—"}</span>
-                <span class="truncate pr-2">{formatAlbums(item.albums)}</span>
-                <span class="truncate text-muted-foreground text-xs">
-                  {parseJson(item.artists).filter((a: string) => a !== item.album_artist).join(", ") || "—"}
-                </span>
-                <button class="text-muted-foreground hover:text-foreground text-xs px-1" onclick={() => editingTrack = item}>✎</button>
-              </div>
-            </VirtualList>
-          </div>
-        </div>
-        {#if tracks.length > 0}
-          <pre class="text-xs bg-muted p-2 rounded overflow-auto max-h-32">{JSON.stringify(tracks[0], null, 2)}</pre>
-        {/if}
       </div>
-    </div>
 
-  {:else if activeTab === "settings"}
       <div class="p-6 space-y-6 max-w-xl">
           <div class="flex items-center justify-between">
         <div>
