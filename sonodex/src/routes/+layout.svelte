@@ -9,7 +9,7 @@
 
 <div class="flex h-screen flex-col overflow-hidden">
   <TitleBar />
-  <main class="flex-1 overflow-auto">
+  <main class="h-screen overflow-hidden">
     {@render children()}
   </main>
 </div>
