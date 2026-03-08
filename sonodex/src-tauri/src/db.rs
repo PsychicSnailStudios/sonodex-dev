@@ -117,7 +117,7 @@ pub fn delete_track(conn: &Connection, path: &str) -> Result<()> {
 
 pub fn get_all_tracks(conn: &Connection) -> Result<Vec<Track>> {
     let mut stmt = conn.prepare(
-        "SELECT id, path, last_modified, title, artists, album_artist, albums, genres, year, rating, tags, duration_ms, bpm, key, artwork
+        "SELECT id, path, last_modified, title, artists, album_artist, albums, genres, year, rating, tags, duration_ms, bpm, key
          FROM tracks ORDER BY album_artist, albums, title"
     )?;
     let tracks = stmt.query_map([], |row| {
@@ -136,11 +136,105 @@ pub fn get_all_tracks(conn: &Connection) -> Result<Vec<Track>> {
             duration_ms: row.get(11)?,
             bpm: row.get(12)?,
             key: row.get(13)?,
-            artwork: row.get(14)?,
+            artwork: None,
         })
     })?
     .collect::<Result<Vec<_>>>()?;
     Ok(tracks)
+}
+
+pub fn get_track_artwork(conn: &Connection, id: i64) -> Result<Option<Vec<u8>>> {
+    let mut stmt = conn.prepare("SELECT artwork FROM tracks WHERE id = ?1")?;
+    let mut rows = stmt.query(params![id])?;
+    if let Some(row) = rows.next()? {
+        Ok(row.get(0)?)
+    } else {
+        Ok(None)
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct DuplicateGroup {
+    pub tracks: Vec<Track>,
+}
+
+pub fn find_duplicates(conn: &Connection) -> Result<Vec<DuplicateGroup>> {
+    let mut stmt = conn.prepare(
+        "SELECT id, path, last_modified, title, artists, album_artist, albums, genres, year, rating, tags, duration_ms, bpm, key
+         FROM (
+             SELECT a.id, a.path, a.last_modified, a.title, a.artists, a.album_artist, a.albums, a.genres, a.year, a.rating, a.tags, a.duration_ms, a.bpm, a.key
+             FROM tracks a
+             INNER JOIN tracks b ON (
+                 a.id < b.id
+                 AND LOWER(TRIM(a.title)) = LOWER(TRIM(b.title))
+                 AND LOWER(TRIM(COALESCE(a.album_artist, JSON_EXTRACT(a.artists, '$[0]')))) = LOWER(TRIM(COALESCE(b.album_artist, JSON_EXTRACT(b.artists, '$[0]'))))
+                 AND ABS(COALESCE(a.duration_ms, 0) - COALESCE(b.duration_ms, 0)) <= 1000
+             )
+             UNION
+             SELECT b.id, b.path, b.last_modified, b.title, b.artists, b.album_artist, b.albums, b.genres, b.year, b.rating, b.tags, b.duration_ms, b.bpm, b.key
+             FROM tracks a
+             INNER JOIN tracks b ON (
+                 a.id < b.id
+                 AND LOWER(TRIM(a.title)) = LOWER(TRIM(b.title))
+                 AND LOWER(TRIM(COALESCE(a.album_artist, JSON_EXTRACT(a.artists, '$[0]')))) = LOWER(TRIM(COALESCE(b.album_artist, JSON_EXTRACT(b.artists, '$[0]'))))
+                 AND ABS(COALESCE(a.duration_ms, 0) - COALESCE(b.duration_ms, 0)) <= 1000
+             )
+         )
+         ORDER BY title, album_artist, duration_ms"
+    )?;
+
+    let all_tracks = stmt.query_map([], |row| {
+        Ok(Track {
+            id: row.get(0)?,
+            path: row.get(1)?,
+            last_modified: row.get(2)?,
+            title: row.get(3)?,
+            artists: row.get(4)?,
+            album_artist: row.get(5)?,
+            albums: row.get(6)?,
+            genres: row.get(7)?,
+            year: row.get(8)?,
+            rating: row.get(9)?,
+            tags: row.get(10)?,
+            duration_ms: row.get(11)?,
+            bpm: row.get(12)?,
+            key: row.get(13)?,
+            artwork: None,
+        })
+    })?
+    .collect::<Result<Vec<_>>>()?;
+
+    let mut groups: Vec<DuplicateGroup> = Vec::new();
+    let mut i = 0;
+    while i < all_tracks.len() {
+        let mut group = vec![all_tracks[i].clone()];
+        let mut j = i + 1;
+        while j < all_tracks.len() {
+            let a = &all_tracks[i];
+            let b = &all_tracks[j];
+            let same_title = a.title.as_deref().map(|s| s.to_lowercase()) == b.title.as_deref().map(|s| s.to_lowercase());
+            let same_artist = a.album_artist.as_deref().map(|s| s.to_lowercase()) == b.album_artist.as_deref().map(|s| s.to_lowercase());
+            let duration_close = match (a.duration_ms, b.duration_ms) {
+                (Some(da), Some(db)) => (da - db).abs() <= 1000,
+                _ => false,
+            };
+            if same_title && same_artist && duration_close {
+                group.push(all_tracks[j].clone());
+                j += 1;
+            } else {
+                break;
+            }
+        }
+        groups.push(DuplicateGroup { tracks: group });
+        i = j;
+    }
+
+    Ok(groups)
+}
+
+pub fn delete_track_by_id(conn: &Connection, id: i64) -> Result<()> {
+    conn.execute("DELETE FROM tracks WHERE id = ?1", params![id])?;
+    Ok(())
 }
 
 pub fn add_library_path(conn: &Connection, path: &str) -> Result<()> {
