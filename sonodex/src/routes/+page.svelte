@@ -262,6 +262,9 @@
             </VirtualList>
           </div>
         </div>
+        {#if tracks.length > 0}
+          <pre class="text-xs bg-muted p-2 rounded overflow-auto max-h-32">{JSON.stringify(tracks[0], null, 2)}</pre>
+        {/if}
       </div>
     </div>
 

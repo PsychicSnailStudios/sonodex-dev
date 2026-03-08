@@ -263,12 +263,14 @@ pub fn read_track_with_settings(
 
     let filename_meta = parse_filename(path, custom_pattern);
 
-    let (tag_title, tag_artist, tag_album, tag_album_artist, tag_genres, tag_year, tag_rating, bpm, key, artwork) =
+    let (tag_title, tag_artist, tag_album, tag_album_artist, tag_genres, tag_year, tag_rating, tag_track_number, bpm, key, artwork) =
         if let Some(tag) = tag {
             let artwork = tag.pictures().first().map(|p| p.data().to_vec());
             let rating = tag
                 .get_string(&lofty::tag::ItemKey::Popularimeter)
                 .and_then(|s| normalize_rating(s));
+            let track_number = tag.get_string(&lofty::tag::ItemKey::TrackNumber)
+                .and_then(|s| s.split('/').next().and_then(|n| n.trim().parse::<u32>().ok()));
             (
                 tag.title().map(|s| s.to_string()),
                 tag.artist().map(|s| s.to_string()),
@@ -277,17 +279,18 @@ pub fn read_track_with_settings(
                 tag.genre().map(|s| s.to_string()),
                 tag.year().map(|y| y.to_string()),
                 rating,
+                track_number,
                 tag.get_string(&lofty::tag::ItemKey::Bpm)
                     .and_then(|s| s.parse::<f32>().ok()),
                 tag.get_string(&lofty::tag::ItemKey::InitialKey).map(|s| s.to_string()),
                 artwork,
             )
         } else {
-            (None, None, None, None, None, None, None, None, None, None)
+            (None, None, None, None, None, None, None, None, None, None, None)
         };
 
     let folder_meta = parse_folder_path(path);
-	
+
     let title = resolve_field(tag_title, filename_meta.title, priority_title);
 
     let artist_str = resolve_field(tag_artist, filename_meta.artist, priority_artist)
@@ -311,7 +314,7 @@ pub fn read_track_with_settings(
     });
 
     let albums = album_str.map(|a| {
-        serde_json::to_string(&vec![serde_json::json!({ "name": a, "track_number": null })])
+        serde_json::to_string(&vec![serde_json::json!({ "name": a, "track_number": tag_track_number })])
             .unwrap_or_else(|_| "[]".to_string())
     });
 

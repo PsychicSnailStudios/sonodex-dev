@@ -9,7 +9,7 @@
   let title = "";
   let artists: string[] = [];
   let albumArtist = "";
-  let albums: { name: string; track_number: number | null }[] = [];
+  let albums: { name: string; track_number: number | string | null }[] = [];
   let year = "";
   let genres: string[] = [];
   let bpm: number | null = null;
@@ -26,7 +26,9 @@
     artists = parseJson(track.artists);
     albumArtist = track.album_artist ?? "";
     albums = parseJson(track.albums).map((a: any) =>
-      typeof a === "string" ? { name: a, track_number: null } : a
+      typeof a === "string"
+        ? { name: a, track_number: "" }
+        : { name: a.name, track_number: a.track_number ?? "" }
     );
     year = track.year ?? "";
     genres = parseJson(track.genres);
@@ -72,7 +74,16 @@
       title: title || null,
       artists: JSON.stringify(artists.filter(a => a.trim())),
       album_artist: albumArtist || null,
-      albums: JSON.stringify(albums.filter(a => a.name.trim())),
+      albums: JSON.stringify(
+        albums
+          .filter(a => a.name.trim())
+          .map(a => ({
+            name: a.name,
+            track_number: a.track_number !== "" && a.track_number !== null
+              ? Number(a.track_number)
+              : null,
+          }))
+      ),
       year: year || null,
       genres: JSON.stringify(genres.filter(g => g.trim())),
       bpm: bpm ?? null,
