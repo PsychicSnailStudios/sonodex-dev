@@ -4,7 +4,7 @@
   import { onMount } from "svelte";
 
   import HomeVeiw from "$lib/components/views/Home.svelte";
-  import MusicView from "$lib/components/views/Music.svelte";
+  import MusicView from "$lib/components/views/MusicLibrary.svelte";
   import PlaylistsView from "$lib/components/views/Playlists.svelte";
   import SettingsVeiw from "$lib/components/views/Settings.svelte";
 
