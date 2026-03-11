@@ -60,7 +60,7 @@
         <SettingsVeiw />
       {/if}
 
-      <TrackDisplay/>
+      <!-- <TrackDisplay/> -->
 
     </div>
 
