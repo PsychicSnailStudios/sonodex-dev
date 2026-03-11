@@ -6,6 +6,7 @@ mod enrichment;
 use db::{
 	add_library_path, get_all_tracks, get_db_path, get_library_paths, init_db, remove_library_path,
 	LibraryPath, Track,
+	Lyrics, upsert_lyrics, get_lyrics, delete_lyrics,
 	Album, AlbumUpdate, create_album, get_all_albums, get_album_by_id, update_album, delete_album,
 	Artist, ArtistUpdate, create_artist, get_all_artists, get_artist_by_id, update_artist, delete_artist,
 	Playlist, PlaylistUpdate, create_playlist, get_all_playlists, get_playlist_by_id, update_playlist, delete_playlist,
@@ -311,6 +312,68 @@ fn delete_playlist_entry(id: i64) -> Result<(), String> {
 }
 
 
+
+// ─────────────────────────────────────────────
+// LYRICS
+// ─────────────────────────────────────────────
+
+#[tauri::command]
+fn get_track_lyrics(track_id: i64) -> Result<Option<Lyrics>, String> {
+	let conn = open_conn();
+	get_lyrics(&conn, track_id).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn fetch_track_lyrics(app: AppHandle, track_id: i64) -> Result<(), String> {
+	use enrichment::lyrics::fetch_lyrics;
+
+	let (title, artist, album, duration_secs) = {
+		let conn = open_conn();
+		let tracks = db::get_all_tracks(&conn).map_err(|e| e.to_string())?;
+		let track = tracks.into_iter().find(|t| t.id == Some(track_id))
+			.ok_or("Track not found")?;
+		let artist = track.album_artist.clone().or_else(|| {
+			track.artists.as_deref().and_then(|a| {
+				serde_json::from_str::<Vec<String>>(a).ok().and_then(|v| v.into_iter().next())
+			})
+		});
+		let album = track.albums.as_deref().and_then(|a| {
+			serde_json::from_str::<Vec<serde_json::Value>>(a).ok()
+				.and_then(|v| v.into_iter().next())
+				.and_then(|e| e["name"].as_str().map(|s| s.to_string()))
+		});
+		let duration_secs = track.duration_ms.map(|ms| (ms / 1000) as u64);
+		(track.title, artist, album, duration_secs)
+	};
+
+	let title = title.ok_or("Track has no title")?;
+	let artist = artist.ok_or("Track has no artist")?;
+
+	let client = enrichment::make_client()?;
+	let result = fetch_lyrics(&client, &title, &artist, album.as_deref(), duration_secs).await;
+
+	if let Some(lyrics) = result {
+		let conn = open_conn();
+		upsert_lyrics(&conn, &Lyrics {
+			id: None,
+			track_id,
+			source: lyrics.source,
+			plain: lyrics.plain,
+			synced: lyrics.synced,
+			instrumental: lyrics.instrumental,
+		}).map_err(|e| e.to_string())?;
+		app.emit("lyrics:updated", track_id).ok();
+	}
+
+	Ok(())
+}
+
+#[tauri::command]
+fn delete_track_lyrics(track_id: i64) -> Result<(), String> {
+	let conn = open_conn();
+	delete_lyrics(&conn, track_id).map_err(|e| e.to_string())
+}
+
 // ─────────────────────────────────────────────
 // SETTINGS
 // ─────────────────────────────────────────────
@@ -338,6 +401,8 @@ fn load_enrich_settings(conn: &Connection) -> enrichment::EnrichSettings {
 	};
 	enrichment::EnrichSettings {
 		primary_api: g("enrich_primary_api", "musicbrainz"),
+		lastfm_key: g("api_lastfm_key", ""),
+		discogs_key: g("api_discogs_key", ""),
 		audiodb_key: g("api_audiodb_key", ""),
 		priority_title: g("enrich_priority_title", "local"),
 		priority_artists: g("enrich_priority_artists", "local"),
@@ -531,6 +596,9 @@ pub fn run() {
 			save_setting,
 			enrich_track,
 			enrich_all,
+			get_track_lyrics,
+			fetch_track_lyrics,
+			delete_track_lyrics,
 		])
 		.run(tauri::generate_context!())
 		.expect("error while running tauri application");
