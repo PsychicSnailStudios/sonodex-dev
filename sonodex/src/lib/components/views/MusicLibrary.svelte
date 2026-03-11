@@ -9,7 +9,7 @@
 	import MusicArtists from "$lib/components/views/MusicArtists.svelte";
 	import MusicTracks from "$lib/components/views/MusicTracks.svelte";
 
-  let activeTab = $state("album");
+  	let activeTab = $state("album");
 	let search = $state("");
 	let tracks: Track[] = $state([]);
 

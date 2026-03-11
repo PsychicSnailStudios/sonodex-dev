@@ -7,6 +7,7 @@
   import MusicView from "$lib/components/views/MusicLibrary.svelte";
   import PlaylistsView from "$lib/components/views/Playlists.svelte";
   import SettingsVeiw from "$lib/components/views/Settings.svelte";
+	import TrackDisplay from "$lib/components/views/TrackDisplay.svelte";
 
   import { House, Music, ListMusic, Settings } from "lucide-svelte"
 
@@ -58,6 +59,8 @@
       {:else if activeView === "settings"}
         <SettingsVeiw />
       {/if}
+
+      <TrackDisplay/>
 
     </div>
 

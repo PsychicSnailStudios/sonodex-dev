@@ -306,6 +306,7 @@ pub fn update_track_metadata(conn: &Connection, id: i64, update: &MetadataUpdate
     Ok(())
 }
 
+// LIBRARY PATHS
 pub fn add_library_path(conn: &Connection, path: &str) -> Result<()> {
     conn.execute(
         "INSERT OR IGNORE INTO library_paths (path) VALUES (?1)",
@@ -332,6 +333,7 @@ pub fn get_library_paths(conn: &Connection) -> Result<Vec<LibraryPath>> {
     Ok(paths)
 }
 
+// SETTINGS
 pub fn get_setting(conn: &Connection, key: &str) -> Result<Option<String>> {
     let mut stmt = conn.prepare("SELECT value FROM settings WHERE key = ?1")?;
     let mut rows = stmt.query(params![key])?;
