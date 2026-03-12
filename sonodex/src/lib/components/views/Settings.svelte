@@ -12,16 +12,18 @@
   import { Switch } from "$lib/components/ui/switch/index.js";
 
   let paths: { id: number; path: string }[] = [];
+  
   let newPath = "";
   let status = "";
+
   let loading = false;
   let scanProgress = 0;
   let scanTotal = 0;
+
   let enriching = false;
   let enrichDone = 0;
   let enrichTotal = 0;
   let enrichErrors = 0;
-
 
   let settings: Record<string, string> = {};
 

@@ -26,6 +26,14 @@
 	let tracks: Track[] = $state([]);
 	let track: Track = $state();
 
+	function formatDuration(ms: number | null): string {
+		if (!ms) return "--:--";
+		const totalSeconds = Math.floor(ms / 1000);
+		const minutes = Math.floor(totalSeconds / 60);
+		const seconds = totalSeconds % 60;
+		return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+	}
+
 	onMount(async () => {
 		tracks = await invoke("get_tracks");
 		track = tracks[0];
