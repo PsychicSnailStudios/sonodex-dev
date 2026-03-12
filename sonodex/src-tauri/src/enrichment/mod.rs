@@ -154,7 +154,7 @@ pub async fn enrich_track_async(
 
 	// Build the ordered list of APIs to try, primary first.
 	let all_apis = ["musicbrainz", "audiodb", "lastfm", "discogs"];
-	let mut ordered: Vec<&str> = std::iter::once(settings.primary_api.as_str())
+	let ordered: Vec<&str> = std::iter::once(settings.primary_api.as_str())
 		.chain(all_apis.iter().copied().filter(|&a| a != settings.primary_api.as_str()))
 		.collect();
 

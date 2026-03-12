@@ -320,7 +320,7 @@ fn delete_playlist_entry(id: i64) -> Result<(), String> {
 #[tauri::command]
 fn get_track_lyrics(track_id: i64) -> Result<Option<Lyrics>, String> {
 	let conn = open_conn();
-	get_lyrics(&conn, track_id).map_err(|e| e.to_string())
+	get_lyrics(&conn, track_id).map_err(|e: rusqlite::Error| e.to_string())
 }
 
 #[tauri::command]
@@ -361,7 +361,7 @@ async fn fetch_track_lyrics(app: AppHandle, track_id: i64) -> Result<(), String>
 			plain: lyrics.plain,
 			synced: lyrics.synced,
 			instrumental: lyrics.instrumental,
-		}).map_err(|e| e.to_string())?;
+		}).map_err(|e: rusqlite::Error| e.to_string())?;
 		app.emit("lyrics:updated", track_id).ok();
 	}
 
@@ -371,7 +371,7 @@ async fn fetch_track_lyrics(app: AppHandle, track_id: i64) -> Result<(), String>
 #[tauri::command]
 fn delete_track_lyrics(track_id: i64) -> Result<(), String> {
 	let conn = open_conn();
-	delete_lyrics(&conn, track_id).map_err(|e| e.to_string())
+	delete_lyrics(&conn, track_id).map_err(|e: rusqlite::Error| e.to_string())
 }
 
 // ─────────────────────────────────────────────

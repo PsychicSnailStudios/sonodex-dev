@@ -1,10 +1,12 @@
 pub mod album_manager;
+pub mod lyrics_manager;
 pub mod artist_manager;
 pub mod playlist_manager;
 pub mod settings_manager;
 pub mod track_manager;
 
 pub use album_manager::*;
+pub use lyrics_manager::*;
 pub use artist_manager::*;
 pub use playlist_manager::*;
 pub use settings_manager::*;
@@ -95,6 +97,16 @@ pub fn init_db(conn: &Connection) -> Result<()> {
 			artwork_path TEXT
 		);
 
+		CREATE TABLE IF NOT EXISTS lyrics (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			track_id INTEGER NOT NULL UNIQUE,
+			source TEXT NOT NULL,
+			plain TEXT,
+			synced TEXT,
+			instrumental INTEGER NOT NULL DEFAULT 0,
+			FOREIGN KEY (track_id) REFERENCES tracks(id) ON DELETE CASCADE
+		);
+
 		CREATE TABLE IF NOT EXISTS settings (
 			key TEXT PRIMARY KEY,
 			value TEXT NOT NULL
@@ -102,10 +114,10 @@ pub fn init_db(conn: &Connection) -> Result<()> {
 
 		CREATE INDEX IF NOT EXISTS idx_tracks_album_artist ON tracks(album_artist);
 		CREATE INDEX IF NOT EXISTS idx_tracks_path ON tracks(path);
-		CREATE INDEX IF NOT EXISTS idx_tracks_uid ON tracks(uid);
-		CREATE INDEX IF NOT EXISTS idx_albums_uid ON albums(uid);
-		CREATE INDEX IF NOT EXISTS idx_artists_uid ON artists(uid);
-		CREATE INDEX IF NOT EXISTS idx_playlists_uid ON playlists(uid);
+		CREATE UNIQUE INDEX IF NOT EXISTS idx_tracks_uid ON tracks(uid);
+		CREATE UNIQUE INDEX IF NOT EXISTS idx_albums_uid ON albums(uid);
+		CREATE UNIQUE INDEX IF NOT EXISTS idx_artists_uid ON artists(uid);
+		CREATE UNIQUE INDEX IF NOT EXISTS idx_playlists_uid ON playlists(uid);
 
 		INSERT OR IGNORE INTO settings (key, value) VALUES
 			('dark_mode', 'false'),
@@ -129,6 +141,9 @@ pub fn init_db(conn: &Connection) -> Result<()> {
 			('enrich_priority_key', 'local'),
 			('enrich_priority_artwork', 'local'),
 			('api_audiodb_key', '');
+		INSERT OR IGNORE INTO settings (key, value) VALUES
+			('api_lastfm_key', ''),
+			('api_discogs_key', '');
 		INSERT OR IGNORE INTO settings (key, value) VALUES
 			('artist_tag_delimiters', ' / | ; '),
 			('artist_filename_delimiters', ' / | ; | feat. | ft. | featuring '),
