@@ -4,7 +4,7 @@
 
 	import * as Tabs from "$lib/components/ui/tabs/index.js";
 
-	import TrackArtwork from "../TrackArtwork.svelte";
+	import TrackArtwork from "$lib/components/app/TrackArtwork.svelte";
 
 	type Track = {
 		id: number;

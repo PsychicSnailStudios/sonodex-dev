@@ -3,7 +3,7 @@
 
 	import { Skeleton } from "$lib/components/ui/skeleton/index.js";
 
-	let { id }: { id: number } = $props();
+	let { id, width, height }: { id: number; width: number; height: number } = $props();
 
 	let artworkUrl: string | null = $state(null);
 	let loaded = $state(false);
@@ -28,7 +28,7 @@
 	});
 </script>
 
-<div bind:this={el} class="w-10 h-10 rounded-sm overflow-hidden relative bg-muted flex-shrink-0">
+<div bind:this={el} class="w-{width} h-{height} rounded-sm overflow-hidden relative bg-muted flex-shrink-0">
 	{#if artworkUrl}
 		<img
 			src={artworkUrl}
@@ -38,7 +38,7 @@
 			onload={() => loaded = true}
 		/>
 		{#if !loaded}
-			<Skeleton class="w-10 h-10 rounded-full" />
+			<Skeleton class="w-{width} h-{height} rounded-full" />
 		{/if}
 	{:else}
 		<div class="absolute inset-0 flex items-center justify-center">
