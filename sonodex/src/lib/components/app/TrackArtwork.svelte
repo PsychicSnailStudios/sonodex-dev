@@ -1,20 +1,26 @@
 <script lang="ts">
 	import { invoke } from "@tauri-apps/api/core";
-
 	import { Skeleton } from "$lib/components/ui/skeleton/index.js";
 
-	let { id, width, height }: { id: number; width: number; height: number } = $props();
+	let { id, width = 40, height = 40, type = "track" }: { id: number; width?: number; height?: number; type?: "track" | "album" | "artist" | "playlist" } = $props();
 
 	let artworkUrl: string | null = $state(null);
 	let loaded = $state(false);
 	let el: HTMLDivElement;
+
+	const commandMap = {
+		track: "get_track_artwork",
+		album: "get_album_artwork",
+		artist: "get_artist_profile_art",
+		playlist: "get_playlist_artwork",
+	};
 
 	$effect(() => {
 		const observer = new IntersectionObserver(async ([entry]) => {
 			if (entry.isIntersecting) {
 				observer.disconnect();
 				try {
-					const bytes: number[] | null = await invoke("get_track_artwork", { id });
+					const bytes: number[] | null = await invoke(commandMap[type], { id });
 					if (bytes) {
 						const blob = new Blob([new Uint8Array(bytes)], { type: "image/jpeg" });
 						artworkUrl = URL.createObjectURL(blob);
@@ -28,7 +34,7 @@
 	});
 </script>
 
-<div bind:this={el} class="w-{width} h-{height} rounded-sm overflow-hidden relative bg-muted flex-shrink-0">
+<div bind:this={el} style="width: {width}px; height: {height}px;" class="rounded-sm overflow-hidden relative bg-muted flex-shrink-0">
 	{#if artworkUrl}
 		<img
 			src={artworkUrl}
@@ -38,7 +44,7 @@
 			onload={() => loaded = true}
 		/>
 		{#if !loaded}
-			<Skeleton class="w-{width} h-{height} rounded-full" />
+			<Skeleton class="w-full h-full" />
 		{/if}
 	{:else}
 		<div class="absolute inset-0 flex items-center justify-center">

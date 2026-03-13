@@ -45,3 +45,13 @@ export type Artist = {
 	profile_art_path: string | null;
 	banner_art_path: string | null;
 };
+
+export type Playlist = {
+	id: number;
+	uid: string;
+	title: string;
+	description: string | null;
+	owner: string | null;
+	tracks: number | null;
+	artwork_path: string | null;
+};

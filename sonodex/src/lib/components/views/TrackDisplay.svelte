@@ -1,59 +1,26 @@
 <script lang="ts">
-	import { invoke } from "@tauri-apps/api/core";
-	import { onMount } from "svelte";
+	import type { Track } from "$lib/types";
 
 	import * as Tabs from "$lib/components/ui/tabs/index.js";
 
 	import TrackArtwork from "$lib/components/app/TrackArtwork.svelte";
 
-	type Track = {
-		id: number;
-		path: string;
-		last_modified: number;
-		title: string | null;
-		artists: string | null;
-		album_artist: string | null;
-		albums: string | null;
-		genres: string | null;
-		year: string | null;
-		rating: number | null;
-		tags: string | null;
-		duration_ms: number | null;
-		bpm: number | null;
-		key: string | null;
-	};
-
-	let tracks: Track[] = $state([]);
-	let track: Track = $state();
-
-	function formatDuration(ms: number | null): string {
-		if (!ms) return "--:--";
-		const totalSeconds = Math.floor(ms / 1000);
-		const minutes = Math.floor(totalSeconds / 60);
-		const seconds = totalSeconds % 60;
-		return `${minutes}:${seconds.toString().padStart(2, "0")}`;
-	}
-
-	onMount(async () => {
-		tracks = await invoke("get_tracks");
-		track = tracks[0];
-	});
+	let { track } = $props<{ track: Track }>();
 </script>
 
 <div class="flex flex-col gap-2 p-4 border-2 h-full w-full overflow-hidden rounded-md">
 
 	<div>
-
-		<TrackArtwork id={track.id} />
+		<TrackArtwork id={track[0].id} width={100} height={100} />
 
 		<div>
-			<h2 class="heading">{track.title}</h2>
+			<h2 class="heading">{track[0].title}</h2>
 			<div>
-				<span>{track.album_artist}</span>
-				<span>{track.albums}</span>
-				<span>{track.year}</span>
-				<span>{track.duration_ms}</span>
-				<span>{track.rating}</span>
+				<span>{track[0].album_artist}</span>
+				<span>{track[0].albums}</span>
+				<span>{track[0].year}</span>
+				<span>{track[0].duration_ms}</span>
+				<span>{track[0].rating}</span>
 			</div>
 		</div>
 
@@ -71,7 +38,3 @@
 	</Tabs.Root>
 
 </div>
-
-<style>
-
-</style>

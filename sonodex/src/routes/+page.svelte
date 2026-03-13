@@ -29,6 +29,10 @@
 
   <div class="app-sidebar grid gap-1">
 
+    <div>
+      <!-- scan progress -->
+    </div>
+
     <div class="app-nav bg-muted flex flex-col p-2 gap-1 rounded-md">
 
       {#each VIEW_TABS as tab}
@@ -79,7 +83,7 @@
   }
 
   .app-sidebar {
-    grid-template-rows: 1fr auto;
+    grid-template-rows: auto 1fr auto;
     flex-direction: column;
     min-width: 18rem;
     max-width: 30rem;

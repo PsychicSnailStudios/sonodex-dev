@@ -170,7 +170,7 @@
 				<div class="flex-1 overflow-hidden">
 					<VirtualList items={filteredTracks} itemHeight={56} let:item={track}>
 						<div class="grid items-center px-3 border-b hover:bg-muted/50" style="grid-template-columns: 40px 1fr 1fr 60px 120px 60px 40px; height: 56px;">
-							<TrackArtwork id={track.id} width={10} height={10} />
+							<TrackArtwork id={track.id} width={30} height={30} />
 							<div class="flex flex-col min-w-0">
 								<span class="text-sm truncate">{track.title ?? "Unknown Title"}</span>
 								<span class="text-xs text-muted-foreground truncate">{parseArtists(track.artists)}</span>

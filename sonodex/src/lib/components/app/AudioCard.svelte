@@ -7,7 +7,7 @@
 
 <div class="flex flex-col gap-2 p-2 rounded-md bg-background border hover:border-primary transition-colors cursor-default">
 	
-	<TrackArtwork id={artworkId} width={100} height={100} />
+	<TrackArtwork id={artworkId} width={150} height={150} />
 
 	<div class="min-w-0">
 		<p class="text-sm font-medium truncate">{title}</p>
