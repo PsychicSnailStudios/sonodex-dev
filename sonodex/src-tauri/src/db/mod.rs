@@ -1,13 +1,13 @@
 pub mod album_manager;
-pub mod lyrics_manager;
 pub mod artist_manager;
+pub mod lyrics_manager;
 pub mod playlist_manager;
 pub mod settings_manager;
 pub mod track_manager;
 
 pub use album_manager::*;
-pub use lyrics_manager::*;
 pub use artist_manager::*;
+pub use lyrics_manager::*;
 pub use playlist_manager::*;
 pub use settings_manager::*;
 pub use track_manager::*;
@@ -16,15 +16,16 @@ use rusqlite::{Connection, Result};
 use std::path::PathBuf;
 
 pub fn get_db_path() -> PathBuf {
-	let mut path = dirs::data_dir().unwrap_or_else(|| PathBuf::from("."));
-	path.push("sonodex");
-	std::fs::create_dir_all(&path).ok();
-	path.push("library.db");
-	path
+    let mut path = dirs::data_dir().unwrap_or_else(|| PathBuf::from("."));
+    path.push("sonodex");
+    std::fs::create_dir_all(&path).ok();
+    path.push("library.db");
+    path
 }
 
 pub fn init_db(conn: &Connection) -> Result<()> {
-	conn.execute_batch("
+    conn.execute_batch(
+        "
 		CREATE TABLE IF NOT EXISTS library_paths (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			path TEXT NOT NULL UNIQUE
@@ -150,5 +151,6 @@ pub fn init_db(conn: &Connection) -> Result<()> {
 			('genre_delimiters', ' / | ; | , '),
 			('scan_create_artists', 'true'),
 			('scan_create_albums', 'true');
-	")
+	",
+    )
 }

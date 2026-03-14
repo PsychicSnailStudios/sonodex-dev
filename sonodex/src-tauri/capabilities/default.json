@@ -13,6 +13,18 @@
     "core:window:allow-unmaximize",
     "core:window:allow-close",
     "core:window:allow-is-maximized",
-    "core:window:allow-start-dragging"
+    "core:window:allow-start-dragging",
+    "media:default",
+    "media:allow-clear-metadata",
+    "media:allow-get-metadata",
+    "media:allow-get-playback-info",
+    "media:allow-get-playback-status",
+    "media:allow-get-position",
+    "media:allow-initialize-session",
+    "media:allow-is-enabled",
+    "media:allow-set-metadata",
+    "media:allow-set-playback-info",
+    "media:allow-set-playback-status",
+    "media:allow-set-position"
   ]
 }

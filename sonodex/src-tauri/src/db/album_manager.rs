@@ -1,44 +1,44 @@
-use rusqlite::{Connection, Result, params};
+use rusqlite::{params, Connection, Result};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Album {
-	pub id: Option<i64>,
-	pub uid: String,
-	pub format: Option<String>,
-	pub title: String,
-	pub rating: Option<f32>,
-	pub artists: Option<String>,
-	pub album_artist: Option<String>,
-	pub release_date: Option<String>,
-	pub tags: Option<String>,
-	pub genres: Option<String>,
-	pub tracks: Option<String>,
-	pub credits: Option<String>,
-	pub label: Option<String>,
-	pub artwork_blob: Option<Vec<u8>>,
-	pub artwork_path: Option<String>,
+    pub id: Option<i64>,
+    pub uid: String,
+    pub format: Option<String>,
+    pub title: String,
+    pub rating: Option<f32>,
+    pub artists: Option<String>,
+    pub album_artist: Option<String>,
+    pub release_date: Option<String>,
+    pub tags: Option<String>,
+    pub genres: Option<String>,
+    pub tracks: Option<String>,
+    pub credits: Option<String>,
+    pub label: Option<String>,
+    pub artwork_blob: Option<Vec<u8>>,
+    pub artwork_path: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct AlbumUpdate {
-	pub format: Option<String>,
-	pub title: Option<String>,
-	pub rating: Option<f32>,
-	pub artists: Option<String>,
-	pub album_artist: Option<String>,
-	pub release_date: Option<String>,
-	pub tags: Option<String>,
-	pub genres: Option<String>,
-	pub tracks: Option<String>,
-	pub credits: Option<String>,
-	pub label: Option<String>,
-	pub artwork_blob: Option<Vec<u8>>,
-	pub artwork_path: Option<String>,
+    pub format: Option<String>,
+    pub title: Option<String>,
+    pub rating: Option<f32>,
+    pub artists: Option<String>,
+    pub album_artist: Option<String>,
+    pub release_date: Option<String>,
+    pub tags: Option<String>,
+    pub genres: Option<String>,
+    pub tracks: Option<String>,
+    pub credits: Option<String>,
+    pub label: Option<String>,
+    pub artwork_blob: Option<Vec<u8>>,
+    pub artwork_path: Option<String>,
 }
 
 pub fn create_album(conn: &Connection, album: &Album) -> Result<()> {
-	conn.execute(
+    conn.execute(
 		"INSERT INTO albums (uid, format, title, rating, artists, album_artist, release_date, tags, genres, tracks, credits, label, artwork_blob, artwork_path)
 		 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14)",
 		params![
@@ -49,154 +49,194 @@ pub fn create_album(conn: &Connection, album: &Album) -> Result<()> {
 			album.artwork_blob, album.artwork_path
 		],
 	)?;
-	Ok(())
+    Ok(())
 }
 
 pub fn get_all_albums(conn: &Connection) -> Result<Vec<Album>> {
-	let mut stmt = conn.prepare(
+    let mut stmt = conn.prepare(
 		"SELECT id, uid, format, title, rating, artists, album_artist, release_date, tags, genres, tracks, credits, label, artwork_path
 		 FROM albums ORDER BY album_artist, title"
 	)?;
-	let albums = stmt.query_map([], |row| {
-		Ok(Album {
-			id: row.get(0)?,
-			uid: row.get(1)?,
-			format: row.get(2)?,
-			title: row.get(3)?,
-			rating: row.get(4)?,
-			artists: row.get(5)?,
-			album_artist: row.get(6)?,
-			release_date: row.get(7)?,
-			tags: row.get(8)?,
-			genres: row.get(9)?,
-			tracks: row.get(10)?,
-			credits: row.get(11)?,
-			label: row.get(12)?,
-			artwork_blob: None,
-			artwork_path: row.get(13)?,
-		})
-	})?
-	.collect::<Result<Vec<_>>>()?;
-	Ok(albums)
+    let albums = stmt
+        .query_map([], |row| {
+            Ok(Album {
+                id: row.get(0)?,
+                uid: row.get(1)?,
+                format: row.get(2)?,
+                title: row.get(3)?,
+                rating: row.get(4)?,
+                artists: row.get(5)?,
+                album_artist: row.get(6)?,
+                release_date: row.get(7)?,
+                tags: row.get(8)?,
+                genres: row.get(9)?,
+                tracks: row.get(10)?,
+                credits: row.get(11)?,
+                label: row.get(12)?,
+                artwork_blob: None,
+                artwork_path: row.get(13)?,
+            })
+        })?
+        .collect::<Result<Vec<_>>>()?;
+    Ok(albums)
 }
 
 pub fn get_album_by_id(conn: &Connection, id: i64) -> Result<Option<Album>> {
-	let mut stmt = conn.prepare(
+    let mut stmt = conn.prepare(
 		"SELECT id, uid, format, title, rating, artists, album_artist, release_date, tags, genres, tracks, credits, label, artwork_blob, artwork_path
 		 FROM albums WHERE id = ?1"
 	)?;
-	let mut rows = stmt.query(params![id])?;
-	if let Some(row) = rows.next()? {
-		Ok(Some(Album {
-			id: row.get(0)?,
-			uid: row.get(1)?,
-			format: row.get(2)?,
-			title: row.get(3)?,
-			rating: row.get(4)?,
-			artists: row.get(5)?,
-			album_artist: row.get(6)?,
-			release_date: row.get(7)?,
-			tags: row.get(8)?,
-			genres: row.get(9)?,
-			tracks: row.get(10)?,
-			credits: row.get(11)?,
-			label: row.get(12)?,
-			artwork_blob: row.get(13)?,
-			artwork_path: row.get(14)?,
-		}))
-	} else {
-		Ok(None)
-	}
+    let mut rows = stmt.query(params![id])?;
+    if let Some(row) = rows.next()? {
+        Ok(Some(Album {
+            id: row.get(0)?,
+            uid: row.get(1)?,
+            format: row.get(2)?,
+            title: row.get(3)?,
+            rating: row.get(4)?,
+            artists: row.get(5)?,
+            album_artist: row.get(6)?,
+            release_date: row.get(7)?,
+            tags: row.get(8)?,
+            genres: row.get(9)?,
+            tracks: row.get(10)?,
+            credits: row.get(11)?,
+            label: row.get(12)?,
+            artwork_blob: row.get(13)?,
+            artwork_path: row.get(14)?,
+        }))
+    } else {
+        Ok(None)
+    }
 }
 
 pub fn get_album_by_uid(conn: &Connection, uid: &str) -> Result<Option<Album>> {
-	let mut stmt = conn.prepare(
+    let mut stmt = conn.prepare(
 		"SELECT id, uid, format, title, rating, artists, album_artist, release_date, tags, genres, tracks, credits, label, artwork_blob, artwork_path
 		 FROM albums WHERE uid = ?1"
 	)?;
-	let mut rows = stmt.query(params![uid])?;
-	if let Some(row) = rows.next()? {
-		Ok(Some(Album {
-			id: row.get(0)?,
-			uid: row.get(1)?,
-			format: row.get(2)?,
-			title: row.get(3)?,
-			rating: row.get(4)?,
-			artists: row.get(5)?,
-			album_artist: row.get(6)?,
-			release_date: row.get(7)?,
-			tags: row.get(8)?,
-			genres: row.get(9)?,
-			tracks: row.get(10)?,
-			credits: row.get(11)?,
-			label: row.get(12)?,
-			artwork_blob: row.get(13)?,
-			artwork_path: row.get(14)?,
-		}))
-	} else {
-		Ok(None)
-	}
+    let mut rows = stmt.query(params![uid])?;
+    if let Some(row) = rows.next()? {
+        Ok(Some(Album {
+            id: row.get(0)?,
+            uid: row.get(1)?,
+            format: row.get(2)?,
+            title: row.get(3)?,
+            rating: row.get(4)?,
+            artists: row.get(5)?,
+            album_artist: row.get(6)?,
+            release_date: row.get(7)?,
+            tags: row.get(8)?,
+            genres: row.get(9)?,
+            tracks: row.get(10)?,
+            credits: row.get(11)?,
+            label: row.get(12)?,
+            artwork_blob: row.get(13)?,
+            artwork_path: row.get(14)?,
+        }))
+    } else {
+        Ok(None)
+    }
 }
 
 pub fn get_album_artwork(conn: &Connection, id: i64) -> Result<Option<Vec<u8>>> {
-	let mut stmt = conn.prepare("SELECT artwork_blob FROM albums WHERE id = ?1")?;
-	let mut rows = stmt.query(params![id])?;
-	if let Some(row) = rows.next()? {
-		Ok(row.get(0)?)
-	} else {
-		Ok(None)
-	}
+    let mut stmt = conn.prepare("SELECT artwork_blob FROM albums WHERE id = ?1")?;
+    let mut rows = stmt.query(params![id])?;
+    if let Some(row) = rows.next()? {
+        Ok(row.get(0)?)
+    } else {
+        Ok(None)
+    }
 }
 
 pub fn update_album(conn: &Connection, id: i64, update: &AlbumUpdate) -> Result<()> {
-	if let Some(ref format) = update.format {
-		conn.execute("UPDATE albums SET format = ?1 WHERE id = ?2", params![format, id])?;
-	}
-	if let Some(ref title) = update.title {
-		conn.execute("UPDATE albums SET title = ?1 WHERE id = ?2", params![title, id])?;
-	}
-	if let Some(rating) = update.rating {
-		conn.execute("UPDATE albums SET rating = ?1 WHERE id = ?2", params![rating, id])?;
-	}
-	if let Some(ref artists) = update.artists {
-		conn.execute("UPDATE albums SET artists = ?1 WHERE id = ?2", params![artists, id])?;
-	}
-	if let Some(ref album_artist) = update.album_artist {
-		conn.execute("UPDATE albums SET album_artist = ?1 WHERE id = ?2", params![album_artist, id])?;
-	}
-	if let Some(ref release_date) = update.release_date {
-		conn.execute("UPDATE albums SET release_date = ?1 WHERE id = ?2", params![release_date, id])?;
-	}
-	if let Some(ref tags) = update.tags {
-		conn.execute("UPDATE albums SET tags = ?1 WHERE id = ?2", params![tags, id])?;
-	}
-	if let Some(ref genres) = update.genres {
-		conn.execute("UPDATE albums SET genres = ?1 WHERE id = ?2", params![genres, id])?;
-	}
-	if let Some(ref tracks) = update.tracks {
-		conn.execute("UPDATE albums SET tracks = ?1 WHERE id = ?2", params![tracks, id])?;
-	}
-	if let Some(ref credits) = update.credits {
-		conn.execute("UPDATE albums SET credits = ?1 WHERE id = ?2", params![credits, id])?;
-	}
-	if let Some(ref label) = update.label {
-		conn.execute("UPDATE albums SET label = ?1 WHERE id = ?2", params![label, id])?;
-	}
-	if let Some(ref blob) = update.artwork_blob {
-		conn.execute("UPDATE albums SET artwork_blob = ?1 WHERE id = ?2", params![blob, id])?;
-	}
-	if let Some(ref path) = update.artwork_path {
-		conn.execute("UPDATE albums SET artwork_path = ?1 WHERE id = ?2", params![path, id])?;
-	}
-	Ok(())
+    if let Some(ref format) = update.format {
+        conn.execute(
+            "UPDATE albums SET format = ?1 WHERE id = ?2",
+            params![format, id],
+        )?;
+    }
+    if let Some(ref title) = update.title {
+        conn.execute(
+            "UPDATE albums SET title = ?1 WHERE id = ?2",
+            params![title, id],
+        )?;
+    }
+    if let Some(rating) = update.rating {
+        conn.execute(
+            "UPDATE albums SET rating = ?1 WHERE id = ?2",
+            params![rating, id],
+        )?;
+    }
+    if let Some(ref artists) = update.artists {
+        conn.execute(
+            "UPDATE albums SET artists = ?1 WHERE id = ?2",
+            params![artists, id],
+        )?;
+    }
+    if let Some(ref album_artist) = update.album_artist {
+        conn.execute(
+            "UPDATE albums SET album_artist = ?1 WHERE id = ?2",
+            params![album_artist, id],
+        )?;
+    }
+    if let Some(ref release_date) = update.release_date {
+        conn.execute(
+            "UPDATE albums SET release_date = ?1 WHERE id = ?2",
+            params![release_date, id],
+        )?;
+    }
+    if let Some(ref tags) = update.tags {
+        conn.execute(
+            "UPDATE albums SET tags = ?1 WHERE id = ?2",
+            params![tags, id],
+        )?;
+    }
+    if let Some(ref genres) = update.genres {
+        conn.execute(
+            "UPDATE albums SET genres = ?1 WHERE id = ?2",
+            params![genres, id],
+        )?;
+    }
+    if let Some(ref tracks) = update.tracks {
+        conn.execute(
+            "UPDATE albums SET tracks = ?1 WHERE id = ?2",
+            params![tracks, id],
+        )?;
+    }
+    if let Some(ref credits) = update.credits {
+        conn.execute(
+            "UPDATE albums SET credits = ?1 WHERE id = ?2",
+            params![credits, id],
+        )?;
+    }
+    if let Some(ref label) = update.label {
+        conn.execute(
+            "UPDATE albums SET label = ?1 WHERE id = ?2",
+            params![label, id],
+        )?;
+    }
+    if let Some(ref blob) = update.artwork_blob {
+        conn.execute(
+            "UPDATE albums SET artwork_blob = ?1 WHERE id = ?2",
+            params![blob, id],
+        )?;
+    }
+    if let Some(ref path) = update.artwork_path {
+        conn.execute(
+            "UPDATE albums SET artwork_path = ?1 WHERE id = ?2",
+            params![path, id],
+        )?;
+    }
+    Ok(())
 }
 
 pub fn delete_album(conn: &Connection, id: i64) -> Result<()> {
-	conn.execute("DELETE FROM albums WHERE id = ?1", params![id])?;
-	Ok(())
+    conn.execute("DELETE FROM albums WHERE id = ?1", params![id])?;
+    Ok(())
 }
 
 pub fn delete_album_by_uid(conn: &Connection, uid: &str) -> Result<()> {
-	conn.execute("DELETE FROM albums WHERE uid = ?1", params![uid])?;
-	Ok(())
+    conn.execute("DELETE FROM albums WHERE uid = ?1", params![uid])?;
+    Ok(())
 }

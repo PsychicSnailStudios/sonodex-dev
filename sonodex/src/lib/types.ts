@@ -13,6 +13,8 @@ export type Track = {
 	duration_ms: number | null;
 	bpm: number | null;
 	key: string | null;
+	credits: string | null;
+	label: string | null;
 };
 
 export type Album = {
@@ -52,6 +54,15 @@ export type Playlist = {
 	title: string;
 	description: string | null;
 	owner: string | null;
-	tracks: number | null;
+	tracks: string | null;
 	artwork_path: string | null;
+};
+
+export type Lyrics = {
+	id: number | null;
+	track_id: number;
+	source: string;
+	plain: string | null;
+	synced: string | null;
+	instrumental: boolean;
 };

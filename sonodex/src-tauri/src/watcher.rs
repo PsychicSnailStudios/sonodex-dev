@@ -33,7 +33,10 @@ pub fn start_watcher(app: AppHandle, paths: Vec<String>) {
 
                     for path in &event.paths {
                         let last = debounce.get(path).copied();
-                        if last.map(|l| now.duration_since(l) < debounce_duration).unwrap_or(false) {
+                        if last
+                            .map(|l| now.duration_since(l) < debounce_duration)
+                            .unwrap_or(false)
+                        {
                             continue;
                         }
                         debounce.insert(path.clone(), now);

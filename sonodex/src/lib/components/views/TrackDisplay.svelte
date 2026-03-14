@@ -1,40 +1,108 @@
 <script lang="ts">
-	import type { Track } from "$lib/types";
+	import { invoke } from "@tauri-apps/api/core";
+	import { onMount } from "svelte";
+
+	import { library } from "$lib/library.svelte";
+	import type { Track, Lyrics } from "$lib/types";
+	import { selection } from "$lib/session.svelte";
 
 	import * as Tabs from "$lib/components/ui/tabs/index.js";
+	import ArtworkDisplay from "$lib/components/app/ArtworkDisplay.svelte";
 
-	import TrackArtwork from "$lib/components/app/TrackArtwork.svelte";
 
-	let { track } = $props<{ track: Track }>();
+	let track = $derived(library.tracks.find(t => t.id === selection.id) ?? null);
+	let lyrics: Lyrics | null = $state(null);
+
+	function parseArtists(artists: string | null): string {
+		if (!artists) return "Unknown Artist";
+		try {
+			const parsed = JSON.parse(artists);
+			return Array.isArray(parsed) ? parsed.join(", ") : "Unknown Artist";
+		} catch {
+			return "Unknown Artist";
+		}
+	}
+
+	function parseAlbum(albums: string | null): string {
+		if (!albums) return "—";
+		try {
+			const parsed = JSON.parse(albums);
+			return Array.isArray(parsed) && parsed.length > 0 ? parsed[0].name : "—";
+		} catch {
+			return "—";
+		}
+	}
+
+	function formatDuration(ms: number | null): string {
+		if (ms === null) return "—";
+		const totalSeconds = Math.floor(ms / 1000);
+		const minutes = Math.floor(totalSeconds / 60);
+		const seconds = totalSeconds % 60;
+		return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+	}
+
+	function formatRating(rating: number | null): string {
+		if (rating === null) return "—";
+		return "★".repeat(Math.round(rating / 2)) + "☆".repeat(5 - Math.round(rating / 2));
+	}
+
+	onMount(async () => {
+		lyrics = await invoke("get_track_lyrics", { trackId: selection.id });
+	});
 </script>
 
-<div class="flex flex-col gap-2 p-4 border-2 h-full w-full overflow-hidden rounded-md">
+<div class="flex flex-col gap-4 p-4 border-2 h-full w-full overflow-hidden rounded-md">
 
-	<div>
-		<TrackArtwork id={track[0].id} width={100} height={100} />
+	{#if track}
+		<div class="flex gap-4 items-center">
+			<ArtworkDisplay id={track.id} size={160} type="track" />
 
-		<div>
-			<h2 class="heading">{track[0].title}</h2>
-			<div>
-				<span>{track[0].album_artist}</span>
-				<span>{track[0].albums}</span>
-				<span>{track[0].year}</span>
-				<span>{track[0].duration_ms}</span>
-				<span>{track[0].rating}</span>
+			<div class="flex flex-col gap-1">
+				<h2 class="text-2xl font-bold">{track.title ?? "Unknown Title"}</h2>
+				<div class="flex gap-2 text-sm text-muted-foreground">
+					<span>{parseArtists(track.artists)}</span>
+					<span>|</span>
+					<span>{parseAlbum(track.albums)}</span>
+					<span>|</span>
+					<span>{track.year ?? "—"}</span>
+					<span>|</span>
+					<span>{formatDuration(track.duration_ms)}</span>
+				</div>
+				<div class="text-sm">{formatRating(track.rating)}</div>
 			</div>
 		</div>
 
-	</div>
+		<Tabs.Root value="lyrics" class="flex flex-col min-h-0 flex-1">
+			<Tabs.List>
+				<Tabs.Trigger value="lyrics">Lyrics</Tabs.Trigger>
+				<Tabs.Trigger value="credits">Credits</Tabs.Trigger>
+				<Tabs.Trigger value="explore">Explore</Tabs.Trigger>
+			</Tabs.List>
 
-	<Tabs.Root value="account" class="w-[400px]">
-		<Tabs.List>
-			<Tabs.Trigger value="account">Account</Tabs.Trigger>
-			<Tabs.Trigger value="password">Password</Tabs.Trigger>
-		</Tabs.List>
-		<Tabs.Content value="account">
-			Make changes to your account here.
-		</Tabs.Content>
-		<Tabs.Content value="password">Change your password here.</Tabs.Content>
-	</Tabs.Root>
+			<Tabs.Content value="lyrics" class="flex-1 overflow-y-auto mt-2">
+				{#if lyrics?.instrumental}
+					<p class="text-muted-foreground text-sm">This track is instrumental.</p>
+				{:else if lyrics?.plain}
+					<pre class="text-sm whitespace-pre-wrap font-sans leading-relaxed">{lyrics.plain}</pre>
+				{:else}
+					<p class="text-muted-foreground text-sm">No lyrics available.</p>
+				{/if}
+			</Tabs.Content>
+
+			<Tabs.Content value="credits" class="flex-1 overflow-y-auto mt-2">
+				{#if track.credits}
+					<pre class="text-sm whitespace-pre-wrap font-sans">{track.credits}</pre>
+				{:else}
+					<p class="text-muted-foreground text-sm">No credits available.</p>
+				{/if}
+			</Tabs.Content>
+
+			<Tabs.Content value="explore" class="flex-1 overflow-y-auto mt-2">
+				<p class="text-muted-foreground text-sm">Nothing here yet.</p>
+			</Tabs.Content>
+		</Tabs.Root>
+	{:else}
+		<span class="text-muted-foreground text-sm">Loading...</span>
+	{/if}
 
 </div>

@@ -1,17 +1,27 @@
 <script lang="ts">
   import { invoke } from "@tauri-apps/api/core";
   import { listen } from "@tauri-apps/api/event";
-  import { onMount } from "svelte";
+	import { onMount } from "svelte";
+	import { loadLibrary } from "$lib/library.svelte";
+  import { selection } from "$lib/session.svelte";
+
+  import * as Resizable from "$lib/components/ui/resizable/index.js";
+  import { Button } from "$lib/components/ui/button/index.js";
 
   import HomeVeiw from "$lib/components/views/Home.svelte";
   import MusicView from "$lib/components/views/MusicLibrary.svelte";
   import PlaylistsView from "$lib/components/views/Playlists.svelte";
   import SettingsVeiw from "$lib/components/views/Settings.svelte";
-	import TrackDisplay from "$lib/components/views/TrackDisplay.svelte";
+  import PlayControls from "$lib/components/PlayControls.svelte";
+  import NowPlaying from "$lib/components/NowPlaying.svelte";
+
+  import AlbumDisplay from "$lib/components/views/AlbumDisplay.svelte";
+  import ArtistDisplay from "$lib/components/views/ArtistDisplay.svelte";
+  import PlaylistDisplay from "$lib/components/views/PlaylistDisplay.svelte";
+  import TrackDisplay from "$lib/components/views/TrackDisplay.svelte";
 
   import { House, Music, ListMusic, Settings } from "lucide-svelte"
 
-  import { Button } from "$lib/components/ui/button/index.js";
 
 
   const VIEW_TABS = [
@@ -21,7 +31,11 @@
     { value: "settings", label: "Settings", icon: Settings },
   ];
 
-  let activeView = "home";
+  let activeView = $state("home");
+
+  onMount(() => {
+		loadLibrary();
+	});
   
 </script>
 
@@ -44,9 +58,7 @@
 
     </div>
 
-    <div class="app-now-playing bg-muted flex flex-col p-2 gap-1 rounded-md">
-
-    </div>
+    <NowPlaying />
 
   </div>
 
@@ -54,23 +66,42 @@
 
     <div class="app-views h-full w-full overflow-hidden flex gap-2">
 
-      {#if activeView === "home"}
-        <HomeVeiw />
-      {:else if activeView === "music"}
-        <MusicView />
-      {:else if activeView === "playlists"}
-        <PlaylistsView />
-      {:else if activeView === "settings"}
-        <SettingsVeiw />
-      {/if}
+      <Resizable.PaneGroup direction="horizontal" class="h-full w-full">
+        <Resizable.Pane >
+          {#if activeView === "home"}
+            <HomeVeiw />
+          {:else if activeView === "music"}
+            <MusicView />
+          {:else if activeView === "playlists"}
+            <PlaylistsView />
+          {:else if activeView === "settings"}
+            <SettingsVeiw />
+          {/if}
+        </Resizable.Pane>
 
-      <!-- <TrackDisplay/> -->
+        {#if selection.type !== "none"}
+        <Resizable.Handle class="px-1 opacity-0" />
+        
+        <Resizable.Pane defaultSize={50}>
+          {#if selection.type === "album"}
+            <AlbumDisplay />
+          {/if}
+          {#if selection.type === "track"}
+            <TrackDisplay />
+          {/if}
+          {#if selection.type === "playlist"}
+            <PlaylistDisplay />
+          {/if}
+          {#if selection.type === "artist"}
+            <ArtistDisplay />
+          {/if}
+        </Resizable.Pane>
+        {/if}
+      </Resizable.PaneGroup>
 
     </div>
 
-    <div class="app-playbar bg-muted rounded-md">
-
-    </div>
+    <PlayControls />
 
   </div>
 
@@ -85,7 +116,7 @@
   .app-sidebar {
     grid-template-rows: auto 1fr auto;
     flex-direction: column;
-    min-width: 18rem;
+    min-width: 10rem;
     max-width: 30rem;
   }
 

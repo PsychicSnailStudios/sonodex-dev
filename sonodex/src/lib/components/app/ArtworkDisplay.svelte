@@ -1,8 +1,13 @@
 <script lang="ts">
 	import { invoke } from "@tauri-apps/api/core";
+
 	import { Skeleton } from "$lib/components/ui/skeleton/index.js";
 
-	let { id, width = 40, height = 40, type = "track" }: { id: number; width?: number; height?: number; type?: "track" | "album" | "artist" | "playlist" } = $props();
+	import { Music4, User, DiscAlbum, ListMusic } from "lucide-svelte";
+
+
+
+	let { id, size = 40, type = "track" }: { id: number; size?: number; type?: "track" | "album" | "artist" | "playlist" } = $props();
 
 	let artworkUrl: string | null = $state(null);
 	let loaded = $state(false);
@@ -34,8 +39,11 @@
 	});
 </script>
 
-<div bind:this={el} style="width: {width}px; height: {height}px;" class="rounded-sm overflow-hidden relative bg-muted flex-shrink-0">
+<div bind:this={el} style="width: {size}px; height: {size}px;" class="rounded-sm overflow-hidden relative bg-muted flex-shrink-0">
 	{#if artworkUrl}
+		{#if !loaded}
+			<Skeleton class="w-full h-full" />
+		{/if}
 		<img
 			src={artworkUrl}
 			alt=""
@@ -43,14 +51,17 @@
 			class:opacity-0={!loaded}
 			onload={() => loaded = true}
 		/>
-		{#if !loaded}
-			<Skeleton class="w-full h-full" />
-		{/if}
 	{:else}
 		<div class="absolute inset-0 flex items-center justify-center">
-			<svg class="w-4 h-4 text-muted-foreground/40" viewBox="0 0 24 24" fill="currentColor">
-				<path d="M12 3v10.55A4 4 0 1 0 14 17V7h4V3h-6z"/>
-			</svg>
+			{#if type === "track"}
+				<Music4 class="text-muted-foreground" />
+			{:else if type === "album"}
+				<DiscAlbum class="text-muted-foreground" />
+			{:else if type === "artist"}
+				<User class="text-muted-foreground" />
+			{:else if type === "playlist"}
+				<ListMusic class="text-muted-foreground" />
+			{/if}
 		</div>
 	{/if}
 </div>
