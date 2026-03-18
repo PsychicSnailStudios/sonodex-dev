@@ -4,6 +4,7 @@
 	import { selection } from "$lib/session.svelte";
 	import { library } from "$lib/library.svelte";
 	import type { Artist, Track, Album } from "$lib/types";
+	import { openEditModal } from "$lib/editModal.svelte";
 
 	import ArtworkDisplay from "$lib/components/app/ArtworkDisplay.svelte";
 	import TrackTable from "$lib/components/app/TrackTable.svelte";
@@ -63,7 +64,8 @@
 				<h2 class="text-2xl font-bold">{artist.name}</h2>
 				<div class="flex gap-2">
 					<Button variant="default">Play All</Button>
-					<Button variant="outline">Profile</Button>
+					<Button variant="outline">Shuffle</Button>
+					<Button variant="ghost" onclick={() => openEditModal({ type: "artist", id: artist!.id })}>...</Button>
 				</div>
 			</div>
 		</div>

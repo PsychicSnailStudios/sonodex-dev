@@ -1,10 +1,9 @@
 <script lang="ts">
 	import { Button } from "$lib/components/ui/button";
 	import { Slider } from "$lib/components/ui/slider/index.js";
-
-	import { player, togglePlay, seek, skipBack } from "$lib/player.svelte";
-
 	import { Play, Pause, SkipBack, SkipForward, Shuffle, Repeat2 } from "lucide-svelte";
+	import { player, togglePlay, seek, skipBack, skipNext } from "$lib/audioManager.svelte";
+
 
 	function formatTime(seconds: number): string {
 		if (!seconds || isNaN(seconds)) return "0:00";
@@ -13,16 +12,33 @@
 		return `${m}:${s.toString().padStart(2, "0")}`;
 	}
 
-	let sliderValue = $derived([player.duration > 0 ? (player.currentTime / player.duration) * 100 : 0]);
-
-	function onSeek(val: number[]) {
-		if (player.duration) seek((val[0] / 100) * player.duration);
+	let seeking = $state(false);
+	let seekValue = $state(0);
+ 
+	$effect(() => {
+		if (!seeking) {
+			seekValue = player.currentTime;
+		}
+	});
+ 
+	function onSliderChange(value: number[]) {
+		seekValue = value[0];
 	}
+ 
+	function onSliderCommit(value: number[]) {
+		seek(value[0]);
+		seeking = false;
+	}
+ 
+	function onSliderStart() {
+		seeking = true;
+	}
+
 </script>
 
 <div class="app-playbar bg-muted grid p-2 gap-1 rounded-md">
 
-	<div class="flex items-center gap-2">
+	<div class="flex justify-center items-center gap-2">
 		<Button variant="ghost" size="icon">
 			<Shuffle />
 		</Button>
@@ -36,7 +52,7 @@
 				<Play />
 			{/if}
 		</Button>
-		<Button variant="ghost" size="icon">
+		<Button variant="ghost" size="icon" onclick={skipNext}>
 			<SkipForward />
 		</Button>
 		<Button variant="ghost" size="icon">
@@ -46,7 +62,21 @@
 
 	<div class="app-bar grid gap-2 items-center">
 		<span class="text-xs text-muted-foreground">{formatTime(player.currentTime)}</span>
-		<Slider type="single" value={sliderValue} max={100} step={0.1} onValueChange={onSeek} />
+		
+		<div class="flex-1" onpointerdown={onSliderStart} aria-hidden="true" tabindex="-1">
+			<Slider
+				type="single"
+				value={seeking ? seekValue : player.currentTime}
+				min={0}
+				max={player.duration || 1}
+				step={0.1}
+				disabled={!player.track}
+				onValueChange={(v) => onSliderChange([v])}
+				onValueCommit={(v) => onSliderCommit([v])}
+				class="w-full app-tracking-slider"
+			/>
+		</div>
+
 		<span class="text-xs text-muted-foreground">{formatTime(player.duration)}</span>
 	</div>
 
@@ -60,5 +90,17 @@
 
 .app-bar {
 	grid-template-columns: auto 1fr auto;
+}
+
+:global(.app-tracking-slider span[data-slider-track]) {
+	background-color: var(--foreground) !important;
+}
+
+:global([data-slider-thumb]) {
+	opacity: 0;
+}
+
+:global([data-slider-thumb]:hover) {
+	opacity: 1;
 }
 </style>

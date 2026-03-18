@@ -4,10 +4,13 @@
 	import { selection } from "$lib/session.svelte";
 	import { library } from "$lib/library.svelte";
 	import type { Playlist, Track } from "$lib/types";
+	import { openEditModal } from "$lib/editModal.svelte";
 
 	import ArtworkDisplay from "$lib/components/app/ArtworkDisplay.svelte";
 	import TrackTable from "$lib/components/app/TrackTable.svelte";
 	import { Button } from "$lib/components/ui/button/index.js";
+
+	import { formatDuration, totalDuration } from '$lib/helpers';
 
 	let playlist: Playlist | null = $state(null);
 
@@ -16,18 +19,6 @@
 		const playlistTrackIds: number[] = JSON.parse(playlist.tracks ?? "[]").map((t: { id: number }) => t.id);
 		return library.tracks.filter(t => playlistTrackIds.includes(t.id));
 	});
-
-	function formatDuration(ms: number): string {
-		const totalSeconds = Math.floor(ms / 1000);
-		const minutes = Math.floor(totalSeconds / 60);
-		const seconds = totalSeconds % 60;
-		return `${minutes}:${seconds.toString().padStart(2, "0")}`;
-	}
-
-	function totalDuration(tracks: Track[]): string {
-		const total = tracks.reduce((sum, t) => sum + (t.duration_ms ?? 0), 0);
-		return formatDuration(total);
-	}
 
 	$effect(() => {
 		const id = selection.id;
@@ -58,7 +49,7 @@
 				<div class="flex gap-2">
 					<Button variant="default">Play All</Button>
 					<Button variant="outline">Shuffle</Button>
-					<Button variant="ghost" size="icon">⋯</Button>
+					<Button variant="ghost" size="icon" onclick={() => openEditModal({ type: "playlist", id: playlist!.id })}>⋯</Button>
 				</div>
 			</div>
 		</div>

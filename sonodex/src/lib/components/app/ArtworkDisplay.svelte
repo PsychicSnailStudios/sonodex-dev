@@ -4,10 +4,11 @@
 	import { Skeleton } from "$lib/components/ui/skeleton/index.js";
 
 	import { Music4, User, DiscAlbum, ListMusic } from "lucide-svelte";
+   import type { AudioCatagories } from "$lib/types";
 
 
 
-	let { id, size = 40, type = "track" }: { id: number; size?: number; type?: "track" | "album" | "artist" | "playlist" } = $props();
+	let { id, size = 40, type = "track" }: { id: number; size?: number; type?: AudioCatagories } = $props();
 
 	let artworkUrl: string | null = $state(null);
 	let loaded = $state(false);
@@ -36,6 +37,40 @@
 
 		if (el) observer.observe(el);
 		return () => observer.disconnect();
+	});
+
+	$effect(() => {
+		const currentId = id;
+		const currentType = type;
+		let url: string | null = null;
+		let observer: IntersectionObserver | null = null;
+
+		if (el) {
+			observer = new IntersectionObserver(async ([entry]) => {
+				if (entry.isIntersecting) {
+					observer?.disconnect();
+					try {
+						const bytes: number[] | null = await invoke(commandMap[currentType], { id: currentId });
+						if (bytes) {
+							const blob = new Blob([new Uint8Array(bytes)], { type: "image/jpeg" });
+							url = URL.createObjectURL(blob);
+							artworkUrl = url;
+						} else {
+							artworkUrl = null;
+						}
+					} catch {
+						artworkUrl = null;
+					}
+				}
+			}, { rootMargin: "200px" });
+
+			observer.observe(el);
+		}
+
+		return () => {
+			observer?.disconnect();
+			if (url) URL.revokeObjectURL(url);
+		};
 	});
 </script>
 

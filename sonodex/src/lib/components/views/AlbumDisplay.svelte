@@ -1,12 +1,18 @@
 <script lang="ts">
 	import { invoke } from "@tauri-apps/api/core";
 
+	import Button from "../ui/button/button.svelte";
+
 	import { selection } from "$lib/session.svelte";
 	import { library } from "$lib/library.svelte";
 	import type { Album, Track } from "$lib/types";
+	import { QueueTracksById, QueueTracksByObject } from "$lib/audioManager.svelte";
+	import { openEditModal } from "$lib/editModal.svelte";
 
 	import ArtworkDisplay from "$lib/components/app/ArtworkDisplay.svelte";
 	import TrackTable from "$lib/components/app/TrackTable.svelte";
+	
+	import { formatDuration, totalDuration } from '$lib/helpers';
 
 	let album: Album | null = $state(null);
 
@@ -16,17 +22,6 @@
 		return library.tracks.filter(t => albumTrackIds.includes(t.id));
 	});
 
-	function formatDuration(ms: number): string {
-		const totalSeconds = Math.floor(ms / 1000);
-		const minutes = Math.floor(totalSeconds / 60);
-		const seconds = totalSeconds % 60;
-		return `${minutes}:${seconds.toString().padStart(2, "0")}`;
-	}
-
-	function totalDuration(tracks: Track[]): string {
-		const total = tracks.reduce((sum, t) => sum + (t.duration_ms ?? 0), 0);
-		return formatDuration(total);
-	}
 
 	$effect(() => {
 		const id = selection.id;
@@ -61,6 +56,12 @@
 					{/if}
 				</div>
 			</div>
+		</div>
+
+		<div class="flex gap-2">
+			<Button variant="default" onclick={() => QueueTracksByObject(tracks, true)}>Play All</Button>
+			<Button variant="outline">Shuffle</Button>
+			<Button variant="ghost" onclick={() => openEditModal({ type: "album", id: album!.id })}>...</Button>
 		</div>
 
 		<TrackTable type="album" tracks={tracks} />

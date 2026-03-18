@@ -66,3 +66,5 @@ export type Lyrics = {
 	synced: string | null;
 	instrumental: boolean;
 };
+
+export type AudioCatagories = "track" | "album" | "artist" | "playlist";

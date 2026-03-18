@@ -50,9 +50,9 @@
     <div class="app-nav bg-muted flex flex-col p-2 gap-1 rounded-md">
 
       {#each VIEW_TABS as tab}
-        <Button variant="{activeView === tab.value ? 'default' : 'outline'}" onclick={() => activeView = tab.value}>
+        <Button variant="{activeView === tab.value ? 'default' : 'outline'}" onclick={() => activeView = tab.value} class="text-left">
           <svelte:component this={tab.icon} />
-          {tab.label}
+          <span class="text-left">{tab.label}</span>
         </Button>
       {/each}
 

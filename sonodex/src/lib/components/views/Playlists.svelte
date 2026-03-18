@@ -87,7 +87,7 @@
 					
 				<div class="app-music-grid grid gap-2 p-3">
 					{#each filteredPlaylists as playlist}
-						<AudioCard title={playlist.title} subTitle={playlist.owner} artworkId={playlist.id} />
+						<AudioCard title={playlist.title} subTitle={playlist.owner} artworkId={playlist.id} type="playlist" />
 					{/each}
 				</div>
 

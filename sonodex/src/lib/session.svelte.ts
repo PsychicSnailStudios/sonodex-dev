@@ -9,12 +9,3 @@ export function setSelection(id: number, type: "track" | "album" | "artist" | "p
 	selection.id = id;
 	selection.type = type;
 }
-
-export const playing = $state({
-	id: 0,
-	type: "" as "track" | "album" | "artist" | "playlist" | "",
-});
-
-export function setPlaying(id: number) {
-	playing.id = id;
-}

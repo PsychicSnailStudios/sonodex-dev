@@ -1,17 +1,34 @@
 <script lang="ts">
+	import { currentlyPlaying } from "$lib/audioManager.svelte";
+	import { setSelection } from "$lib/session.svelte";
+	import { formatDuration, formatRating, parseAlbum, parseArtists } from "$lib/helpers";
+	import { clearQueue, getQueuedTracks, player, getPlayedTracks } from "$lib/audioManager.svelte";
 
 	import * as Tabs from "$lib/components/ui/tabs/index.js";
 	import { Button } from "$lib/components/ui/button";
+	import ScrollArea from "$lib/components/ui/scroll-area/scroll-area.svelte";
 
 	import { Rows4, BadgePlus } from "lucide-svelte";
 
-	import { playing } from "$lib/session.svelte";
-
 	import ArtworkDisplay from "$lib/components/app/ArtworkDisplay.svelte";
+	import TrackTable from "$lib/components/app/TrackTable.svelte";
+
+	function formatTotalRemaining(): string {
+		const queueMs = getQueuedTracks().reduce((acc, t) => acc + (t.duration_ms ?? 0), 0);
+		const currentRemaining = (player.duration - player.currentTime) * 1000;
+		const totalMs = queueMs + Math.max(0, currentRemaining);
+
+		const totalSecs = Math.floor(totalMs / 1000);
+		const h = Math.floor(totalSecs / 3600);
+		const m = Math.floor((totalSecs % 3600) / 60);
+		const s = totalSecs % 60;
+
+		return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+	}
 </script>
 
-<div class="flex flex-col gap-1">
-	<div class="app-queue bg-muted p-2 rounded-md h-[300px]">
+<div class="app-now-playing-wrapper flex flex-col gap-1">
+	<div class="app-queue bg-muted p-2 rounded-md h-[450px]">
 		<Tabs.Root value="queue">
 			<Tabs.List>
 				<Tabs.Trigger value="queue">Queue</Tabs.Trigger>
@@ -20,35 +37,73 @@
 			</Tabs.List>
 			<Tabs.Content value="queue">
 				<div class="flex justify-between p-2">
-					<p>Next From: </p>
-					<p>00:00:00 Remaining </p>
+					<p class="text-sm">Next Up: </p>
+					<p class="text-xs text-muted-foreground">{formatTotalRemaining()} Remaining</p>
+					<button class="text-xs text-muted-foreground" onclick={clearQueue}>Clear</button>
 				</div>
+
+				<ScrollArea class="min-h-0 min-w-0 h-[350px]">
+					
+					<div class="flex flex-col gap-0.5">
+						{#each getQueuedTracks() as track}
+							<div class="flex gap-2 p-2">
+								<ArtworkDisplay id={track.id} size={30} type="track" />
+								<div class="min-w-0 grid">
+									<p class="text-sm font-medium truncate">{track.title}</p>
+									<p class="text-xs text-muted-foreground truncate">{parseArtists(track.artists)}</p>
+								</div>
+							</div>
+						{/each}
+					</div>
+
+				</ScrollArea>
+				
 			</Tabs.Content>
 			<Tabs.Content value="recent">
-				
+				<ScrollArea class="min-h-0 min-w-0 h-[200px]">
+					
+					<div>
+						{#each getPlayedTracks() as track}
+							<div class="flex gap-2 p-2">
+								<ArtworkDisplay id={track.id} size={30} type="track" />
+								<div class="min-w-0 grid">
+									<p class="text-sm font-medium truncate">{track.title}</p>
+									<p class="text-xs text-muted-foreground truncate">{parseArtists(track.artists)}</p>
+								</div>
+							</div>
+						{/each}
+					</div>
+
+				</ScrollArea>
 			</Tabs.Content>
 			<Tabs.Content value="lyrics">
-				
+				<ScrollArea class="min-h-0 min-w-0 h-[200px]">
+					
+					<p>no lyrics</p>
+
+				</ScrollArea>
 			</Tabs.Content>
 		</Tabs.Root>
 	</div>
 
 	<div class="app-now-playing bg-muted grid gap-3 p-2 rounded-md items-center">
-		<ArtworkDisplay id={playing.id} size={64} />
+		{#if currentlyPlaying.track !== null}
+			<ArtworkDisplay id={currentlyPlaying.id} type="track" size={64} />
 
-		<div class="flex flex-col">
-			<p class="text-sm font-medium truncate">Song Name</p>
-			<p class="text-xs text-muted-foreground truncate">Artist Name</p>
-		</div>
+			<div class="flex flex-col">
+				<button onclick={() => setSelection(currentlyPlaying.track?.id, "track")} class="text-sm font-medium truncate text-left">{currentlyPlaying.track?.title}</button>
+				<button onclick={() => setSelection(currentlyPlaying.track?.id, "artist")} class="text-xs text-muted-foreground truncate text-left">{parseArtists(currentlyPlaying.track?.artists ?? null)}</button>
+			</div>
 
-		<div class="flex flex-col">
-			<Button variant="ghost" size="icon">
-				<Rows4 />
-			</Button>
-			<Button variant="ghost" size="icon">
-				<BadgePlus />
-			</Button>
-		</div>
+			<div class="flex flex-col">
+				<Button variant="ghost" size="icon">
+					<Rows4 />
+				</Button>
+				<Button variant="ghost" size="icon">
+					<BadgePlus />
+				</Button>
+			</div>
+		{/if}
 	</div>
 </div>
 
@@ -56,5 +111,7 @@
 .app-now-playing {
 	grid-template-columns: auto 1fr auto;
 	max-height: 85px;
+	height: 85px;
 }
+
 </style>

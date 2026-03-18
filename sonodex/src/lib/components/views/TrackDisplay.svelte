@@ -5,46 +5,17 @@
 	import { library } from "$lib/library.svelte";
 	import type { Track, Lyrics } from "$lib/types";
 	import { selection } from "$lib/session.svelte";
+	import { openEditModal } from "$lib/editModal.svelte";
+
+	import { formatDuration, formatRating, parseAlbum, parseArtists } from '$lib/helpers';
 
 	import * as Tabs from "$lib/components/ui/tabs/index.js";
+	import { Button } from "$lib/components/ui/button/index.js";
 	import ArtworkDisplay from "$lib/components/app/ArtworkDisplay.svelte";
 
 
 	let track = $derived(library.tracks.find(t => t.id === selection.id) ?? null);
 	let lyrics: Lyrics | null = $state(null);
-
-	function parseArtists(artists: string | null): string {
-		if (!artists) return "Unknown Artist";
-		try {
-			const parsed = JSON.parse(artists);
-			return Array.isArray(parsed) ? parsed.join(", ") : "Unknown Artist";
-		} catch {
-			return "Unknown Artist";
-		}
-	}
-
-	function parseAlbum(albums: string | null): string {
-		if (!albums) return "—";
-		try {
-			const parsed = JSON.parse(albums);
-			return Array.isArray(parsed) && parsed.length > 0 ? parsed[0].name : "—";
-		} catch {
-			return "—";
-		}
-	}
-
-	function formatDuration(ms: number | null): string {
-		if (ms === null) return "—";
-		const totalSeconds = Math.floor(ms / 1000);
-		const minutes = Math.floor(totalSeconds / 60);
-		const seconds = totalSeconds % 60;
-		return `${minutes}:${seconds.toString().padStart(2, "0")}`;
-	}
-
-	function formatRating(rating: number | null): string {
-		if (rating === null) return "—";
-		return "★".repeat(Math.round(rating / 2)) + "☆".repeat(5 - Math.round(rating / 2));
-	}
 
 	onMount(async () => {
 		lyrics = await invoke("get_track_lyrics", { trackId: selection.id });
@@ -69,6 +40,7 @@
 					<span>{formatDuration(track.duration_ms)}</span>
 				</div>
 				<div class="text-sm">{formatRating(track.rating)}</div>
+				<Button variant="ghost" size="icon" onclick={() => openEditModal({ type: "track", id: track.id })}>...</Button>
 			</div>
 		</div>
 
