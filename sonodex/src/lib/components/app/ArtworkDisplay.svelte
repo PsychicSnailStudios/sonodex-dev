@@ -1,12 +1,9 @@
 <script lang="ts">
-	import { invoke } from "@tauri-apps/api/core";
-
+	import { invoke, convertFileSrc } from "@tauri-apps/api/core";
 	import { Skeleton } from "$lib/components/ui/skeleton/index.js";
-
 	import { Music4, User, DiscAlbum, ListMusic } from "lucide-svelte";
-   import type { AudioCatagories } from "$lib/types";
-
-
+	import type { AudioCatagories } from "$lib/types";
+	import { library } from "$lib/library.svelte";
 
 	let { id, size = 40, type = "track" }: { id: number; size?: number; type?: AudioCatagories } = $props();
 
@@ -21,29 +18,30 @@
 		playlist: "get_playlist_artwork",
 	};
 
-	$effect(() => {
-		const observer = new IntersectionObserver(async ([entry]) => {
-			if (entry.isIntersecting) {
-				observer.disconnect();
-				try {
-					const bytes: number[] | null = await invoke(commandMap[type], { id });
-					if (bytes) {
-						const blob = new Blob([new Uint8Array(bytes)], { type: "image/jpeg" });
-						artworkUrl = URL.createObjectURL(blob);
-					}
-				} catch {}
-			}
-		}, { rootMargin: "200px" });
+	const pathMap: Record<AudioCatagories, () => string | null> = {
+		track: () => library.tracks.find(t => t.id === id)?.artwork_path ?? null,
+		album: () => library.albums.find(a => a.id === id)?.artwork_path ?? null,
+		artist: () => library.artists.find(a => a.id === id)?.profile_art_path ?? null,
+		playlist: () => library.playlists.find(p => p.id === id)?.artwork_path ?? null,
+	};
 
-		if (el) observer.observe(el);
-		return () => observer.disconnect();
-	});
+	let artworkPath = $derived(pathMap[type]?.() ?? null);
 
 	$effect(() => {
 		const currentId = id;
 		const currentType = type;
+		const localPath = artworkPath;
 		let url: string | null = null;
 		let observer: IntersectionObserver | null = null;
+
+		loaded = false;
+
+		if (localPath) {
+			artworkUrl = convertFileSrc(localPath);
+			return;
+		}
+
+		artworkUrl = null;
 
 		if (el) {
 			observer = new IntersectionObserver(async ([entry]) => {

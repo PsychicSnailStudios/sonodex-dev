@@ -8,7 +8,8 @@
 	import { Button } from "$lib/components/ui/button";
 	import { Separator } from "$lib/components/ui/separator";
 	import * as Tabs from "$lib/components/ui/tabs";
-	import { closeEditModal } from "$lib/editModal.svelte";
+	import { editModal, closeEditModal } from "$lib/editModal.svelte";
+	import { loadLibrary } from "$lib/library.svelte";
 
 	let { id } = $props<{ id: number }>();
 
@@ -72,6 +73,7 @@
 			};
 
 			await invoke("update_album_entry", { id, update });
+			await loadLibrary();
 			closeEditModal();
 		} finally {
 			saving = false;

@@ -12,7 +12,7 @@
 
 	import { formatDuration, totalDuration } from '$lib/helpers';
 
-	let playlist: Playlist | null = $state(null);
+	let playlist = $derived(library.playlists.find(p => p.id === selection.id) ?? null);
 
 	let tracks: Track[] = $derived.by(() => {
 		if (!playlist) return [];
@@ -20,13 +20,6 @@
 		return library.tracks.filter(t => playlistTrackIds.includes(t.id));
 	});
 
-	$effect(() => {
-		const id = selection.id;
-		playlist = null;
-		invoke("get_playlist", { id }).then((p) => {
-			playlist = p as Playlist;
-		});
-	});
 </script>
 
 <div class="flex flex-col gap-4 p-4 border-2 h-full w-full overflow-hidden rounded-md">

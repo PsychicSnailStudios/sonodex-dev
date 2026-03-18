@@ -3,6 +3,7 @@
 	import { onMount } from "svelte";
 
 	import type { Playlist } from '$lib/types';
+	import { library } from "$lib/library.svelte";
 
 	import { ScrollArea } from "$lib/components/ui/scroll-area/index.js";
 	import { Input } from "$lib/components/ui/input/index.js";
@@ -13,7 +14,7 @@
 
 	let search = $state("");
 	let dialogOpen = $state(false);
-	let playlists: Playlist[] = $state([]);
+	let playlists = $derived(library.playlists ?? null);
 	let nameInput = $state("");
 
 	const filteredPlaylists = $derived(
@@ -86,8 +87,8 @@
 			<ScrollArea class="min-h-0 min-w-0">
 					
 				<div class="app-music-grid grid gap-2 p-3">
-					{#each filteredPlaylists as playlist}
-						<AudioCard title={playlist.title} subTitle={playlist.owner} artworkId={playlist.id} type="playlist" />
+					{#each filteredPlaylists as p}
+						<AudioCard title={p.title} subTitle={p.owner} artworkId={p.id} type="playlist" />
 					{/each}
 				</div>
 

@@ -15,23 +15,25 @@
 </script>
 
 <Dialog.Root open={editModal.open} onOpenChange={(v) => { if (!v) closeEditModal(); }}>
-	<Dialog.Content class="max-w-lg w-full max-h-[90vh] overflow-y-auto">
-		<Dialog.Header>
+	<Dialog.Content class="max-w-lg w-full h-[600px] flex flex-col overflow-hidden">
+		<Dialog.Header class="shrink-0">
 			<Dialog.Title>
 				{editModal.target ? titles[editModal.target.type] : "Edit"}
 			</Dialog.Title>
 		</Dialog.Header>
 
-		{#if editModal.target}
-			{#if editModal.target.type === "track"}
-				<TrackEditForm id={editModal.target.id} />
-			{:else if editModal.target.type === "album"}
-				<AlbumEditForm id={editModal.target.id} />
-			{:else if editModal.target.type === "artist"}
-				<ArtistEditForm id={editModal.target.id} />
-			{:else if editModal.target.type === "playlist"}
-				<PlaylistEditForm id={editModal.target.id} />
+		<div class="flex-1 overflow-y-auto min-h-0">
+			{#if editModal.target}
+				{#if editModal.target.type === "track"}
+					<TrackEditForm id={editModal.target.id} />
+				{:else if editModal.target.type === "album"}
+					<AlbumEditForm id={editModal.target.id} />
+				{:else if editModal.target.type === "artist"}
+					<ArtistEditForm id={editModal.target.id} />
+				{:else if editModal.target.type === "playlist"}
+					<PlaylistEditForm id={editModal.target.id} />
+				{/if}
 			{/if}
-		{/if}
+		</div>
 	</Dialog.Content>
 </Dialog.Root>

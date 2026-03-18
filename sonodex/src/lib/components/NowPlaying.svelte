@@ -13,6 +13,8 @@
 	import ArtworkDisplay from "$lib/components/app/ArtworkDisplay.svelte";
 	import TrackTable from "$lib/components/app/TrackTable.svelte";
 
+	let showQueue = $state(false);
+
 	function formatTotalRemaining(): string {
 		const queueMs = getQueuedTracks().reduce((acc, t) => acc + (t.duration_ms ?? 0), 0);
 		const currentRemaining = (player.duration - player.currentTime) * 1000;
@@ -28,6 +30,7 @@
 </script>
 
 <div class="app-now-playing-wrapper flex flex-col gap-1">
+	{#if showQueue}
 	<div class="app-queue bg-muted p-2 rounded-md h-[450px]">
 		<Tabs.Root value="queue">
 			<Tabs.List>
@@ -36,13 +39,22 @@
 				<Tabs.Trigger value="lyrics">Lyrics</Tabs.Trigger>
 			</Tabs.List>
 			<Tabs.Content value="queue">
+				<p class="text-xs text-muted-foreground">Now Playing</p>
+				<div class="flex gap-2 p-2">
+					<ArtworkDisplay id={player.track!.id} size={30} type="track" />
+					<div class="min-w-0 grid">
+						<p class="text-sm font-medium truncate">{player.track!.title}</p>
+						<p class="text-xs text-muted-foreground truncate">{parseArtists(player.track!.artists)}</p>
+					</div>
+				</div>
+
 				<div class="flex justify-between p-2">
-					<p class="text-sm">Next Up: </p>
+					<p class="text-xs text-muted-foreground">Next up:</p>
 					<p class="text-xs text-muted-foreground">{formatTotalRemaining()} Remaining</p>
 					<button class="text-xs text-muted-foreground" onclick={clearQueue}>Clear</button>
 				</div>
 
-				<ScrollArea class="min-h-0 min-w-0 h-[350px]">
+				<ScrollArea class="min-h-0 min-w-0 h-[290px]">
 					
 					<div class="flex flex-col gap-0.5">
 						{#each getQueuedTracks() as track}
@@ -85,6 +97,7 @@
 			</Tabs.Content>
 		</Tabs.Root>
 	</div>
+	{/if}
 
 	<div class="app-now-playing bg-muted grid gap-3 p-2 rounded-md items-center">
 		{#if currentlyPlaying.track !== null}
@@ -96,7 +109,7 @@
 			</div>
 
 			<div class="flex flex-col">
-				<Button variant="ghost" size="icon">
+				<Button variant="ghost" size="icon" onclick={() => showQueue = !showQueue}>
 					<Rows4 />
 				</Button>
 				<Button variant="ghost" size="icon">
