@@ -10,6 +10,7 @@
 	import TrackTable from "$lib/components/app/TrackTable.svelte";
 	import * as Tabs from "$lib/components/ui/tabs/index.js";
 	import { Button } from "$lib/components/ui/button/index.js";
+    import AudioCard from "../app/AudioCard.svelte";
 
 	let artist: Artist | null = $state(null);
 
@@ -83,15 +84,9 @@
 			</Tabs.Content>
 
 			<Tabs.Content value="discography" class="flex-1 overflow-y-auto">
-				<div class="grid gap-2 mt-2" style="grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));">
+				<div class="grid gap-2 mt-2" style="grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));">
 					{#each artistAlbums as album}
-						<div class="flex flex-col gap-1 p-2 rounded-md border hover:border-primary cursor-default">
-							<ArtworkDisplay id={album.id} size={120} type="album" />
-							<span class="text-sm font-medium truncate">{album.title}</span>
-							{#if album.release_date}
-								<span class="text-xs text-muted-foreground">{album.release_date}</span>
-							{/if}
-						</div>
+						<AudioCard title={album.title} subTitle={album.album_artist} artworkId={album.id} type="album" />
 					{/each}
 				</div>
 			</Tabs.Content>

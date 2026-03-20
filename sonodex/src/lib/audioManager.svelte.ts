@@ -102,6 +102,10 @@ export function getPlayedTracks(): Track[] {
 }
 
 export function QueueTracksByObject(tracks: Track[], play: boolean = false) {
+	if (play) {
+		clearQueue();
+	}
+
 	flushSync(() => {
 		tracks.forEach((t) => {
 			trackQueue.enqueue(t);
@@ -114,12 +118,47 @@ export function QueueTracksByObject(tracks: Track[], play: boolean = false) {
 }
 
 export function QueueTracksById(ids: number[], play: boolean = false) {
+	if (play) {
+		clearQueue();
+	}
+
 	flushSync(() => {
 		ids.forEach((id) => {
 			let track = library.tracks.find((t) => t.id === id);
 			if (track) trackQueue.enqueue(track);
 		});
 	});
+
+	if (play) {
+		playTrackByObject(trackQueue.dequeue()!);
+	}
+}
+
+export function queueTracksFromId(id: number, type: AudioCatagories, play: boolean = false) {
+	if (play) {
+		clearQueue();
+	}
+
+	if (type === "album") {
+		const album = library.albums.find(a => a.id === id);
+		if (!album || !album.tracks) return;
+
+		const trackRefs: { id: number; name: string }[] = JSON.parse(album.tracks);
+		trackRefs.forEach(ref => {
+			const track = library.tracks.find(t => t.id === ref.id);
+			if (track) trackQueue.enqueue(track);
+		});
+	}
+	else if (type === "playlist") {
+		const playlist = library.playlists.find(p => p.id === id);
+		if (!playlist || !playlist.tracks) return;
+
+		const trackRefs: { id: number; name: string }[] = JSON.parse(playlist.tracks);
+		trackRefs.forEach(ref => {
+			const track = library.tracks.find(t => t.id === ref.id);
+			if (track) trackQueue.enqueue(track);
+		});
+	}
 
 	if (play) {
 		playTrackByObject(trackQueue.dequeue()!);

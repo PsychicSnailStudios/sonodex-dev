@@ -46,6 +46,12 @@
 			saving = false;
 		}
 	}
+
+	async function deletePlaylist() {
+		await invoke("delete_playlist_entry", { id });
+		await loadLibrary();
+		closeEditModal();
+	}
 </script>
 
 <Tabs.Root value="info">
@@ -81,6 +87,7 @@
 <Separator class="my-4" />
 
 <div class="flex justify-end gap-2">
+	<Button variant="destructive" onclick={deletePlaylist}>Delete</Button>
 	<Button variant="outline" onclick={closeEditModal}>Cancel</Button>
 	<Button onclick={() => save()} disabled={saving}>{saving ? "Saving…" : "Save"}</Button>
 </div>

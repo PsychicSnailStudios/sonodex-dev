@@ -5,7 +5,7 @@
 	import type { AudioCatagories } from "$lib/types";
 	import { library } from "$lib/library.svelte";
 
-	let { id, size = 40, type = "track" }: { id: number; size?: number; type?: AudioCatagories } = $props();
+	let { id, size = null, type = "track" }: { id: number; size?: number | null; type?: AudioCatagories } = $props();
 
 	let artworkUrl: string | null = $state(null);
 	let loaded = $state(false);
@@ -72,7 +72,10 @@
 	});
 </script>
 
-<div bind:this={el} style="width: {size}px; height: {size}px;" class="rounded-sm overflow-hidden relative bg-muted flex-shrink-0">
+<div bind:this={el}
+	  style={size ? `width: ${size}px; height: ${size}px;` : ""}
+	  class="rounded-sm overflow-hidden relative bg-muted flex-shrink-0 w-full aspect-square">
+
 	{#if artworkUrl}
 		{#if !loaded}
 			<Skeleton class="w-full h-full" />
@@ -80,7 +83,7 @@
 		<img
 			src={artworkUrl}
 			alt=""
-			class="absolute inset-0 w-full h-full object-cover transition-opacity duration-600"
+			class="absolute inset-0 w-full h-full object-cover transition-opacity duration-600 aspect-square"
 			class:opacity-0={!loaded}
 			onload={() => loaded = true}
 		/>

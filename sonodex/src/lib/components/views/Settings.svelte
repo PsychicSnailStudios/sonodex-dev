@@ -149,9 +149,7 @@
 
 </script>
 
-<div class="flex flex-col gap-2 p-2 h-full w-full overflow-hidden rounded-md border-2">
-
-	<h2 class="font-semibold">Settings</h2>
+<div class="h-full w-full overflow-hidden">
 
 	<ScrollArea class="app-settings-view p-4 min-h-0 min-w-0 flex gap-2 space-x-4">
 	
@@ -357,9 +355,3 @@
 	</ScrollArea>
 
 </div>
-
-<style>
-
-	
-
-</style>
