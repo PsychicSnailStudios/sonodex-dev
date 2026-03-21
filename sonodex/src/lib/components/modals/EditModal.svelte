@@ -25,13 +25,13 @@
 		<div class="flex-1 overflow-y-auto min-h-0">
 			{#if editModal.target}
 				{#if editModal.target.type === "track"}
-					<TrackEditForm id={editModal.target.id} />
+					<TrackEditForm uid={editModal.target.uid} />
 				{:else if editModal.target.type === "album"}
-					<AlbumEditForm id={editModal.target.id} />
+					<AlbumEditForm uid={editModal.target.uid} />
 				{:else if editModal.target.type === "artist"}
-					<ArtistEditForm id={editModal.target.id} />
+					<ArtistEditForm uid={editModal.target.uid} />
 				{:else if editModal.target.type === "playlist"}
-					<PlaylistEditForm id={editModal.target.id} />
+					<PlaylistEditForm uid={editModal.target.uid} />
 				{/if}
 			{/if}
 		</div>

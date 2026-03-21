@@ -11,7 +11,7 @@
 	import { editModal, closeEditModal } from "$lib/editModal.svelte";
 	import { loadLibrary } from "$lib/library.svelte";
 
-	let { id } = $props<{ id: number }>();
+	let { uid } = $props<{ uid: string }>();
 
 	let title = $state("");
 	let artists = $state("");
@@ -26,13 +26,14 @@
 	let label = $state("");
 	let credits = $state("");
 	let tags = $state("");
+	let path = $state("");
 	let artworkPath = $state<string | null>(null);
 	let saving = $state(false);
 	let writeToFile = $state(false);
 
 	onMount(async () => {
 		const tracks = await invoke<any[]>("get_tracks");
-		const track = tracks.find((t) => t.id === id);
+		const track = tracks.find((t) => t.uid === uid);
 		if (!track) return;
 
 		title = track.title ?? "";
@@ -44,6 +45,7 @@
 		label = track.label ?? "";
 		credits = track.credits ?? "";
 		artworkPath = track.artwork_path ?? null;
+		path = track.path ?? "";
 
 		try {
 			const artistArr = track.artists ? JSON.parse(track.artists) : [];
@@ -94,11 +96,9 @@
 			};
 
 			if (writeToFile) {
-				const tracks = await invoke<any[]>("get_tracks");
-				const track = tracks.find((t) => t.id === id);
-				if (track) await invoke("write_track_tags", { id, path: track.path, update });
+				await invoke("write_track_tags", { uid, path, update });
 			} else {
-				await invoke("update_track_metadata", { id, update });
+				await invoke("update_track_metadata", { uid, update });
 			}
 
 			await loadLibrary();
@@ -183,8 +183,8 @@
 	<Tabs.Content value="artwork" class="mt-4">
 		<ArtworkEditor
 			entityType="track"
-			entityId={id}
-			onchange={(path) => { artworkPath = path; }}
+			entityUid={uid}
+			onchange={(p) => { artworkPath = p; }}
 		/>
 	</Tabs.Content>
 </Tabs.Root>

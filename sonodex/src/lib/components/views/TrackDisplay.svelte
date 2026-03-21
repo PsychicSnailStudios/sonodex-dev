@@ -13,12 +13,11 @@
 	import { Button } from "$lib/components/ui/button/index.js";
 	import ArtworkDisplay from "$lib/components/app/ArtworkDisplay.svelte";
 
-
-	let track = $derived(library.tracks.find(t => t.id === selection.id) ?? null);
+	let track = $derived(library.tracks.find(t => t.uid === selection.uid) ?? null);
 	let lyrics: Lyrics | null = $state(null);
 
 	onMount(async () => {
-		lyrics = await invoke("get_track_lyrics", { trackId: selection.id });
+		lyrics = await invoke("get_track_lyrics", { uid: selection.uid });
 	});
 </script>
 
@@ -26,7 +25,7 @@
 
 	{#if track}
 		<div class="flex gap-4 items-center">
-			<ArtworkDisplay id={track.id} size={160} type="track" />
+			<ArtworkDisplay uid={track.uid} size={160} type="track" />
 
 			<div class="flex flex-col gap-1">
 				<h2 class="text-2xl font-bold">{track.title ?? "Unknown Title"}</h2>
@@ -40,7 +39,7 @@
 					<span>{formatDuration(track.duration_ms)}</span>
 				</div>
 				<div class="text-sm">{formatRating(track.rating)}</div>
-				<Button variant="ghost" size="icon" onclick={() => openEditModal({ type: "track", id: track.id })}>...</Button>
+				<Button variant="ghost" size="icon" onclick={() => openEditModal({ type: "track", uid: track!.uid })}>...</Button>
 			</div>
 		</div>
 

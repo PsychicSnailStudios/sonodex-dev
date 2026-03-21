@@ -11,7 +11,7 @@
 	import { editModal, closeEditModal } from "$lib/editModal.svelte";
 	import { loadLibrary } from "$lib/library.svelte";
 
-	let { id } = $props<{ id: number }>();
+	let { uid } = $props<{ uid: string }>();
 
 	let title = $state("");
 	let albumArtist = $state("");
@@ -27,7 +27,7 @@
 	let saving = $state(false);
 
 	onMount(async () => {
-		const album = await invoke<any | null>("get_album", { id });
+		const album = await invoke<any | null>("get_album", { uid });
 		if (!album) return;
 
 		title = album.title ?? "";
@@ -72,7 +72,7 @@
 				artwork_path: artworkPath,
 			};
 
-			await invoke("update_album_entry", { id, update });
+			await invoke("update_album_entry", { uid, update });
 			await loadLibrary();
 			closeEditModal();
 		} finally {
@@ -141,7 +141,7 @@
 	<Tabs.Content value="artwork" class="mt-4">
 		<ArtworkEditor
 			entityType="album"
-			entityId={id}
+			entityUid={uid}
 			onchange={(path) => { artworkPath = path; }}
 		/>
 	</Tabs.Content>

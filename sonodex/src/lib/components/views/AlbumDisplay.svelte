@@ -6,27 +6,26 @@
 	import { selection } from "$lib/session.svelte";
 	import { library } from "$lib/library.svelte";
 	import type { Album, Track } from "$lib/types";
-	import { QueueTracksById, QueueTracksByObject } from "$lib/audioManager.svelte";
+	import { queueTracksByObject } from "$lib/audioManager.svelte";
 	import { openEditModal } from "$lib/editModal.svelte";
 
 	import ArtworkDisplay from "$lib/components/app/ArtworkDisplay.svelte";
 	import TrackTable from "$lib/components/app/TrackTable.svelte";
-	
+
 	import { formatDuration, totalDuration } from '$lib/helpers';
 
 	let album: Album | null = $state(null);
 
 	let tracks: Track[] = $derived.by(() => {
 		if (!album) return [];
-		const albumTrackIds: number[] = JSON.parse(album.tracks ?? "[]").map((t: { id: number }) => t.id);
-		return library.tracks.filter(t => albumTrackIds.includes(t.id));
+		const albumTrackUids: string[] = JSON.parse(album.tracks ?? "[]").map((t: { uid: string }) => t.uid);
+		return library.tracks.filter(t => albumTrackUids.includes(t.uid));
 	});
 
-
 	$effect(() => {
-		const id = selection.id;
+		const uid = selection.uid;
 		album = null;
-		invoke("get_album", { id }).then((a) => {
+		invoke("get_album", { uid }).then((a) => {
 			album = a as Album;
 		});
 	});
@@ -36,7 +35,7 @@
 
 	{#if album}
 		<div class="flex gap-4 items-end">
-			<ArtworkDisplay id={album.id} size={160} type="album" />
+			<ArtworkDisplay uid={album.uid} size={160} type="album" />
 
 			<div class="flex flex-col gap-1">
 				{#if album.format}
@@ -59,9 +58,9 @@
 		</div>
 
 		<div class="flex gap-2">
-			<Button variant="default" onclick={() => QueueTracksByObject(tracks, true)}>Play All</Button>
+			<Button variant="default" onclick={() => queueTracksByObject(tracks, true)}>Play All</Button>
 			<Button variant="outline">Shuffle</Button>
-			<Button variant="ghost" onclick={() => openEditModal({ type: "album", id: album!.id })}>...</Button>
+			<Button variant="ghost" onclick={() => openEditModal({ type: "album", uid: album!.uid })}>...</Button>
 		</div>
 
 		<TrackTable type="album" tracks={tracks} />

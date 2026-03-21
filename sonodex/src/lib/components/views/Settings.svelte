@@ -4,6 +4,7 @@
   import { onMount } from "svelte";
   import { open } from "@tauri-apps/plugin-dialog";
   import { setMode, mode } from "mode-watcher";
+  import { loadLibrary } from "$lib/library.svelte";
   
   import { ScrollArea } from "$lib/components/ui/scroll-area/index.js";
   import { Button } from "$lib/components/ui/button/index.js";
@@ -113,9 +114,6 @@
     await loadPaths();
     await loadSettings();
 
-    darkMode = (settings["dark_mode"] ?? "false") === "true";
-    document.documentElement.classList.toggle("dark", darkMode);
-
     await listen("enrich:progress", (event: any) => {
       enrichDone = event.payload.done;
       enrichTotal = event.payload.total;
@@ -139,6 +137,7 @@
       loading = false;
       scanProgress = 0;
       scanTotal = 0;
+      await loadLibrary();
     });
 
     await listen("scan:error", (event: any) => {

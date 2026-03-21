@@ -1,5 +1,6 @@
 export type Track = {
 	id: number;
+	uid: string;
 	path: string;
 	last_modified: number;
 	title: string | null;

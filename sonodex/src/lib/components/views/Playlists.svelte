@@ -25,7 +25,7 @@
 				return a.title.toLowerCase().includes(q) || (a.description?.toLowerCase() ?? "").includes(q);
 			})
 	);
-	
+
 	onMount(async () => {
 		playlists = await invoke("get_playlists");
 	});
@@ -53,7 +53,6 @@
 	<div class="flex justify-between items-center gap-2">
 		<h1 class="h1">Playlists</h1>
 
-		
 		<AlertDialog.Root bind:open={dialogOpen}>
 			<AlertDialog.Trigger class={buttonVariants({ variant: "outline" })}>
 				Create New
@@ -85,16 +84,16 @@
 		<div class="flex flex-col h-full w-full overflow-hidden">
 			<span>{playlists.length} playlists</span>
 			<ScrollArea class="min-h-0 min-w-0">
-					
+
 				<div class="app-music-grid grid gap-2 p-3">
 					{#each filteredPlaylists as p}
-						<AudioCard title={p.title} subTitle={p.owner} artworkId={p.id} type="playlist" />
+						<AudioCard title={p.title} subTitle={p.owner} artworkUid={p.uid} type="playlist" />
 					{/each}
 				</div>
 
 			</ScrollArea>
 		</div>
-		
+
 	</div>
 
 </div>

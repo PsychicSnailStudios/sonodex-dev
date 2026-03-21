@@ -10,7 +10,7 @@ const trackQueue = new Queue<Track>();
 const playedTrackQueue = new Queue<Track>();
 
 export const currentlyPlaying = $state({
-	id: 0,
+	uid: "" as string,
 	track: null as Track | null,
 });
 
@@ -36,8 +36,7 @@ function bindEvents(el: HTMLAudioElement) {
 				playedTrackQueue.enqueue(currentlyPlaying.track!);
 				playTrackByObject(nextTrack);
 			}
-		}
-		else {
+		} else {
 			player.isPlaying = false;
 			player.currentTime = 0;
 		}
@@ -50,18 +49,17 @@ function bindEvents(el: HTMLAudioElement) {
 	});
 }
 
-export function playTrackById(id: number) {
-
+export function playTrackByUid(uid: string) {
 	if (audio) {
 		audio.pause();
 		audio = null;
 	}
 
-	const track = library.tracks.find((t) => t.id === id);
+	const track = library.tracks.find((t) => t.uid === uid);
 	if (!track) return;
 
 	player.track = track;
-	currentlyPlaying.id = track.id;
+	currentlyPlaying.uid = track.uid;
 	currentlyPlaying.track = track;
 
 	const el = new Audio(convertFileSrc(track.path));
@@ -72,14 +70,13 @@ export function playTrackById(id: number) {
 }
 
 export function playTrackByObject(track: Track) {
-
 	if (audio) {
 		audio.pause();
 		audio = null;
 	}
 
 	player.track = track;
-	currentlyPlaying.id = track.id;
+	currentlyPlaying.uid = track.uid;
 	currentlyPlaying.track = track;
 
 	const el = new Audio(convertFileSrc(track.path));
@@ -101,7 +98,7 @@ export function getPlayedTracks(): Track[] {
 	return playedTrackQueue.getQueue();
 }
 
-export function QueueTracksByObject(tracks: Track[], play: boolean = false) {
+export function queueTracksByObject(tracks: Track[], play: boolean = false) {
 	if (play) {
 		clearQueue();
 	}
@@ -113,55 +110,57 @@ export function QueueTracksByObject(tracks: Track[], play: boolean = false) {
 	});
 
 	if (play) {
-		playTrackByObject(trackQueue.dequeue()!);
+		const first = trackQueue.dequeue();
+		if (first) playTrackByObject(first);
 	}
 }
 
-export function QueueTracksById(ids: number[], play: boolean = false) {
+export function queueTracksByUid(uids: string[], play: boolean = false) {
 	if (play) {
 		clearQueue();
 	}
 
 	flushSync(() => {
-		ids.forEach((id) => {
-			let track = library.tracks.find((t) => t.id === id);
+		uids.forEach((uid) => {
+			let track = library.tracks.find((t) => t.uid === uid);
 			if (track) trackQueue.enqueue(track);
 		});
 	});
 
 	if (play) {
-		playTrackByObject(trackQueue.dequeue()!);
+		const first = trackQueue.dequeue();
+		if (first) playTrackByObject(first);
 	}
 }
 
-export function queueTracksFromId(id: number, type: AudioCatagories, play: boolean = false) {
+export function queueTracksFromUid(uid: string, type: AudioCatagories, play: boolean = false) {
 	if (play) {
 		clearQueue();
 	}
 
 	if (type === "album") {
-		const album = library.albums.find(a => a.id === id);
+		const album = library.albums.find((a) => a.uid === uid);
 		if (!album || !album.tracks) return;
 
-		const trackRefs: { id: number; name: string }[] = JSON.parse(album.tracks);
-		trackRefs.forEach(ref => {
-			const track = library.tracks.find(t => t.id === ref.id);
+		const trackRefs: { uid: string; name: string }[] = JSON.parse(album.tracks);
+		trackRefs.forEach((ref) => {
+			const track = library.tracks.find((t) => t.uid === ref.uid);
 			if (track) trackQueue.enqueue(track);
 		});
-	}
-	else if (type === "playlist") {
-		const playlist = library.playlists.find(p => p.id === id);
+	} else if (type === "playlist") {
+		const playlist = library.playlists.find((p) => p.uid === uid);
 		if (!playlist || !playlist.tracks) return;
 
-		const trackRefs: { id: number; name: string }[] = JSON.parse(playlist.tracks);
-		trackRefs.forEach(ref => {
-			const track = library.tracks.find(t => t.id === ref.id);
+		const trackRefs: { uid: string; name: string }[] = JSON.parse(playlist.tracks);
+		trackRefs.forEach((ref) => {
+			const track = library.tracks.find((t) => t.uid === ref.uid);
 			if (track) trackQueue.enqueue(track);
 		});
 	}
 
 	if (play) {
-		playTrackByObject(trackQueue.dequeue()!);
+		const first = trackQueue.dequeue();
+		if (first) playTrackByObject(first);
 	}
 }
 
@@ -189,14 +188,13 @@ export function setVolume(vol: number) {
 export function skipBack() {
 	const el = audio;
 	if (!el) return;
-	
+
 	if (el.currentTime < 2) {
-		let prevTrack = playedTrackQueue.dequeue();
-	
-		playedTrackQueue.enqueue(currentlyPlaying.track!);
+		const prevTrack = playedTrackQueue.dequeue();
+		if (!prevTrack) { el.currentTime = 0; return; }
+		if (currentlyPlaying.track) playedTrackQueue.enqueue(currentlyPlaying.track);
 		playTrackByObject(prevTrack);
-	}
-	else {
+	} else {
 		el.currentTime = 0;
 	}
 }
@@ -204,8 +202,8 @@ export function skipBack() {
 export function skipNext() {
 	if (trackQueue.size() === 0) return;
 
-	let nextTrack = trackQueue.dequeue();
-	
-	playedTrackQueue.enqueue(currentlyPlaying.track!);
+	const nextTrack = trackQueue.dequeue();
+	if (!nextTrack) return;
+	if (currentlyPlaying.track) playedTrackQueue.enqueue(currentlyPlaying.track);
 	playTrackByObject(nextTrack);
 }

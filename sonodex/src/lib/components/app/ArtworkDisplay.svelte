@@ -5,7 +5,7 @@
 	import type { AudioCatagories } from "$lib/types";
 	import { library } from "$lib/library.svelte";
 
-	let { id, size = null, type = "track" }: { id: number; size?: number | null; type?: AudioCatagories } = $props();
+	let { uid, size = null, type = "track" }: { uid: string; size?: number | null; type?: AudioCatagories } = $props();
 
 	let artworkUrl: string | null = $state(null);
 	let loaded = $state(false);
@@ -19,16 +19,16 @@
 	};
 
 	const pathMap: Record<AudioCatagories, () => string | null> = {
-		track: () => library.tracks.find(t => t.id === id)?.artwork_path ?? null,
-		album: () => library.albums.find(a => a.id === id)?.artwork_path ?? null,
-		artist: () => library.artists.find(a => a.id === id)?.profile_art_path ?? null,
-		playlist: () => library.playlists.find(p => p.id === id)?.artwork_path ?? null,
+		track: () => library.tracks.find(t => t.uid === uid)?.artwork_path ?? null,
+		album: () => library.albums.find(a => a.uid === uid)?.artwork_path ?? null,
+		artist: () => library.artists.find(a => a.uid === uid)?.profile_art_path ?? null,
+		playlist: () => library.playlists.find(p => p.uid === uid)?.artwork_path ?? null,
 	};
 
 	let artworkPath = $derived(pathMap[type]?.() ?? null);
 
 	$effect(() => {
-		const currentId = id;
+		const currentUid = uid;
 		const currentType = type;
 		const localPath = artworkPath;
 		let url: string | null = null;
@@ -48,7 +48,7 @@
 				if (entry.isIntersecting) {
 					observer?.disconnect();
 					try {
-						const bytes: number[] | null = await invoke(commandMap[currentType], { id: currentId });
+						const bytes: number[] | null = await invoke(commandMap[currentType], { uid: currentUid });
 						if (bytes) {
 							const blob = new Blob([new Uint8Array(bytes)], { type: "image/jpeg" });
 							url = URL.createObjectURL(blob);

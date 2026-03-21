@@ -17,14 +17,12 @@ export async function loadLibrary() {
 	library.loaded = true;
 }
 
-export function getArtistIDFromName(name: string) {
+export function getArtistUidFromName(name: string): string {
 	const artist = library.artists.find((a) => a.name === name);
-	if (!artist) return 0;
-	return artist.id;
+	return artist?.uid ?? "";
 }
 
-export function getAlbumIDFromName(name: string) {
+export function getAlbumUidFromName(name: string): string {
 	const album = library.albums.find((a) => a.title === name);
-	if (!album) return 0;
-	return album.id;
+	return album?.uid ?? "";
 }

@@ -1,8 +1,8 @@
 export type EditModalTarget =
-	| { type: "track"; id: number }
-	| { type: "album"; id: number }
-	| { type: "artist"; id: number }
-	| { type: "playlist"; id: number };
+	| { type: "track"; uid: string }
+	| { type: "album"; uid: string }
+	| { type: "artist"; uid: string }
+	| { type: "playlist"; uid: string };
 
 export let editModal = $state({
 	open: false,

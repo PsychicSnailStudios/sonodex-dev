@@ -1,11 +1,11 @@
 import { invoke } from "@tauri-apps/api/core";
 
 export let selection = $state({
-	id: 0 as number,
+	uid: "" as string,
 	type: "none" as "track" | "album" | "artist" | "playlist" | "none",
 });
 
-export function setSelection(id: number, type: "track" | "album" | "artist" | "playlist" | "none") {
-	selection.id = id;
+export function setSelection(uid: string, type: "track" | "album" | "artist" | "playlist" | "none") {
+	selection.uid = uid;
 	selection.type = type;
 }

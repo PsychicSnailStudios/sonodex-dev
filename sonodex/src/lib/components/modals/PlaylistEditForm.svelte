@@ -11,7 +11,7 @@
 	import { editModal, closeEditModal } from "$lib/editModal.svelte";
 	import { loadLibrary } from "$lib/library.svelte";
 
-	let { id } = $props<{ id: number }>();
+	let { uid } = $props<{ uid: string }>();
 
 	let title = $state("");
 	let description = $state("");
@@ -20,7 +20,7 @@
 	let saving = $state(false);
 
 	onMount(async () => {
-		const playlist = await invoke<any | null>("get_playlist", { id });
+		const playlist = await invoke<any | null>("get_playlist", { uid });
 		if (!playlist) return;
 
 		title = playlist.title ?? "";
@@ -39,7 +39,7 @@
 				artwork_path: artworkPath,
 			};
 
-			await invoke("update_playlist_entry", { id, update });
+			await invoke("update_playlist_entry", { uid, update });
 			await loadLibrary();
 			closeEditModal();
 		} finally {
@@ -48,7 +48,7 @@
 	}
 
 	async function deletePlaylist() {
-		await invoke("delete_playlist_entry", { id });
+		await invoke("delete_playlist_entry", { uid });
 		await loadLibrary();
 		closeEditModal();
 	}
@@ -78,7 +78,7 @@
 	<Tabs.Content value="artwork" class="mt-4">
 		<ArtworkEditor
 			entityType="playlist"
-			entityId={id}
+			entityUid={uid}
 			onchange={(path) => { artworkPath = path; }}
 		/>
 	</Tabs.Content>

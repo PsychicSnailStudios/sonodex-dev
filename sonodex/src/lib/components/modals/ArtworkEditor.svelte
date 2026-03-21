@@ -6,11 +6,11 @@
 
 	let {
 		entityType,
-		entityId,
+		entityUid,
 		onchange,
 	} = $props<{
 		entityType: "track" | "album" | "artist" | "playlist";
-		entityId: number;
+		entityUid: string;
 		onchange?: (path: string | null) => void;
 	}>();
 
@@ -48,7 +48,7 @@
 </script>
 
 <div class="flex gap-4 items-start">
-	<ArtworkDisplay id={entityId} size={128} type={entityType} />
+	<ArtworkDisplay uid={entityUid} size={128} type={entityType} />
 
 	<div class="flex flex-col gap-2 justify-center pt-1">
 		<Button variant="outline" size="sm" onclick={handleUpload} class="justify-start gap-2">

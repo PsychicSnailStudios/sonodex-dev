@@ -3,7 +3,7 @@
 	import { setSelection } from "$lib/session.svelte";
 	import { formatDuration, formatRating, parseAlbum, parseArtists } from "$lib/helpers";
 	import { clearQueue, getQueuedTracks, player, getPlayedTracks } from "$lib/audioManager.svelte";
-	import { getArtistIDFromName } from "$lib/library.svelte";
+	import { getArtistUidFromName } from "$lib/library.svelte";
 
 	import * as Tabs from "$lib/components/ui/tabs/index.js";
 	import { Button } from "$lib/components/ui/button";
@@ -13,7 +13,6 @@
 
 	import ArtworkDisplay from "$lib/components/app/ArtworkDisplay.svelte";
 	import TrackTable from "$lib/components/app/TrackTable.svelte";
-    import { get } from "svelte/store";
 
 	let showQueue = $state(false);
 
@@ -43,7 +42,7 @@
 			<Tabs.Content value="queue">
 				<p class="text-xs text-muted-foreground">Now Playing</p>
 				<div class="flex gap-2 p-2">
-					<ArtworkDisplay id={player.track!.id} size={30} type="track" />
+					<ArtworkDisplay uid={player.track!.uid} size={30} type="track" />
 					<div class="min-w-0 grid">
 						<p class="text-sm font-medium truncate">{player.track!.title}</p>
 						<p class="text-xs text-muted-foreground truncate">{parseArtists(player.track!.artists)}</p>
@@ -57,29 +56,26 @@
 				</div>
 
 				<ScrollArea class="min-h-0 min-w-0 h-[290px]">
-					
 					<div class="flex flex-col gap-0.5">
 						{#each getQueuedTracks() as track}
 							<div class="flex gap-2 p-2">
-								<ArtworkDisplay id={track.id} size={30} type="track" />
+								<ArtworkDisplay uid={track.uid} size={30} type="track" />
 								<div class="min-w-0 grid">
-									<button onclick={() => setSelection(track.id, "track")} class="text-sm font-medium truncate">{track.title}</button>
-									<button onclick={() => setSelection(getArtistIDFromName(track.album_artist!), "artist")} class="text-xs text-muted-foreground truncate">{parseArtists(track.artists)}</button>
+									<button onclick={() => setSelection(track.uid, "track")} class="text-sm font-medium truncate">{track.title}</button>
+									<button onclick={() => setSelection(getArtistUidFromName(track.album_artist!), "artist")} class="text-xs text-muted-foreground truncate">{parseArtists(track.artists)}</button>
 								</div>
 							</div>
 						{/each}
 					</div>
-
 				</ScrollArea>
-				
+
 			</Tabs.Content>
 			<Tabs.Content value="recent">
 				<ScrollArea class="min-h-0 min-w-0 h-[200px]">
-					
 					<div>
 						{#each getPlayedTracks() as track}
 							<div class="flex gap-2 p-2">
-								<ArtworkDisplay id={track.id} size={30} type="track" />
+								<ArtworkDisplay uid={track.uid} size={30} type="track" />
 								<div class="min-w-0 grid">
 									<p class="text-sm font-medium truncate">{track.title}</p>
 									<p class="text-xs text-muted-foreground truncate">{parseArtists(track.artists)}</p>
@@ -87,14 +83,11 @@
 							</div>
 						{/each}
 					</div>
-
 				</ScrollArea>
 			</Tabs.Content>
 			<Tabs.Content value="lyrics">
 				<ScrollArea class="min-h-0 min-w-0 h-[200px]">
-					
 					<p>no lyrics</p>
-
 				</ScrollArea>
 			</Tabs.Content>
 		</Tabs.Root>
@@ -103,11 +96,11 @@
 
 	<div class="app-now-playing bg-muted grid gap-3 p-2 rounded-md items-center">
 		{#if currentlyPlaying.track !== null}
-			<ArtworkDisplay id={currentlyPlaying.id} type="track" size={64} />
+			<ArtworkDisplay uid={currentlyPlaying.uid} type="track" size={64} />
 
 			<div class="flex flex-col">
-				<button onclick={() => setSelection(currentlyPlaying.track?.id!, "track")} class="text-sm font-medium truncate text-left">{currentlyPlaying.track?.title}</button>
-				<button onclick={() => setSelection(getArtistIDFromName(currentlyPlaying.track?.album_artist!), "artist")} class="text-xs text-muted-foreground truncate text-left">{parseArtists(currentlyPlaying.track?.artists ?? null)}</button>
+				<button onclick={() => setSelection(currentlyPlaying.track?.uid!, "track")} class="text-sm font-medium truncate text-left">{currentlyPlaying.track?.title}</button>
+				<button onclick={() => setSelection(getArtistUidFromName(currentlyPlaying.track?.album_artist!), "artist")} class="text-xs text-muted-foreground truncate text-left">{parseArtists(currentlyPlaying.track?.artists ?? null)}</button>
 			</div>
 
 			<div class="flex flex-col">
@@ -128,5 +121,4 @@
 	max-height: 85px;
 	height: 85px;
 }
-
 </style>

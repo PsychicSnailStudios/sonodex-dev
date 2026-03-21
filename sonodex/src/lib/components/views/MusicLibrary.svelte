@@ -10,7 +10,7 @@
 
 	import AudioCard from "$lib/components/app/AudioCard.svelte";
 	import TrackTable from "$lib/components/app/TrackTable.svelte";
-    import ArtworkDisplay from "../app/ArtworkDisplay.svelte";
+	import ArtworkDisplay from "../app/ArtworkDisplay.svelte";
 
 	let activeTab = $state("album");
 	let search = $state("");
@@ -80,9 +80,9 @@
 
 						{#each filteredArtists as artist}
 
-							<button onclick={() => setSelection(artist.id, "artist")} class="flex flex-col items-center gap-2 p-2 rounded-md bg-background border hover:border-primary transition-colors cursor-default">
+							<button onclick={() => setSelection(artist.uid, "artist")} class="flex flex-col items-center gap-2 p-2 rounded-md bg-background border hover:border-primary transition-colors cursor-default">
 								<div class="w-full aspect-square rounded-full bg-muted flex items-center justify-center overflow-hidden">
-									<ArtworkDisplay id={artist.id} type="artist" />
+									<ArtworkDisplay uid={artist.uid} type="artist" />
 								</div>
 								<div class="min-w-0 w-full text-center">
 									<p class="text-sm font-medium">{artist.name}</p>
@@ -102,9 +102,9 @@
 					<div class="app-music-grid grid gap-2 p-3">
 
 						{#each filteredAlbums as album}
-							<AudioCard title={album.title} subTitle={album.album_artist} artworkId={album.id} type="album" />
+							<AudioCard title={album.title} subTitle={album.album_artist} artworkUid={album.uid} type="album" />
 						{/each}
-					
+
 					</div>
 				</ScrollArea>
 			</div>
@@ -112,7 +112,7 @@
 			<span>{library.tracks.length} tracks</span>
 			<TrackTable type="library" tracks={filteredTracks} />
 		{/if}
-	
+
 	</div>
 
 </div>

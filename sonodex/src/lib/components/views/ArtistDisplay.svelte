@@ -10,7 +10,7 @@
 	import TrackTable from "$lib/components/app/TrackTable.svelte";
 	import * as Tabs from "$lib/components/ui/tabs/index.js";
 	import { Button } from "$lib/components/ui/button/index.js";
-    import AudioCard from "../app/AudioCard.svelte";
+	import AudioCard from "../app/AudioCard.svelte";
 
 	let artist: Artist | null = $state(null);
 
@@ -29,17 +29,10 @@
 		);
 	});
 
-	function formatDuration(ms: number): string {
-		const totalSeconds = Math.floor(ms / 1000);
-		const minutes = Math.floor(totalSeconds / 60);
-		const seconds = totalSeconds % 60;
-		return `${minutes}:${seconds.toString().padStart(2, "0")}`;
-	}
-
 	$effect(() => {
-		const id = selection.id;
+		const uid = selection.uid;
 		artist = null;
-		invoke("get_artist", { id }).then((a) => {
+		invoke("get_artist", { uid }).then((a) => {
 			artist = a as Artist;
 		});
 	});
@@ -56,7 +49,7 @@
 			{/if}
 
 			<div class="absolute bottom-0 translate-y-1/2 left-4">
-				<ArtworkDisplay id={artist.id} size={80} type="artist" />
+				<ArtworkDisplay uid={artist.uid} size={80} type="artist" />
 			</div>
 		</div>
 
@@ -66,7 +59,7 @@
 				<div class="flex gap-2">
 					<Button variant="default">Play All</Button>
 					<Button variant="outline">Shuffle</Button>
-					<Button variant="ghost" onclick={() => openEditModal({ type: "artist", id: artist!.id })}>...</Button>
+					<Button variant="ghost" onclick={() => openEditModal({ type: "artist", uid: artist!.uid })}>...</Button>
 				</div>
 			</div>
 		</div>
@@ -80,13 +73,12 @@
 
 			<Tabs.Content value="home" class="flex-1 overflow-y-auto">
 				<h3 class="text-sm font-semibold mb-2 mt-2">TOP SONGS</h3>
-				<!-- <TrackTable tracks={artistTracks.slice(0, 10)} /> -->
 			</Tabs.Content>
 
 			<Tabs.Content value="discography" class="flex-1 overflow-y-auto">
 				<div class="grid gap-2 mt-2" style="grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));">
 					{#each artistAlbums as album}
-						<AudioCard title={album.title} subTitle={album.album_artist} artworkId={album.id} type="album" />
+						<AudioCard title={album.title} subTitle={album.album_artist} artworkUid={album.uid} type="album" />
 					{/each}
 				</div>
 			</Tabs.Content>
