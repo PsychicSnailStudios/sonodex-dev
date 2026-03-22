@@ -1,0 +1,60 @@
+<script lang="ts">
+	import { invoke } from "@tauri-apps/api/core";
+	import { onMount } from "svelte";
+	import { createProfile } from "$lib/profiles.svelte";
+	import * as Dialog from "$lib/components/ui/dialog/index.js";
+	import { Input } from "$lib/components/ui/input/index.js";
+	import { Button } from "$lib/components/ui/button/index.js";
+	import { Label } from "$lib/components/ui/label/index.js";
+
+	let { onComplete }: { onComplete: () => void } = $props();
+
+	let name = $state("");
+	let creating = $state(false);
+
+	onMount(async () => {
+		try {
+			const { hostname } = await import("@tauri-apps/plugin-os");
+			const host = await hostname();
+			if (host && !name) name = host;
+		} catch {}
+	});
+
+	async function handleCreate() {
+		if (!name.trim()) return;
+		creating = true;
+		try {
+			await createProfile(name.trim(), null, null);
+			onComplete();
+		} finally {
+			creating = false;
+		}
+	}
+</script>
+
+<Dialog.Root open={true} onOpenChange={() => {}} onEscapeKeyDown={(e) => e.preventDefault()} onInteractOutside={(e) => e.preventDefault()}>
+	<Dialog.Content class="max-w-sm w-full" showCloseButton={false}>
+		<Dialog.Header>
+			<Dialog.Title>Welcome to Sonodex</Dialog.Title>
+			<Dialog.Description>Create your profile to get started.</Dialog.Description>
+		</Dialog.Header>
+
+		<div class="space-y-4 py-2">
+			<div class="space-y-1.5">
+				<Label for="profile-name">Your name</Label>
+				<Input
+					id="profile-name"
+					bind:value={name}
+					placeholder="Enter your name"
+					onkeydown={(e) => { if (e.key === "Enter") handleCreate(); }}
+				/>
+			</div>
+		</div>
+
+		<Dialog.Footer>
+			<Button onclick={handleCreate} disabled={creating || !name.trim()} class="w-full">
+				{creating ? "Creating…" : "Get Started"}
+			</Button>
+		</Dialog.Footer>
+	</Dialog.Content>
+</Dialog.Root>

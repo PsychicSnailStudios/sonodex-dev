@@ -1,22 +1,163 @@
 mod db;
 mod enrichment;
+mod profiles;
 mod scanner;
+mod state;
 mod watcher;
 
 use db::{
 	add_library_path, create_album, create_artist, create_playlist, delete_album_by_uid,
 	delete_artist_by_uid, delete_lyrics, delete_playlist_by_uid, get_album_by_uid,
 	get_all_albums, get_all_artists, get_all_playlists, get_all_tracks, get_artist_by_uid,
-	get_db_path, get_library_paths, get_lyrics, get_playlist_by_uid, init_db,
+	get_library_paths, get_lyrics, get_playlist_by_uid, init_lib_db, init_settings_db,
 	remove_library_path, update_album_by_uid, update_artist_by_uid, update_playlist_by_uid,
 	upsert_lyrics, Album, AlbumUpdate, Artist, ArtistUpdate, LibraryPath, Lyrics, Playlist,
 	PlaylistUpdate, Track,
 };
+use profiles::{
+	create_profile as new_profile, get_lib_db_path, get_settings_db_path, read_registry,
+	write_registry, Profile,
+};
 use rusqlite::Connection;
-use tauri::{AppHandle, Emitter};
+use state::AppState;
+use tauri::{AppHandle, Emitter, Manager, State};
 
-fn open_conn() -> Connection {
-	Connection::open(get_db_path()).expect("Failed to open database")
+fn open_settings_conn(uid: &str) -> Connection {
+	Connection::open(get_settings_db_path(uid)).expect("Failed to open settings database")
+}
+
+fn open_lib_conn(uid: &str) -> Connection {
+	let conn =
+		Connection::open(get_lib_db_path(uid)).expect("Failed to open lib database");
+	let settings_path = get_settings_db_path(uid);
+	conn.execute_batch(&format!(
+		"ATTACH DATABASE '{}' AS settings;",
+		settings_path.to_string_lossy().replace('\'', "''")
+	))
+	.ok();
+	conn
+}
+
+// ─────────────────────────────────────────────
+// PROFILES
+// ─────────────────────────────────────────────
+
+#[tauri::command]
+fn needs_profile_setup() -> bool {
+	read_registry().profiles.is_empty()
+}
+
+#[tauri::command]
+fn get_profiles() -> Result<Vec<Profile>, String> {
+	let mut profiles = read_registry().profiles;
+	for p in &mut profiles {
+		p.avatar_blob = None;
+	}
+	Ok(profiles)
+}
+
+#[tauri::command]
+fn get_active_profile(state: State<AppState>) -> Result<Profile, String> {
+	let uid = state.get_uid();
+	read_registry()
+		.profiles
+		.into_iter()
+		.find(|p| p.uid == uid)
+		.map(|mut p| { p.avatar_blob = None; p })
+		.ok_or("Active profile not found".to_string())
+}
+
+#[tauri::command]
+fn get_profile_avatar(uid: String) -> Result<Option<Vec<u8>>, String> {
+	Ok(read_registry()
+		.profiles
+		.into_iter()
+		.find(|p| p.uid == uid)
+		.and_then(|p| p.avatar_blob))
+}
+
+#[tauri::command]
+fn create_profile_cmd(
+	app: AppHandle,
+	state: State<AppState>,
+	name: String,
+	avatar_blob: Option<Vec<u8>>,
+	copy_paths_from: Option<String>,
+) -> Result<Profile, String> {
+	let profile = new_profile(&name, avatar_blob);
+
+	let settings_conn = open_settings_conn(&profile.uid);
+	init_settings_db(&settings_conn).map_err(|e| e.to_string())?;
+
+	let lib_conn =
+		Connection::open(get_lib_db_path(&profile.uid)).map_err(|e| e.to_string())?;
+	init_lib_db(&lib_conn).map_err(|e| e.to_string())?;
+
+	if let Some(source_uid) = copy_paths_from {
+		let source_conn = open_settings_conn(&source_uid);
+		let paths = get_library_paths(&source_conn).unwrap_or_default();
+		for p in paths {
+			add_library_path(&settings_conn, &p.path).ok();
+		}
+	}
+
+	let mut registry = read_registry();
+	let is_first = registry.profiles.is_empty();
+	registry.profiles.push(profile.clone());
+	if is_first {
+		registry.active = profile.uid.clone();
+	}
+	write_registry(&registry);
+
+	if is_first {
+		state.set_uid(profile.uid.clone());
+		app.emit("profile:ready", ()).ok();
+	}
+
+	Ok(profile)
+}
+
+#[tauri::command]
+fn update_profile_cmd(
+	uid: String,
+	name: Option<String>,
+	avatar_blob: Option<Vec<u8>>,
+) -> Result<(), String> {
+	let mut registry = read_registry();
+	if let Some(profile) = registry.profiles.iter_mut().find(|p| p.uid == uid) {
+		if let Some(n) = name {
+			profile.name = n;
+		}
+		if avatar_blob.is_some() {
+			profile.avatar_blob = avatar_blob;
+		}
+	}
+	write_registry(&registry);
+	Ok(())
+}
+
+#[tauri::command]
+fn delete_profile_cmd(uid: String, state: State<AppState>) -> Result<(), String> {
+	if state.get_uid() == uid {
+		return Err("Cannot delete the active profile".to_string());
+	}
+	let mut registry = read_registry();
+	registry.profiles.retain(|p| p.uid != uid);
+	write_registry(&registry);
+	Ok(())
+}
+
+#[tauri::command]
+fn switch_profile(uid: String, state: State<AppState>) -> Result<(), String> {
+	let registry = read_registry();
+	if !registry.profiles.iter().any(|p| p.uid == uid) {
+		return Err("Profile not found".to_string());
+	}
+	let mut registry = registry;
+	registry.active = uid.clone();
+	write_registry(&registry);
+	state.set_uid(uid);
+	Ok(())
 }
 
 // ─────────────────────────────────────────────
@@ -24,51 +165,66 @@ fn open_conn() -> Connection {
 // ─────────────────────────────────────────────
 
 #[tauri::command]
-fn add_path(app: AppHandle, path: String) -> Result<(), String> {
-	let conn = open_conn();
-	add_library_path(&conn, &path).map_err(|e| e.to_string())?;
+fn add_path(app: AppHandle, state: State<AppState>, path: String) -> Result<(), String> {
+	let uid = state.get_uid();
+	let settings_conn = open_settings_conn(&uid);
+	add_library_path(&settings_conn, &path).map_err(|e| e.to_string())?;
 
 	let app_clone = app.clone();
 	let path_clone = path.clone();
+	let uid_clone = uid.clone();
 	std::thread::spawn(move || {
-		let conn = open_conn();
-		scanner::scan_directory_with_progress(&conn, &path_clone, &app_clone);
-		let paths = get_library_paths(&conn)
+		let lib_conn = open_lib_conn(&uid_clone);
+		scanner::scan_directory_with_progress(&lib_conn, &path_clone, &app_clone);
+		let settings_conn = open_settings_conn(&uid_clone);
+		let paths = get_library_paths(&settings_conn)
 			.unwrap_or_default()
 			.into_iter()
 			.map(|p| p.path)
 			.collect();
-		watcher::start_watcher(app_clone, paths);
+		watcher::start_watcher(app_clone, uid_clone, paths);
 	});
 
 	Ok(())
 }
 
 #[tauri::command]
-fn remove_path(path: String) -> Result<(), String> {
-	let conn = open_conn();
-	remove_library_path(&conn, &path).map_err(|e| e.to_string())
+fn remove_path(state: State<AppState>, path: String) -> Result<(), String> {
+	let uid = state.get_uid();
+	let settings_conn = open_settings_conn(&uid);
+	let lib_conn = open_lib_conn(&uid);
+	remove_library_path(&settings_conn, &path).map_err(|e| e.to_string())?;
+	lib_conn
+		.execute(
+			"DELETE FROM tracks WHERE path LIKE ?1",
+			rusqlite::params![format!("{}%", path)],
+		)
+		.map_err(|e| e.to_string())?;
+	Ok(())
 }
 
 #[tauri::command]
-fn get_paths() -> Result<Vec<LibraryPath>, String> {
-	let conn = open_conn();
+fn get_paths(state: State<AppState>) -> Result<Vec<LibraryPath>, String> {
+	let uid = state.get_uid();
+	let conn = open_settings_conn(&uid);
 	get_library_paths(&conn).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-fn rescan(app: AppHandle) -> Result<(), String> {
-	let conn = open_conn();
-	let paths = get_library_paths(&conn).map_err(|e| e.to_string())?;
+fn rescan(app: AppHandle, state: State<AppState>) -> Result<(), String> {
+	let uid = state.get_uid();
+	let settings_conn = open_settings_conn(&uid);
+	let paths = get_library_paths(&settings_conn).map_err(|e| e.to_string())?;
 
 	let app_clone = app.clone();
+	let uid_clone = uid.clone();
 	let path_strings: Vec<String> = paths.into_iter().map(|p| p.path).collect();
 	std::thread::spawn(move || {
-		let conn = open_conn();
+		let lib_conn = open_lib_conn(&uid_clone);
 		for p in &path_strings {
-			scanner::scan_directory_with_progress(&conn, p, &app_clone);
+			scanner::scan_directory_with_progress(&lib_conn, p, &app_clone);
 		}
-		watcher::start_watcher(app_clone, path_strings);
+		watcher::start_watcher(app_clone, uid_clone, path_strings);
 	});
 
 	Ok(())
@@ -79,32 +235,42 @@ fn rescan(app: AppHandle) -> Result<(), String> {
 // ─────────────────────────────────────────────
 
 #[tauri::command]
-fn get_tracks() -> Result<Vec<Track>, String> {
-	let conn = open_conn();
+fn get_tracks(state: State<AppState>) -> Result<Vec<Track>, String> {
+	let uid = state.get_uid();
+	let conn = open_lib_conn(&uid);
 	get_all_tracks(&conn).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-fn get_track_artwork(uid: String) -> Result<Option<Vec<u8>>, String> {
-	let conn = open_conn();
+fn get_track_artwork(state: State<AppState>, uid: String) -> Result<Option<Vec<u8>>, String> {
+	let profile_uid = state.get_uid();
+	let conn = open_lib_conn(&profile_uid);
 	db::get_track_artwork_by_uid(&conn, &uid).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-fn get_duplicates() -> Result<Vec<db::DuplicateGroup>, String> {
-	let conn = open_conn();
+fn get_duplicates(state: State<AppState>) -> Result<Vec<db::DuplicateGroup>, String> {
+	let uid = state.get_uid();
+	let conn = open_lib_conn(&uid);
 	db::find_duplicates(&conn).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-fn remove_track_from_library(uid: String) -> Result<(), String> {
-	let conn = open_conn();
+fn remove_track_from_library(state: State<AppState>, uid: String) -> Result<(), String> {
+	let profile_uid = state.get_uid();
+	let conn = open_lib_conn(&profile_uid);
 	db::delete_track_by_uid(&conn, &uid).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-fn delete_track_file(app: AppHandle, uid: String, path: String) -> Result<(), String> {
-	let conn = open_conn();
+fn delete_track_file(
+	app: AppHandle,
+	state: State<AppState>,
+	uid: String,
+	path: String,
+) -> Result<(), String> {
+	let profile_uid = state.get_uid();
+	let conn = open_lib_conn(&profile_uid);
 	std::fs::remove_file(&path).map_err(|e| e.to_string())?;
 	db::delete_track_by_uid(&conn, &uid).map_err(|e| e.to_string())?;
 	app.emit("library:updated", ()).ok();
@@ -112,14 +278,20 @@ fn delete_track_file(app: AppHandle, uid: String, path: String) -> Result<(), St
 }
 
 #[tauri::command]
-fn update_track_metadata(uid: String, update: db::MetadataUpdate) -> Result<(), String> {
-	let conn = open_conn();
+fn update_track_metadata(
+	state: State<AppState>,
+	uid: String,
+	update: db::MetadataUpdate,
+) -> Result<(), String> {
+	let profile_uid = state.get_uid();
+	let conn = open_lib_conn(&profile_uid);
 	db::update_track_metadata_by_uid(&conn, &uid, &update).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 fn write_track_tags(
 	app: AppHandle,
+	state: State<AppState>,
 	uid: String,
 	path: String,
 	update: db::MetadataUpdate,
@@ -127,7 +299,8 @@ fn write_track_tags(
 	use lofty::prelude::*;
 	use lofty::probe::Probe;
 
-	let conn = open_conn();
+	let profile_uid = state.get_uid();
+	let conn = open_lib_conn(&profile_uid);
 
 	let mut tagged_file = Probe::open(&path)
 		.map_err(|e| e.to_string())?
@@ -197,38 +370,48 @@ fn write_track_tags(
 // ─────────────────────────────────────────────
 
 #[tauri::command]
-fn get_albums() -> Result<Vec<Album>, String> {
-	let conn = open_conn();
+fn get_albums(state: State<AppState>) -> Result<Vec<Album>, String> {
+	let uid = state.get_uid();
+	let conn = open_lib_conn(&uid);
 	get_all_albums(&conn).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-fn get_album(uid: String) -> Result<Option<Album>, String> {
-	let conn = open_conn();
+fn get_album(state: State<AppState>, uid: String) -> Result<Option<Album>, String> {
+	let profile_uid = state.get_uid();
+	let conn = open_lib_conn(&profile_uid);
 	get_album_by_uid(&conn, &uid).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-fn get_album_artwork(uid: String) -> Result<Option<Vec<u8>>, String> {
-	let conn = open_conn();
+fn get_album_artwork(state: State<AppState>, uid: String) -> Result<Option<Vec<u8>>, String> {
+	let profile_uid = state.get_uid();
+	let conn = open_lib_conn(&profile_uid);
 	db::get_album_artwork_by_uid(&conn, &uid).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-fn create_album_entry(album: Album) -> Result<(), String> {
-	let conn = open_conn();
+fn create_album_entry(state: State<AppState>, album: Album) -> Result<(), String> {
+	let uid = state.get_uid();
+	let conn = open_lib_conn(&uid);
 	create_album(&conn, &album).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-fn update_album_entry(uid: String, update: AlbumUpdate) -> Result<(), String> {
-	let conn = open_conn();
+fn update_album_entry(
+	state: State<AppState>,
+	uid: String,
+	update: AlbumUpdate,
+) -> Result<(), String> {
+	let profile_uid = state.get_uid();
+	let conn = open_lib_conn(&profile_uid);
 	update_album_by_uid(&conn, &uid, &update).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-fn delete_album_entry(uid: String) -> Result<(), String> {
-	let conn = open_conn();
+fn delete_album_entry(state: State<AppState>, uid: String) -> Result<(), String> {
+	let profile_uid = state.get_uid();
+	let conn = open_lib_conn(&profile_uid);
 	delete_album_by_uid(&conn, &uid).map_err(|e| e.to_string())
 }
 
@@ -237,44 +420,61 @@ fn delete_album_entry(uid: String) -> Result<(), String> {
 // ─────────────────────────────────────────────
 
 #[tauri::command]
-fn get_artists() -> Result<Vec<Artist>, String> {
-	let conn = open_conn();
+fn get_artists(state: State<AppState>) -> Result<Vec<Artist>, String> {
+	let uid = state.get_uid();
+	let conn = open_lib_conn(&uid);
 	get_all_artists(&conn).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-fn get_artist(uid: String) -> Result<Option<Artist>, String> {
-	let conn = open_conn();
+fn get_artist(state: State<AppState>, uid: String) -> Result<Option<Artist>, String> {
+	let profile_uid = state.get_uid();
+	let conn = open_lib_conn(&profile_uid);
 	get_artist_by_uid(&conn, &uid).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-fn get_artist_profile_art(uid: String) -> Result<Option<Vec<u8>>, String> {
-	let conn = open_conn();
+fn get_artist_profile_art(
+	state: State<AppState>,
+	uid: String,
+) -> Result<Option<Vec<u8>>, String> {
+	let profile_uid = state.get_uid();
+	let conn = open_lib_conn(&profile_uid);
 	db::get_artist_profile_art_by_uid(&conn, &uid).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-fn get_artist_banner_art(uid: String) -> Result<Option<Vec<u8>>, String> {
-	let conn = open_conn();
+fn get_artist_banner_art(
+	state: State<AppState>,
+	uid: String,
+) -> Result<Option<Vec<u8>>, String> {
+	let profile_uid = state.get_uid();
+	let conn = open_lib_conn(&profile_uid);
 	db::get_artist_banner_art_by_uid(&conn, &uid).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-fn create_artist_entry(artist: Artist) -> Result<(), String> {
-	let conn = open_conn();
+fn create_artist_entry(state: State<AppState>, artist: Artist) -> Result<(), String> {
+	let uid = state.get_uid();
+	let conn = open_lib_conn(&uid);
 	create_artist(&conn, &artist).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-fn update_artist_entry(uid: String, update: ArtistUpdate) -> Result<(), String> {
-	let conn = open_conn();
+fn update_artist_entry(
+	state: State<AppState>,
+	uid: String,
+	update: ArtistUpdate,
+) -> Result<(), String> {
+	let profile_uid = state.get_uid();
+	let conn = open_lib_conn(&profile_uid);
 	update_artist_by_uid(&conn, &uid, &update).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-fn delete_artist_entry(uid: String) -> Result<(), String> {
-	let conn = open_conn();
+fn delete_artist_entry(state: State<AppState>, uid: String) -> Result<(), String> {
+	let profile_uid = state.get_uid();
+	let conn = open_lib_conn(&profile_uid);
 	delete_artist_by_uid(&conn, &uid).map_err(|e| e.to_string())
 }
 
@@ -283,38 +483,51 @@ fn delete_artist_entry(uid: String) -> Result<(), String> {
 // ─────────────────────────────────────────────
 
 #[tauri::command]
-fn get_playlists() -> Result<Vec<Playlist>, String> {
-	let conn = open_conn();
+fn get_playlists(state: State<AppState>) -> Result<Vec<Playlist>, String> {
+	let uid = state.get_uid();
+	let conn = open_lib_conn(&uid);
 	get_all_playlists(&conn).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-fn get_playlist(uid: String) -> Result<Option<Playlist>, String> {
-	let conn = open_conn();
+fn get_playlist(state: State<AppState>, uid: String) -> Result<Option<Playlist>, String> {
+	let profile_uid = state.get_uid();
+	let conn = open_lib_conn(&profile_uid);
 	get_playlist_by_uid(&conn, &uid).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-fn get_playlist_artwork(uid: String) -> Result<Option<Vec<u8>>, String> {
-	let conn = open_conn();
+fn get_playlist_artwork(
+	state: State<AppState>,
+	uid: String,
+) -> Result<Option<Vec<u8>>, String> {
+	let profile_uid = state.get_uid();
+	let conn = open_lib_conn(&profile_uid);
 	db::get_playlist_artwork_by_uid(&conn, &uid).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-fn create_playlist_entry(playlist: Playlist) -> Result<(), String> {
-	let conn = open_conn();
+fn create_playlist_entry(state: State<AppState>, playlist: Playlist) -> Result<(), String> {
+	let uid = state.get_uid();
+	let conn = open_lib_conn(&uid);
 	create_playlist(&conn, &playlist).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-fn update_playlist_entry(uid: String, update: PlaylistUpdate) -> Result<(), String> {
-	let conn = open_conn();
+fn update_playlist_entry(
+	state: State<AppState>,
+	uid: String,
+	update: PlaylistUpdate,
+) -> Result<(), String> {
+	let profile_uid = state.get_uid();
+	let conn = open_lib_conn(&profile_uid);
 	update_playlist_by_uid(&conn, &uid, &update).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-fn delete_playlist_entry(uid: String) -> Result<(), String> {
-	let conn = open_conn();
+fn delete_playlist_entry(state: State<AppState>, uid: String) -> Result<(), String> {
+	let profile_uid = state.get_uid();
+	let conn = open_lib_conn(&profile_uid);
 	delete_playlist_by_uid(&conn, &uid).map_err(|e| e.to_string())
 }
 
@@ -323,8 +536,9 @@ fn delete_playlist_entry(uid: String) -> Result<(), String> {
 // ─────────────────────────────────────────────
 
 #[tauri::command]
-fn get_track_lyrics(uid: String) -> Result<Option<Lyrics>, String> {
-	let conn = open_conn();
+fn get_track_lyrics(state: State<AppState>, uid: String) -> Result<Option<Lyrics>, String> {
+	let profile_uid = state.get_uid();
+	let conn = open_lib_conn(&profile_uid);
 	let track = db::get_track_by_uid(&conn, &uid)
 		.map_err(|e| e.to_string())?
 		.ok_or("Track not found")?;
@@ -333,11 +547,17 @@ fn get_track_lyrics(uid: String) -> Result<Option<Lyrics>, String> {
 }
 
 #[tauri::command]
-async fn fetch_track_lyrics(app: AppHandle, uid: String) -> Result<(), String> {
+async fn fetch_track_lyrics(
+	app: AppHandle,
+	state: State<'_, AppState>,
+	uid: String,
+) -> Result<(), String> {
 	use enrichment::lyrics::fetch_lyrics;
 
+	let profile_uid = state.get_uid();
+
 	let (track_id, title, artist, album, duration_secs) = {
-		let conn = open_conn();
+		let conn = open_lib_conn(&profile_uid);
 		let track = db::get_track_by_uid(&conn, &uid)
 			.map_err(|e| e.to_string())?
 			.ok_or("Track not found")?;
@@ -363,10 +583,11 @@ async fn fetch_track_lyrics(app: AppHandle, uid: String) -> Result<(), String> {
 	let artist = artist.ok_or("Track has no artist")?;
 
 	let client = enrichment::make_client()?;
-	let result = fetch_lyrics(&client, &title, &artist, album.as_deref(), duration_secs).await;
+	let result =
+		fetch_lyrics(&client, &title, &artist, album.as_deref(), duration_secs).await;
 
 	if let Some(lyrics) = result {
-		let conn = open_conn();
+		let conn = open_lib_conn(&profile_uid);
 		upsert_lyrics(
 			&conn,
 			&Lyrics {
@@ -386,8 +607,9 @@ async fn fetch_track_lyrics(app: AppHandle, uid: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-fn delete_track_lyrics(uid: String) -> Result<(), String> {
-	let conn = open_conn();
+fn delete_track_lyrics(state: State<AppState>, uid: String) -> Result<(), String> {
+	let profile_uid = state.get_uid();
+	let conn = open_lib_conn(&profile_uid);
 	let track = db::get_track_by_uid(&conn, &uid)
 		.map_err(|e| e.to_string())?
 		.ok_or("Track not found")?;
@@ -400,14 +622,16 @@ fn delete_track_lyrics(uid: String) -> Result<(), String> {
 // ─────────────────────────────────────────────
 
 #[tauri::command]
-fn get_settings() -> Result<Vec<db::Setting>, String> {
-	let conn = open_conn();
+fn get_settings(state: State<AppState>) -> Result<Vec<db::Setting>, String> {
+	let uid = state.get_uid();
+	let conn = open_settings_conn(&uid);
 	db::get_all_settings(&conn).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-fn save_setting(key: String, value: String) -> Result<(), String> {
-	let conn = open_conn();
+fn save_setting(state: State<AppState>, key: String, value: String) -> Result<(), String> {
+	let uid = state.get_uid();
+	let conn = open_settings_conn(&uid);
 	db::set_setting(&conn, &key, &value).map_err(|e| e.to_string())
 }
 
@@ -440,15 +664,22 @@ fn load_enrich_settings(conn: &Connection) -> enrichment::EnrichSettings {
 }
 
 #[tauri::command]
-async fn enrich_track(app: AppHandle, uid: String) -> Result<(), String> {
+async fn enrich_track(
+	app: AppHandle,
+	state: State<'_, AppState>,
+	uid: String,
+) -> Result<(), String> {
+	let profile_uid = state.get_uid();
+
 	let (track_input, numeric_id, settings) = {
-		let conn = open_conn();
-		let track = db::get_track_by_uid(&conn, &uid)
+		let lib_conn = open_lib_conn(&profile_uid);
+		let settings_conn = open_settings_conn(&profile_uid);
+		let track = db::get_track_by_uid(&lib_conn, &uid)
 			.map_err(|e| e.to_string())?
 			.ok_or("Track not found")?;
 		let numeric_id = track.id.ok_or("Track has no id")?;
-		let artwork = db::get_track_artwork(&conn, numeric_id).ok().flatten();
-		let settings = load_enrich_settings(&conn);
+		let artwork = db::get_track_artwork(&lib_conn, numeric_id).ok().flatten();
+		let settings = load_enrich_settings(&settings_conn);
 		let input = enrichment::TrackInput {
 			id: numeric_id,
 			title: track.title,
@@ -465,10 +696,11 @@ async fn enrich_track(app: AppHandle, uid: String) -> Result<(), String> {
 	};
 
 	let client = enrichment::make_client()?;
-	let result = enrichment::enrich_track_async(&client, &track_input, &settings).await?;
+	let result =
+		enrichment::enrich_track_async(&client, &track_input, &settings).await?;
 
 	{
-		let conn = open_conn();
+		let conn = open_lib_conn(&profile_uid);
 		let update = db::MetadataUpdate {
 			title: result.title,
 			artists: result.artists,
@@ -493,16 +725,19 @@ async fn enrich_track(app: AppHandle, uid: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-async fn enrich_all(app: AppHandle) -> Result<(), String> {
+async fn enrich_all(app: AppHandle, state: State<'_, AppState>) -> Result<(), String> {
+	let profile_uid = state.get_uid();
+
 	let (track_inputs, settings) = {
-		let conn = open_conn();
-		let tracks = db::get_all_tracks(&conn).map_err(|e| e.to_string())?;
-		let settings = load_enrich_settings(&conn);
+		let lib_conn = open_lib_conn(&profile_uid);
+		let settings_conn = open_settings_conn(&profile_uid);
+		let tracks = get_all_tracks(&lib_conn).map_err(|e| e.to_string())?;
+		let settings = load_enrich_settings(&settings_conn);
 		let inputs: Vec<enrichment::TrackInput> = tracks
 			.into_iter()
 			.filter_map(|t| {
 				let id = t.id?;
-				let artwork = db::get_track_artwork(&conn, id).ok().flatten();
+				let artwork = db::get_track_artwork(&lib_conn, id).ok().flatten();
 				Some(enrichment::TrackInput {
 					id,
 					title: t.title,
@@ -536,7 +771,7 @@ async fn enrich_all(app: AppHandle) -> Result<(), String> {
 		let id = track_input.id;
 		match enrichment::enrich_track_async(&client, track_input, &settings).await {
 			Ok(result) => {
-				let conn = open_conn();
+				let conn = open_lib_conn(&profile_uid);
 				let update = db::MetadataUpdate {
 					title: result.title,
 					artists: result.artists,
@@ -582,25 +817,52 @@ async fn enrich_all(app: AppHandle) -> Result<(), String> {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-	let conn = open_conn();
-	init_db(&conn).expect("Failed to initialize database");
+	let registry = read_registry();
+	let initial_uid = registry.active.clone();
+
+	if !initial_uid.is_empty() {
+		let settings_conn = Connection::open(get_settings_db_path(&initial_uid))
+			.expect("Failed to open settings db");
+		init_settings_db(&settings_conn).expect("Failed to init settings db");
+
+		let lib_conn = Connection::open(get_lib_db_path(&initial_uid))
+			.expect("Failed to open lib db");
+		init_lib_db(&lib_conn).expect("Failed to init lib db");
+	}
+
+	let app_state = AppState::new(initial_uid.clone());
 
 	tauri::Builder::default()
+		.manage(app_state)
 		.plugin(tauri_plugin_media::init())
 		.plugin(tauri_plugin_log::Builder::new().build())
 		.plugin(tauri_plugin_dialog::init())
+		.plugin(tauri_plugin_os::init())
 		.setup(|app| {
 			let handle = app.handle().clone();
-			let conn = open_conn();
-			let paths = db::get_library_paths(&conn)
-				.unwrap_or_default()
-				.into_iter()
-				.map(|p| p.path)
-				.collect();
-			watcher::start_watcher(handle, paths);
+			let uid = app.state::<AppState>().get_uid();
+
+			if !uid.is_empty() {
+				let settings_conn = open_settings_conn(&uid);
+				let paths = get_library_paths(&settings_conn)
+					.unwrap_or_default()
+					.into_iter()
+					.map(|p| p.path)
+					.collect();
+				watcher::start_watcher(handle, uid, paths);
+			}
+
 			Ok(())
 		})
 		.invoke_handler(tauri::generate_handler![
+			needs_profile_setup,
+			get_profiles,
+			get_active_profile,
+			get_profile_avatar,
+			create_profile_cmd,
+			update_profile_cmd,
+			delete_profile_cmd,
+			switch_profile,
 			add_path,
 			remove_path,
 			get_paths,
