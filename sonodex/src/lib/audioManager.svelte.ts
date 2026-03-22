@@ -3,11 +3,12 @@ import { flushSync } from "svelte";
 import { library } from "$lib/library.svelte";
 import { Queue } from "$lib/queue.svelte";
 import type { Track, AudioCatagories } from "$lib/types";
+import { on } from "svelte/events";
 
 let audio: HTMLAudioElement | null = null;
 
 const trackQueue = new Queue<Track>();
-const playedTrackQueue = new Queue<Track>();
+export const playedTracks: Track[] = [];
 
 export const currentlyPlaying = $state({
 	uid: "" as string,
@@ -17,6 +18,8 @@ export const currentlyPlaying = $state({
 export const player = $state({
 	track: null as Track | null,
 	isPlaying: false,
+	loopType: 0,
+	shuffleType: 0,
 	currentTime: 0,
 	duration: 0,
 	volume: 1,
@@ -30,16 +33,7 @@ function bindEvents(el: HTMLAudioElement) {
 		player.duration = el.duration;
 	});
 	el.addEventListener("ended", () => {
-		if (trackQueue.size() > 0) {
-			let nextTrack = trackQueue.dequeue();
-			if (nextTrack) {
-				playedTrackQueue.enqueue(currentlyPlaying.track!);
-				playTrackByObject(nextTrack);
-			}
-		} else {
-			player.isPlaying = false;
-			player.currentTime = 0;
-		}
+		onTrackEnd();
 	});
 	el.addEventListener("play", () => {
 		player.isPlaying = true;
@@ -94,13 +88,18 @@ export function getQueuedTracks(): Track[] {
 	return trackQueue.getQueue();
 }
 
-export function getPlayedTracks(): Track[] {
-	return playedTrackQueue.getQueue();
-}
 
-export function queueTracksByObject(tracks: Track[], play: boolean = false) {
+export function queueTracksByObject(tracks: Track[], play: boolean = false, shuffle: boolean = false) {
 	if (play) {
 		clearQueue();
+	}
+
+	if (player.shuffleType === 1) {
+		shuffle = true;
+	}
+
+	if (shuffle) {
+		tracks = tracks.sort(() => Math.random() - 0.5);
 	}
 
 	flushSync(() => {
@@ -115,15 +114,30 @@ export function queueTracksByObject(tracks: Track[], play: boolean = false) {
 	}
 }
 
-export function queueTracksByUid(uids: string[], play: boolean = false) {
+export function queueTracksByUid(uids: string[], play: boolean = false, shuffle: boolean = false) {
 	if (play) {
 		clearQueue();
 	}
 
+	if (player.shuffleType === 1) {
+		shuffle = true;
+	}
+
+	let tracks: Track[] = [];
 	flushSync(() => {
 		uids.forEach((uid) => {
 			let track = library.tracks.find((t) => t.uid === uid);
-			if (track) trackQueue.enqueue(track);
+			if (track) tracks.push(track);
+		});
+	});
+
+	if (shuffle) {
+		tracks = tracks.sort(() => Math.random() - 0.5);
+	}
+
+	flushSync(() => {
+		tracks.forEach((t) => {
+			trackQueue.enqueue(t);
 		});
 	});
 
@@ -133,9 +147,13 @@ export function queueTracksByUid(uids: string[], play: boolean = false) {
 	}
 }
 
-export function queueTracksFromUid(uid: string, type: AudioCatagories, play: boolean = false) {
+export function queueTracksFromUid(uid: string, type: AudioCatagories, play: boolean = false, shuffle: boolean = false) {
 	if (play) {
 		clearQueue();
+	}
+
+	if (player.shuffleType === 1) {
+		shuffle = true;
 	}
 
 	if (type === "album") {
@@ -165,7 +183,7 @@ export function queueTracksFromUid(uid: string, type: AudioCatagories, play: boo
 }
 
 export function togglePlay() {
-	const el = audio;
+	let el = audio;
 	if (!el) return;
 	if (player.isPlaying) {
 		el.pause();
@@ -186,13 +204,13 @@ export function setVolume(vol: number) {
 }
 
 export function skipBack() {
-	const el = audio;
+	let el = audio;
 	if (!el) return;
 
 	if (el.currentTime < 2) {
-		const prevTrack = playedTrackQueue.dequeue();
+		let prevTrack = playedTracks[playedTracks.length - 1];
 		if (!prevTrack) { el.currentTime = 0; return; }
-		if (currentlyPlaying.track) playedTrackQueue.enqueue(currentlyPlaying.track);
+		if (currentlyPlaying.track) playedTracks.push(currentlyPlaying.track);
 		playTrackByObject(prevTrack);
 	} else {
 		el.currentTime = 0;
@@ -204,6 +222,38 @@ export function skipNext() {
 
 	const nextTrack = trackQueue.dequeue();
 	if (!nextTrack) return;
-	if (currentlyPlaying.track) playedTrackQueue.enqueue(currentlyPlaying.track);
+	if (currentlyPlaying.track) playedTracks.push(currentlyPlaying.track);
 	playTrackByObject(nextTrack);
+}
+export function toggleLoop() {
+	player.loopType = (player.loopType + 1) % 3;
+}
+
+export function toggleShuffle() {
+	player.shuffleType = (player.shuffleType + 1) % 2;
+}
+
+function onTrackEnd() {
+	if (player.loopType === 1) {
+		player.isPlaying = false;
+		player.currentTime = 0;
+		togglePlay();
+		return;
+	}
+
+	if (trackQueue.size() > 0) {
+		let nextTrack = trackQueue.dequeue();
+		if (nextTrack) {
+			playedTracks.push(currentlyPlaying.track!);
+			playTrackByObject(nextTrack);
+		}
+		return;
+	}
+	
+	if (player.loopType === 2) {
+		// returnt to start of queue
+	}
+
+	player.isPlaying = false;
+	player.currentTime = 0;
 }

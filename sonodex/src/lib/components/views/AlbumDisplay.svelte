@@ -59,7 +59,7 @@
 
 		<div class="flex gap-2">
 			<Button variant="default" onclick={() => queueTracksByObject(tracks, true)}>Play All</Button>
-			<Button variant="outline">Shuffle</Button>
+			<Button variant="outline" onclick={() => queueTracksByObject(tracks, true, true)}>Shuffle</Button>
 			<Button variant="ghost" onclick={() => openEditModal({ type: "album", uid: album!.uid })}>...</Button>
 		</div>
 

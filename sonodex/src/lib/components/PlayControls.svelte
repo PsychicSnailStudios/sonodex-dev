@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { Button } from "$lib/components/ui/button";
 	import { Slider } from "$lib/components/ui/slider/index.js";
-	import { Play, Pause, SkipBack, SkipForward, Shuffle, Repeat2 } from "lucide-svelte";
-	import { player, togglePlay, seek, skipBack, skipNext } from "$lib/audioManager.svelte";
+	import { CirclePlay, CirclePause, SkipBack, SkipForward, Shuffle, Repeat, Repeat1, Volume, Volume2, VolumeX, Volume1, VolumeOff } from "lucide-svelte";
+	import { player, togglePlay, seek, skipBack, skipNext, toggleLoop, toggleShuffle } from "$lib/audioManager.svelte";
 
 
 	function formatTime(seconds: number): string {
@@ -39,24 +39,36 @@
 <div class="app-playbar bg-muted grid p-2 gap-1 rounded-md">
 
 	<div class="flex justify-center items-center gap-2">
-		<Button variant="ghost" size="icon">
-			<Shuffle />
+		<Button variant="ghost" size="icon" onclick={toggleShuffle}>
+			{#if player.shuffleType === 0}
+				<Shuffle class="text-muted-foreground" />
+			{:else if player.shuffleType === 1}
+				<Shuffle />
+			{:else}
+				<Shuffle />
+			{/if}
 		</Button>
 		<Button variant="ghost" size="icon" onclick={skipBack}>
 			<SkipBack />
 		</Button>
-		<Button variant="ghost" size="icon" onclick={togglePlay}>
+		<Button variant="ghost" size="lg" onclick={togglePlay}>
 			{#if player.isPlaying}
-				<Pause />
+				<CirclePause size={32} />
 			{:else}
-				<Play />
+				<CirclePlay size={32} />
 			{/if}
 		</Button>
 		<Button variant="ghost" size="icon" onclick={skipNext}>
 			<SkipForward />
 		</Button>
-		<Button variant="ghost" size="icon">
-			<Repeat2 />
+		<Button variant="ghost" size="icon" onclick={toggleLoop}>
+			{#if player.loopType === 0}
+				<Repeat class="text-muted-foreground" />
+			{:else if player.loopType === 1}
+				<Repeat1 />
+			{:else}
+				<Repeat />
+			{/if}
 		</Button>
 	</div>
 

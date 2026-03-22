@@ -2,7 +2,7 @@
 	import { currentlyPlaying } from "$lib/audioManager.svelte";
 	import { setSelection } from "$lib/session.svelte";
 	import { formatDuration, formatRating, parseAlbum, parseArtists } from "$lib/helpers";
-	import { clearQueue, getQueuedTracks, player, getPlayedTracks } from "$lib/audioManager.svelte";
+	import { clearQueue, getQueuedTracks, player, playedTracks } from "$lib/audioManager.svelte";
 	import { getArtistUidFromName } from "$lib/library.svelte";
 
 	import * as Tabs from "$lib/components/ui/tabs/index.js";
@@ -73,7 +73,7 @@
 			<Tabs.Content value="recent">
 				<ScrollArea class="min-h-0 min-w-0 h-[200px]">
 					<div>
-						{#each getPlayedTracks() as track}
+						{#each playedTracks as track}
 							<div class="flex gap-2 p-2">
 								<ArtworkDisplay uid={track.uid} size={30} type="track" />
 								<div class="min-w-0 grid">
