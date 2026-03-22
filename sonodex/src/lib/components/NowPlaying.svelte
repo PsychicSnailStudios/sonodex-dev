@@ -2,7 +2,7 @@
 	import { currentlyPlaying } from "$lib/audioManager.svelte";
 	import { setSelection } from "$lib/session.svelte";
 	import { formatDuration, formatRating, parseAlbum, parseArtists } from "$lib/helpers";
-	import { clearQueue, getQueuedTracks, player, playedTracks } from "$lib/audioManager.svelte";
+	import { clearQueue, getQueuedTracks, player, getPlayedTracks } from "$lib/audioManager.svelte";
 	import { getArtistUidFromName } from "$lib/library.svelte";
 
 	import * as Tabs from "$lib/components/ui/tabs/index.js";
@@ -13,8 +13,12 @@
 
 	import ArtworkDisplay from "$lib/components/app/ArtworkDisplay.svelte";
 	import TrackTable from "$lib/components/app/TrackTable.svelte";
+    import { get } from "svelte/store";
 
 	let showQueue = $state(false);
+
+	let upcomingTracks = $derived(getQueuedTracks());
+	let recentTracks = $derived(getPlayedTracks());
 
 	function formatTotalRemaining(): string {
 		const queueMs = getQueuedTracks().reduce((acc, t) => acc + (t.duration_ms ?? 0), 0);
@@ -57,7 +61,7 @@
 
 				<ScrollArea class="min-h-0 min-w-0 h-[290px]">
 					<div class="flex flex-col gap-0.5">
-						{#each getQueuedTracks() as track}
+						{#each upcomingTracks as track}
 							<div class="flex gap-2 p-2">
 								<ArtworkDisplay uid={track.uid} size={30} type="track" />
 								<div class="min-w-0 grid">
@@ -73,7 +77,7 @@
 			<Tabs.Content value="recent">
 				<ScrollArea class="min-h-0 min-w-0 h-[200px]">
 					<div>
-						{#each playedTracks as track}
+						{#each recentTracks as track}
 							<div class="flex gap-2 p-2">
 								<ArtworkDisplay uid={track.uid} size={30} type="track" />
 								<div class="min-w-0 grid">

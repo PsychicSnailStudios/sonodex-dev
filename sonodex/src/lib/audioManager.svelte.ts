@@ -1,14 +1,15 @@
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { flushSync } from "svelte";
 import { library } from "$lib/library.svelte";
-import { Queue } from "$lib/queue.svelte";
 import type { Track, AudioCatagories } from "$lib/types";
-import { on } from "svelte/events";
 
 let audio: HTMLAudioElement | null = null;
 
-const trackQueue = new Queue<Track>();
-export const playedTracks: Track[] = [];
+let queuedTracks = $state<Track[]>([]);
+let queueIndex = $state(-1);
+let lastQueuedSet: Track[] = [];
+
+let playedTracks = $state<Track[]>([]);
 
 export const currentlyPlaying = $state({
 	uid: "" as string,
@@ -43,14 +44,11 @@ function bindEvents(el: HTMLAudioElement) {
 	});
 }
 
-export function playTrackByUid(uid: string) {
+function startAudio(track: Track) {
 	if (audio) {
 		audio.pause();
 		audio = null;
 	}
-
-	const track = library.tracks.find((t) => t.uid === uid);
-	if (!track) return;
 
 	player.track = track;
 	currentlyPlaying.uid = track.uid;
@@ -61,141 +59,115 @@ export function playTrackByUid(uid: string) {
 	bindEvents(el);
 	audio = el;
 	el.play();
+}
+
+function playTrack(track: Track) {
+	if (currentlyPlaying.track) {
+		playedTracks.push(currentlyPlaying.track);
+	}
+	startAudio(track);
+}
+
+export function playTrackByUid(uid: string) {
+	const track = library.tracks.find((t) => t.uid === uid);
+	if (!track) return;
+	playTrack(track);
 }
 
 export function playTrackByObject(track: Track) {
-	if (audio) {
-		audio.pause();
-		audio = null;
-	}
-
-	player.track = track;
-	currentlyPlaying.uid = track.uid;
-	currentlyPlaying.track = track;
-
-	const el = new Audio(convertFileSrc(track.path));
-	el.volume = player.volume;
-	bindEvents(el);
-	audio = el;
-	el.play();
+	playTrack(track);
 }
 
 export function clearQueue() {
-	trackQueue.clear();
+	queuedTracks.splice(0, queuedTracks.length);
+	queueIndex = -1;
+	lastQueuedSet = [];
 }
 
 export function getQueuedTracks(): Track[] {
-	return trackQueue.getQueue();
+	return queuedTracks.slice(queueIndex + 1);
 }
 
+export function getPlayedTracks(): Track[] {
+	return playedTracks;
+}
 
 export function queueTracksByObject(tracks: Track[], play: boolean = false, shuffle: boolean = false) {
-	if (play) {
-		clearQueue();
-	}
+	if (play) clearQueue();
 
-	if (player.shuffleType === 1) {
-		shuffle = true;
-	}
+	const ordered = (player.shuffleType === 1 || shuffle)
+		? [...tracks].sort(() => Math.random() - 0.5)
+		: [...tracks];
 
-	if (shuffle) {
-		tracks = tracks.sort(() => Math.random() - 0.5);
-	}
+	lastQueuedSet = ordered;
+	ordered.forEach(t => queuedTracks.push(t));
 
-	flushSync(() => {
-		tracks.forEach((t) => {
-			trackQueue.enqueue(t);
-		});
-	});
-
-	if (play) {
-		const first = trackQueue.dequeue();
-		if (first) playTrackByObject(first);
-	}
+	if (play) startPlayingQueue();
 }
 
 export function queueTracksByUid(uids: string[], play: boolean = false, shuffle: boolean = false) {
-	if (play) {
-		clearQueue();
-	}
-
-	if (player.shuffleType === 1) {
-		shuffle = true;
-	}
+	if (play) clearQueue();
 
 	let tracks: Track[] = [];
 	flushSync(() => {
 		uids.forEach((uid) => {
-			let track = library.tracks.find((t) => t.uid === uid);
+			const track = library.tracks.find((t) => t.uid === uid);
 			if (track) tracks.push(track);
 		});
 	});
 
-	if (shuffle) {
-		tracks = tracks.sort(() => Math.random() - 0.5);
-	}
+	const ordered = (player.shuffleType === 1 || shuffle)
+		? tracks.sort(() => Math.random() - 0.5)
+		: tracks;
 
-	flushSync(() => {
-		tracks.forEach((t) => {
-			trackQueue.enqueue(t);
-		});
-	});
+	lastQueuedSet = ordered;
+	ordered.forEach(t => queuedTracks.push(t));
 
-	if (play) {
-		const first = trackQueue.dequeue();
-		if (first) playTrackByObject(first);
-	}
+	if (play) startPlayingQueue();
 }
 
 export function queueTracksFromUid(uid: string, type: AudioCatagories, play: boolean = false, shuffle: boolean = false) {
-	if (play) {
-		clearQueue();
-	}
+	if (play) clearQueue();
 
-	if (player.shuffleType === 1) {
-		shuffle = true;
-	}
+	let tracks: Track[] = [];
 
 	if (type === "album") {
 		const album = library.albums.find((a) => a.uid === uid);
 		if (!album || !album.tracks) return;
-
 		const trackRefs: { uid: string; name: string }[] = JSON.parse(album.tracks);
 		trackRefs.forEach((ref) => {
 			const track = library.tracks.find((t) => t.uid === ref.uid);
-			if (track) trackQueue.enqueue(track);
+			if (track) tracks.push(track);
 		});
 	} else if (type === "playlist") {
 		const playlist = library.playlists.find((p) => p.uid === uid);
 		if (!playlist || !playlist.tracks) return;
-
 		const trackRefs: { uid: string; name: string }[] = JSON.parse(playlist.tracks);
 		trackRefs.forEach((ref) => {
 			const track = library.tracks.find((t) => t.uid === ref.uid);
-			if (track) trackQueue.enqueue(track);
+			if (track) tracks.push(track);
 		});
 	}
 
-	if (play) {
-		const first = trackQueue.dequeue();
-		if (first) playTrackByObject(first);
-	}
+	const ordered = (player.shuffleType === 1 || shuffle)
+		? tracks.sort(() => Math.random() - 0.5)
+		: tracks;
+
+	lastQueuedSet = ordered;
+	ordered.forEach(t => queuedTracks.push(t));
+
+	if (play) startPlayingQueue();
 }
 
-export function togglePlay() {
-	let el = audio;
-	if (!el) return;
-	if (player.isPlaying) {
-		el.pause();
-	} else {
-		el.play();
-	}
+function startPlayingQueue() {
+	if (queuedTracks.length === 0) return;
+	queueIndex = 0;
+	playTrack(queuedTracks[0]);
 }
 
 export function seek(seconds: number) {
-	const el = audio;
-	if (!el || !isFinite(seconds)) return;
-	el.currentTime = seconds;
+	if (!audio || !isFinite(seconds)) return;
+	audio.currentTime = seconds;
 }
 
 export function setVolume(vol: number) {
@@ -204,27 +176,33 @@ export function setVolume(vol: number) {
 }
 
 export function skipBack() {
-	let el = audio;
+	const el = audio;
 	if (!el) return;
 
-	if (el.currentTime < 2) {
-		let prevTrack = playedTracks[playedTracks.length - 1];
-		if (!prevTrack) { el.currentTime = 0; return; }
-		if (currentlyPlaying.track) playedTracks.push(currentlyPlaying.track);
-		playTrackByObject(prevTrack);
-	} else {
+	if (el.currentTime >= 2) {
 		el.currentTime = 0;
+		return;
 	}
+
+	const prev = playedTracks.pop();
+	if (!prev) {
+		el.currentTime = 0;
+		return;
+	}
+
+	startAudio(prev);
+
+	if (queueIndex > 0) queueIndex--;
 }
 
 export function skipNext() {
-	if (trackQueue.size() === 0) return;
+	const nextIndex = queueIndex + 1;
+	if (nextIndex >= queuedTracks.length) return;
 
-	const nextTrack = trackQueue.dequeue();
-	if (!nextTrack) return;
-	if (currentlyPlaying.track) playedTracks.push(currentlyPlaying.track);
-	playTrackByObject(nextTrack);
+	queueIndex = nextIndex;
+	playTrack(queuedTracks[queueIndex]);
 }
+
 export function toggleLoop() {
 	player.loopType = (player.loopType + 1) % 3;
 }
@@ -233,25 +211,42 @@ export function toggleShuffle() {
 	player.shuffleType = (player.shuffleType + 1) % 2;
 }
 
+export function togglePlay() {
+	if (!audio) return;
+	if (player.isPlaying) {
+		audio.pause();
+	} else {
+		audio.play();
+	}
+}
+
 function onTrackEnd() {
 	if (player.loopType === 1) {
-		player.isPlaying = false;
-		player.currentTime = 0;
-		togglePlay();
-		return;
-	}
-
-	if (trackQueue.size() > 0) {
-		let nextTrack = trackQueue.dequeue();
-		if (nextTrack) {
-			playedTracks.push(currentlyPlaying.track!);
-			playTrackByObject(nextTrack);
+		if (audio) {
+			audio.currentTime = 0;
+			audio.play();
 		}
 		return;
 	}
-	
-	if (player.loopType === 2) {
-		// returnt to start of queue
+
+	const nextIndex = queueIndex + 1;
+
+	if (nextIndex < queuedTracks.length) {
+		queueIndex = nextIndex;
+		playTrack(queuedTracks[queueIndex]);
+		return;
+	}
+
+	if (player.loopType === 2 && lastQueuedSet.length > 0) {
+		const requeued = (player.shuffleType === 1)
+			? [...lastQueuedSet].sort(() => Math.random() - 0.5)
+			: [...lastQueuedSet];
+
+		queuedTracks.splice(0, queuedTracks.length);
+		requeued.forEach(t => queuedTracks.push(t));
+		queueIndex = 0;
+		playTrack(queuedTracks[0]);
+		return;
 	}
 
 	player.isPlaying = false;
