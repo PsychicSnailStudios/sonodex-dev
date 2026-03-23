@@ -2,7 +2,8 @@
 	import { library } from "$lib/library.svelte";
 	import { setSelection } from "$lib/session.svelte";
 
-	import type { Track, Album, Artist } from '$lib/types';
+	import { createColumnState } from "$lib/columnConfig.svelte"
+	import ColumnToggle from "$lib/components/app/ColumnToggle.svelte"
 
 	import * as ToggleGroup from "$lib/components/ui/toggle-group/index.js";
 	import { ScrollArea } from "$lib/components/ui/scroll-area/index.js";
@@ -14,6 +15,8 @@
 
 	let activeTab = $state("album");
 	let search = $state("");
+
+	const cols = createColumnState("library")
 
 	const filteredTracks = $derived(
 		search.trim() === ""
@@ -110,7 +113,7 @@
 			</div>
 		{:else if activeTab === "track"}
 			<span>{library.tracks.length} tracks</span>
-			<TrackTable type="library" tracks={filteredTracks} />
+			<TrackTable tracks={filteredTracks} columns={cols} />
 		{/if}
 
 	</div>

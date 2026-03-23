@@ -9,10 +9,17 @@
 	import { queueTracksByObject } from "$lib/audioManager.svelte";
 	import { openEditModal } from "$lib/editModal.svelte";
 
+	import { Pencil } from "lucide-svelte";
+
+	import { createColumnState } from "$lib/columnConfig.svelte"
+	import ColumnToggle from "$lib/components/app/ColumnToggle.svelte"
+
 	import ArtworkDisplay from "$lib/components/app/ArtworkDisplay.svelte";
 	import TrackTable from "$lib/components/app/TrackTable.svelte";
 
 	import { formatDuration, totalDuration } from '$lib/helpers';
+
+	const cols = createColumnState("album");
 
 	let album: Album | null = $state(null);
 
@@ -60,10 +67,11 @@
 		<div class="flex gap-2">
 			<Button variant="default" onclick={() => queueTracksByObject(tracks, true)}>Play All</Button>
 			<Button variant="outline" onclick={() => queueTracksByObject(tracks, true, true)}>Shuffle</Button>
-			<Button variant="ghost" onclick={() => openEditModal({ type: "album", uid: album!.uid })}>...</Button>
+			<Button variant="ghost" onclick={() => openEditModal({ type: "album", uid: album!.uid })}><Pencil /></Button>
+			<ColumnToggle columns={cols} />
 		</div>
 
-		<TrackTable type="album" tracks={tracks} />
+		<TrackTable tracks={tracks} columns={cols} />
 	{:else}
 		<span class="text-muted-foreground text-sm">Loading...</span>
 	{/if}

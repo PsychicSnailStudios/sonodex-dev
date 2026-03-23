@@ -24,6 +24,7 @@ export const player = $state({
 	currentTime: 0,
 	duration: 0,
 	volume: 1,
+	muted: false,
 });
 
 function bindEvents(el: HTMLAudioElement) {
@@ -173,6 +174,10 @@ export function seek(seconds: number) {
 export function setVolume(vol: number) {
 	player.volume = vol;
 	if (audio) audio.volume = vol;
+}
+export function toggleMute() {
+	player.muted = !player.muted;
+	if (audio) audio.muted = player.muted;
 }
 
 export function skipBack() {
