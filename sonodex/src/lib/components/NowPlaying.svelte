@@ -13,7 +13,6 @@
 
 	import ArtworkDisplay from "$lib/components/app/ArtworkDisplay.svelte";
 	import TrackTable from "$lib/components/app/TrackTable.svelte";
-    import { get } from "svelte/store";
 
 	let showQueue = $state(false);
 
