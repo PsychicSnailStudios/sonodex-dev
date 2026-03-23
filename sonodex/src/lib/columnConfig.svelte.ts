@@ -61,6 +61,7 @@ const PRESETS: Record<string, Partial<Record<ColumnKey, boolean>>> = {
 	},
 	playlist: {
 		number: true,
+		title: true,
 		album: true,
 		duration: true,
 	},

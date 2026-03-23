@@ -72,14 +72,14 @@
 
 	</div>
 
-	<div class="min-h-0 flex-1 overflow-hidden">
+	<div class="min-h-0 h-full w-full flex-1 overflow-hidden">
 
 		{#if activeTab === "artist"}
 			<div class="flex flex-col h-full w-full overflow-hidden">
 				<span>{library.artists.length} artists</span>
-				<ScrollArea class="min-h-0 min-w-0">
+				<ScrollArea class="min-h-0 min-w-0 pr-4">
 
-					<div class="app-music-grid grid gap-2 p-3">
+					<div class="app-music-grid grid gap-2">
 
 						{#each filteredArtists as artist}
 
@@ -101,8 +101,8 @@
 		{:else if activeTab === "album"}
 			<div class="flex flex-col h-full w-full overflow-hidden">
 				<span>{library.albums.length} albums</span>
-				<ScrollArea class="min-h-0 min-w-0">
-					<div class="app-music-grid grid gap-2 p-3">
+				<ScrollArea class="min-h-0 min-w-0 pr-4">
+					<div class="app-music-grid grid gap-2">
 
 						{#each filteredAlbums as album}
 							<AudioCard title={album.title} subTitle={album.album_artist} artworkUid={album.uid} type="album" />
@@ -112,8 +112,12 @@
 				</ScrollArea>
 			</div>
 		{:else if activeTab === "track"}
-			<span>{library.tracks.length} tracks</span>
-			<TrackTable tracks={filteredTracks} columns={cols} />
+			<div class="flex flex-col h-full overflow-hidden">
+				<span>{library.tracks.length} tracks</span>
+				<ScrollArea class="h-full min-h-0 min-w-0 pr-4">
+					<TrackTable tracks={filteredTracks} columns={cols} />
+				</ScrollArea>
+			</div>
 		{/if}
 
 	</div>

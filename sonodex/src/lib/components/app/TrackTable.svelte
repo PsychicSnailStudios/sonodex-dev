@@ -8,6 +8,7 @@
 	import { playTrackByUid } from "$lib/audioManager.svelte"
 	import { getAlbumUidFromName, getArtistUidFromName } from "$lib/library.svelte"
 	import { formatDuration, formatRating, parseAlbum, parseArtists } from "$lib/helpers"
+    import { ScrollArea } from "$lib/components/ui/scroll-area/index.js";
 
 	let { tracks, columns } = $props<{ tracks: Track[]; columns: ColumnState }>()
 
@@ -28,7 +29,7 @@
 	})
 </script>
 
-<div class="flex flex-col h-full overflow-hidden">
+<div class="flex flex-col p-0">
 	<div
 		class="grid text-xs font-medium text-muted-foreground px-3 py-2 border-b"
 		style="grid-template-columns: {gridTemplate()};"
@@ -44,7 +45,7 @@
 		<span></span>
 	</div>
 
-	<div class="flex-1 overflow-y-auto">
+	<div class="">
 		{#each tracks as track (track.uid)}
 			<div
 				class="grid items-center px-3 border-b hover:bg-muted/50"

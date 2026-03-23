@@ -16,8 +16,10 @@
 
 	import ArtworkDisplay from "$lib/components/app/ArtworkDisplay.svelte";
 	import TrackTable from "$lib/components/app/TrackTable.svelte";
+	import { ScrollArea } from "$lib/components/ui/scroll-area/index.js";
 
 	import { formatDuration, totalDuration } from '$lib/helpers';
+    import AudioCard from "../app/AudioCard.svelte";
 
 	const cols = createColumnState("album");
 
@@ -27,6 +29,13 @@
 		if (!album) return [];
 		const albumTrackUids: string[] = JSON.parse(album.tracks ?? "[]").map((t: { uid: string }) => t.uid);
 		return library.tracks.filter(t => albumTrackUids.includes(t.uid));
+	});
+
+	let artistAlbums: Album[] = $derived.by(() => {
+		if (!album?.album_artist) return [];
+		return library.albums.filter(a =>
+			a.album_artist?.toLowerCase() === album?.album_artist?.toLowerCase()
+		);
 	});
 
 	$effect(() => {
@@ -41,6 +50,9 @@
 <div class="flex flex-col gap-4 p-4 border-2 h-full w-full overflow-hidden rounded-md">
 
 	{#if album}
+	<ScrollArea class="min-h-0 min-w-0 h-full">
+	<div class="flex flex-col gap-4 pb-4 pr-4">
+
 		<div class="flex gap-4 items-end">
 			<ArtworkDisplay uid={album.uid} size={160} type="album" />
 
@@ -72,6 +84,20 @@
 		</div>
 
 		<TrackTable tracks={tracks} columns={cols} />
+
+		<div class="flex flex-col gap-2 w-full pt-4">
+			<h4>More by {album.album_artist}</h4>
+			<ScrollArea orientation="horizontal" class="min-h-0 min-w-0">
+				<div class="grid gap-2 pb-4" style="grid-auto-columns: 150px; grid-auto-flow: column;">
+					{#each artistAlbums as album}
+						<AudioCard title={album.title} subTitle={album.album_artist} artworkUid={album.uid} type="album" />
+					{/each}
+				</div>
+			</ScrollArea>
+		</div>
+
+	</div>
+	</ScrollArea>
 	{:else}
 		<span class="text-muted-foreground text-sm">Loading...</span>
 	{/if}

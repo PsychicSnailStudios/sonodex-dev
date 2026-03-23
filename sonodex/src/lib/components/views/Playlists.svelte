@@ -42,8 +42,10 @@
 				artwork_path: null,
 			}
 		});
+		library.playlists = await invoke("get_playlists")
 		playlists = await invoke("get_playlists");
 		nameInput = "";
+
 		dialogOpen = false;
 	}
 </script>

@@ -11,6 +11,7 @@
 	import * as Tabs from "$lib/components/ui/tabs/index.js";
 	import { Button } from "$lib/components/ui/button/index.js";
 	import AudioCard from "../app/AudioCard.svelte";
+    import ScrollArea from "../ui/scroll-area/scroll-area.svelte";
 
 	let artist: Artist | null = $state(null);
 
@@ -76,10 +77,14 @@
 			</Tabs.Content>
 
 			<Tabs.Content value="discography" class="flex-1 overflow-y-auto">
-				<div class="grid gap-2 mt-2" style="grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));">
-					{#each artistAlbums as album}
-						<AudioCard title={album.title} subTitle={album.album_artist} artworkUid={album.uid} type="album" />
-					{/each}
+				<div class="flex flex-col gap-2 h-full w-full">
+					<ScrollArea class="min-h-0 min-w-0">
+						<div class="grid gap-2 mt-2 pr-4" style="grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));">
+							{#each artistAlbums as album}
+								<AudioCard title={album.title} subTitle={album.album_artist} artworkUid={album.uid} type="album" />
+							{/each}
+						</div>
+					</ScrollArea>
 				</div>
 			</Tabs.Content>
 
