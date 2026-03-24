@@ -15,9 +15,11 @@
 	import { ScrollArea } from "$lib/components/ui/scroll-area/index.js";
 	import { Input } from "$lib/components/ui/input/index.js";
 
-	import { parseArtists, totalDuration } from '$lib/helpers';
+	import { getArtworkColor, parseArtists, totalDuration } from '$lib/helpers';
     import Circle from "@lucide/svelte/icons/circle";
-    import { addTrackToPlaylist } from "$lib/playlistManager.svelt";
+    import { addTrackToPlaylist } from "$lib/playlistManager.svelte";
+    import { queueTracksByObject } from "$lib/audioManager.svelte";
+    import { invoke } from "@tauri-apps/api/core";
 
 	const cols = createColumnState("playlist");
 	const searchCols = createColumnState();
@@ -43,9 +45,27 @@
 					return title.includes(q) || artists.includes(q) || album_artist.includes(q) || albums.includes(q);
 			  })
 	);
+
+	let color = $state("rgb(30, 30, 30)")
+
+	$effect(() => {
+		const uid = selection.uid;
+		if (!uid) return;
+		invoke("get_playlist_artwork", { uid }).then((bytes) => {
+			if (bytes) {
+				getArtworkColor(bytes as number[], 0.3).then((c) => color = c);
+			} else {
+				const firstTrack = tracks[0];
+				if (!firstTrack) return;
+				invoke("get_track_artwork", { uid: firstTrack.uid }).then((trackBytes) => {
+					if (trackBytes) getArtworkColor(trackBytes as number[], 0.3).then((c) => color = c);
+				});
+			}
+		});
+	});
 </script>
 
-<div class="flex flex-col gap-2 p-4 border-2 h-full w-full overflow-hidden rounded-md">
+<div class="flex flex-col gap-2 p-4 border-2 h-full w-full overflow-hidden rounded-md" style="background: linear-gradient(180deg, {color} 0%, transparent 80%)">
 {#if playlist}
 	<ScrollArea class="min-h-0 min-w-0">	
 	<div class="flex flex-col gap-4 pb-4 pr-4">
@@ -65,8 +85,8 @@
 					{/if}
 				</div>
 				<div class="flex gap-2">
-					<Button variant="default">Play All</Button>
-					<Button variant="outline">Shuffle</Button>
+					<Button variant="default" onclick={() => queueTracksByObject(tracks, true)}>Play All</Button>
+					<Button variant="outline" onclick={() => queueTracksByObject(tracks, true, true)}>Shuffle</Button>
 					<Button variant="ghost" size="icon" onclick={() => openEditModal({ type: "playlist", uid: playlist!.uid })}><Pencil /></Button>
 					<ColumnToggle columns={cols} />
 				</div>

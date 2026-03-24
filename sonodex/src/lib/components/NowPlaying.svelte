@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { currentlyPlaying } from "$lib/audioManager.svelte";
 	import { setSelection } from "$lib/session.svelte";
-	import { formatDuration, formatRating, parseAlbum, parseArtists } from "$lib/helpers";
+	import { formatDuration, formatRating, getArtworkColor, parseAlbum, parseArtists } from "$lib/helpers";
 	import { clearQueue, getQueuedTracks, player, getPlayedTracks } from "$lib/audioManager.svelte";
 	import { getArtistUidFromName } from "$lib/library.svelte";
 
@@ -9,15 +9,28 @@
 	import { Button } from "$lib/components/ui/button";
 	import ScrollArea from "$lib/components/ui/scroll-area/scroll-area.svelte";
 
-	import { Rows4, BadgePlus } from "lucide-svelte";
+	import { Rows4, BadgePlus, Square } from "lucide-svelte";
 
 	import ArtworkDisplay from "$lib/components/app/ArtworkDisplay.svelte";
 	import TrackTable from "$lib/components/app/TrackTable.svelte";
+    import AddToPlaylist from "./app/TrackPlaylistEditButton.svelte";
+    import { invoke } from "@tauri-apps/api/core";
 
 	let showQueue = $state(false);
 
 	let upcomingTracks = $derived(getQueuedTracks());
 	let recentTracks = $derived(getPlayedTracks());
+
+	let color = $state("rgb(30, 30, 30)")
+
+	$effect(() => {
+		const track = player.track;
+		if (!track?.uid) return;
+
+		invoke("get_track_artwork", { uid: track.uid }).then((bytes) => {
+			if (bytes) getArtworkColor(bytes as number[], 0.3).then((c) => color = c);
+		});
+	});
 
 	function formatTotalRemaining(): string {
 		const queueMs = getQueuedTracks().reduce((acc, t) => acc + (t.duration_ms ?? 0), 0);
@@ -33,9 +46,9 @@
 	}
 </script>
 
-<div class="app-now-playing-wrapper flex flex-col gap-1">
+<div class="app-now-playing-wrapper flex flex-col gap-1 bg-muted rounded-md">
 	{#if showQueue}
-	<div class="app-queue bg-muted p-2 rounded-md h-[450px]">
+	<div class="app-queue p-2 rounded-md h-[450px]">
 		<Tabs.Root value="queue">
 			<Tabs.List>
 				<Tabs.Trigger value="queue">Queue</Tabs.Trigger>
@@ -97,7 +110,7 @@
 	</div>
 	{/if}
 
-	<div class="app-now-playing bg-muted grid gap-3 p-2 rounded-md items-center">
+	<div class="app-now-playing bg-muted grid gap-3 p-2 rounded-md items-center" style="background: linear-gradient(90deg, {color} 0%, transparent 75%)">
 		{#if currentlyPlaying.track !== null}
 			<ArtworkDisplay uid={currentlyPlaying.uid} type="track" size={64} />
 
@@ -108,11 +121,13 @@
 
 			<div class="flex flex-col">
 				<Button variant="ghost" size="icon" onclick={() => showQueue = !showQueue}>
-					<Rows4 />
+					{#if showQueue}
+						<Square />
+					{:else}
+						<Rows4 />
+					{/if}
 				</Button>
-				<Button variant="ghost" size="icon">
-					<BadgePlus />
-				</Button>
+				<AddToPlaylist track={currentlyPlaying.track!} />
 			</div>
 		{/if}
 	</div>

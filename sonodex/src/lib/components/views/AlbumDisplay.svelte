@@ -17,6 +17,7 @@
 	import ArtworkDisplay from "$lib/components/app/ArtworkDisplay.svelte";
 	import TrackTable from "$lib/components/app/TrackTable.svelte";
 	import { ScrollArea } from "$lib/components/ui/scroll-area/index.js";
+	import { getArtworkColor } from "$lib/helpers"
 
 	import { formatDuration, totalDuration } from '$lib/helpers';
     import AudioCard from "../app/AudioCard.svelte";
@@ -24,6 +25,7 @@
 	const cols = createColumnState("album");
 
 	let album: Album | null = $state(null);
+	let color = $state("rgb(30, 30, 30)")
 
 	let tracks: Track[] = $derived.by(() => {
 		if (!album) return [];
@@ -44,10 +46,14 @@
 		invoke("get_album", { uid }).then((a) => {
 			album = a as Album;
 		});
+
+		invoke("get_album_artwork", { uid }).then((bytes) => {
+			if (bytes) getArtworkColor(bytes as number[], 0.3).then((c) => color = c)
+		});
 	});
 </script>
 
-<div class="flex flex-col gap-4 p-4 border-2 h-full w-full overflow-hidden rounded-md">
+<div class="flex flex-col gap-4 p-4 border-2 h-full w-full overflow-hidden rounded-md" style="background: linear-gradient(180deg, {color} 0%, transparent 80%)">
 
 	{#if album}
 	<ScrollArea class="min-h-0 min-w-0 h-full">
