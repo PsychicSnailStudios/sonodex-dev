@@ -9,6 +9,7 @@
 	import { getAlbumUidFromName, getArtistUidFromName } from "$lib/library.svelte"
 	import { formatDuration, formatRating, parseAlbum, parseArtists } from "$lib/helpers"
     import { ScrollArea } from "$lib/components/ui/scroll-area/index.js";
+    import TrackTableEditButton from "$lib/components/app/TrackTableEditButton.svelte";
 
 	let { tracks, columns } = $props<{ tracks: Track[]; columns: ColumnState }>()
 
@@ -86,7 +87,7 @@
 				{#if v.label}
 					<span class="text-sm truncate">{track.label ?? "—"}</span>
 				{/if}
-				<Button variant="ghost" size="icon">⋯</Button>
+				<TrackTableEditButton track={track} />
 			</div>
 		{/each}
 	</div>

@@ -75,7 +75,7 @@
 	<div class="min-h-0 h-full w-full flex-1 overflow-hidden">
 
 		{#if activeTab === "artist"}
-			<div class="flex flex-col h-full w-full overflow-hidden">
+			<div class="flex flex-col h-full w-full overflow-hidden gap-3">
 				<span>{library.artists.length} artists</span>
 				<ScrollArea class="min-h-0 min-w-0 pr-4">
 
@@ -99,7 +99,7 @@
 				</ScrollArea>
 			</div>
 		{:else if activeTab === "album"}
-			<div class="flex flex-col h-full w-full overflow-hidden">
+			<div class="flex flex-col h-full w-full overflow-hidden gap-3">
 				<span>{library.albums.length} albums</span>
 				<ScrollArea class="min-h-0 min-w-0 pr-4">
 					<div class="app-music-grid grid gap-2">
@@ -112,8 +112,11 @@
 				</ScrollArea>
 			</div>
 		{:else if activeTab === "track"}
-			<div class="flex flex-col h-full overflow-hidden">
-				<span>{library.tracks.length} tracks</span>
+			<div class="flex flex-col h-full overflow-hidden gap-3">
+				<div class="flex justify-between items-center gap-2">
+					<span>{library.tracks.length} tracks</span>
+					<ColumnToggle columns={cols} />
+				</div>
 				<ScrollArea class="h-full min-h-0 min-w-0 pr-4">
 					<TrackTable tracks={filteredTracks} columns={cols} />
 				</ScrollArea>
