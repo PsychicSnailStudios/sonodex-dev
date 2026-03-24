@@ -93,6 +93,10 @@ export function getPlayedTracks(): Track[] {
 	return playedTracks;
 }
 
+export function addTrackToQueue(track: Track) {
+	queuedTracks.push(track);
+}
+
 export function queueTracksByObject(tracks: Track[], play: boolean = false, shuffle: boolean = false) {
 	if (play) clearQueue();
 
