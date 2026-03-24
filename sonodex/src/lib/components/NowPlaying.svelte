@@ -1,4 +1,5 @@
 <script lang="ts">
+   import { invoke } from "@tauri-apps/api/core";
 	import { currentlyPlaying } from "$lib/audioManager.svelte";
 	import { setSelection } from "$lib/session.svelte";
 	import { formatDuration, formatRating, getArtworkColor, parseAlbum, parseArtists } from "$lib/helpers";
@@ -13,8 +14,8 @@
 
 	import ArtworkDisplay from "$lib/components/app/ArtworkDisplay.svelte";
 	import TrackTable from "$lib/components/app/TrackTable.svelte";
-    import AddToPlaylist from "./app/TrackPlaylistEditButton.svelte";
-    import { invoke } from "@tauri-apps/api/core";
+   import AddToPlaylist from "$lib/components/app/TrackPlaylistEditButton.svelte";
+	import ScrollingText from "$lib/components/app/ScrollingText.svelte";
 
 	let showQueue = $state(false);
 
@@ -114,9 +115,19 @@
 		{#if currentlyPlaying.track !== null}
 			<ArtworkDisplay uid={currentlyPlaying.uid} type="track" size={64} />
 
-			<div class="flex flex-col">
-				<button onclick={() => setSelection(currentlyPlaying.track?.uid!, "track")} class="text-sm font-medium truncate text-left">{currentlyPlaying.track?.title}</button>
-				<button onclick={() => setSelection(getArtistUidFromName(currentlyPlaying.track?.album_artist!), "artist")} class="text-xs text-muted-foreground truncate text-left">{parseArtists(currentlyPlaying.track?.artists ?? null)}</button>
+			<div class="flex flex-col min-w-0">
+				<ScrollingText
+					text={currentlyPlaying.track?.title!}
+					class="text-sm font-medium"
+					onclick={() => setSelection(currentlyPlaying.track?.uid!, "track")}
+					
+				/>
+				<ScrollingText
+					text={parseArtists(currentlyPlaying.track?.artists ?? null)}
+					class="text-xs text-muted-foreground"
+					onclick={() => setSelection(getArtistUidFromName(currentlyPlaying.track?.album_artist!), "artist")}
+					hoverOnly
+				/>
 			</div>
 
 			<div class="flex flex-col">
