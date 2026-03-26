@@ -113,3 +113,7 @@ export async function getArtworkColor(bytes: number[], opacity = 1): Promise<str
 		}
 	})
 }
+
+export function clamp(num: number, min: number, max: number): number {
+  return num <= min ? min : num >= max ? max : num;
+}
