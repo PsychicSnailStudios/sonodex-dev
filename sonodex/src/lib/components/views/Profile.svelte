@@ -75,21 +75,19 @@
 		</Button>
 	</div>
 
-	<Tabs.Root value="statistics">
+	<Tabs.Root value="statistics" class="flex flex-col min-h-0 flex-1">
 		<Tabs.List class="w-full">
 			<Tabs.Trigger value="statistics" class="flex-1">Stats</Tabs.Trigger>
 			<Tabs.Trigger value="settings" class="flex-1">Settings</Tabs.Trigger>
 		</Tabs.List>
 
-		<Tabs.Content value="statistics" class="space-y-3 mt-4">
+		<Tabs.Content value="statistics" class="space-y-3 mt-4 flex-1 min-h-0">
 			<ScrollArea class="min-h-0 min-w-0">
 			</ScrollArea>
 		</Tabs.Content>
 
-		<Tabs.Content value="settings" class="space-y-3 mt-4">
-			<div class="h-full w-full overflow-hidden">
-				<Settings />
-			</div>
+		<Tabs.Content value="settings" class="mt-4 flex-1 min-h-0">
+			<Settings />
 		</Tabs.Content>
 
 	</Tabs.Root>

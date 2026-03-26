@@ -9,3 +9,14 @@ export function setSelection(uid: string, type: "track" | "album" | "artist" | "
 	selection.uid = uid;
 	selection.type = type;
 }
+
+export const scanState = $state({
+	loading: false,
+	progress: 0,
+	total: 0,
+	status: "",
+	enriching: false,
+	enrichDone: 0,
+	enrichTotal: 0,
+	enrichErrors: 0,
+})

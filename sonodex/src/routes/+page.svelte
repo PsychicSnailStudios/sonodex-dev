@@ -3,7 +3,7 @@
 	import { invoke } from "@tauri-apps/api/core";
 	import { listen } from "@tauri-apps/api/event";
 	import { loadLibrary } from "$lib/library.svelte";
-	import { selection } from "$lib/session.svelte";
+	import { selection, scanState } from "$lib/session.svelte";
 
 	import * as Resizable from "$lib/components/ui/resizable/index.js";
 	import { Button } from "$lib/components/ui/button/index.js";
@@ -55,6 +55,13 @@
 			needsSetup = false;
 			await loadLibrary();
 		});
+
+		window.addEventListener("keydown", (e) => {
+			if (e.key === "F5") {
+				e.preventDefault();
+				location.reload();
+			}
+		});
 	});
 
 	function onSetupComplete() {
@@ -73,7 +80,31 @@
 	<Resizable.Pane defaultSize={defaultSidebarWidth} minSize={minSidebarWidth} maxSize={maxSidebarWidth} class="app-sidebar grid gap-1">
 		<div class="app-sidebar grid gap-1 max-[{maxSidebarWidth}px]">
 			<div>
-				<!-- scan progress -->
+				{#if scanState.loading && scanState.total > 0}
+					<div class="space-y-1 px-2 py-1">
+						<div class="w-full bg-muted rounded-full h-2">
+							<div
+								class="bg-primary h-2 rounded-full transition-all"
+								style="width: {Math.round((scanState.progress / scanState.total) * 100)}%"
+							></div>
+						</div>
+						<p class="text-xs text-muted-foreground">{scanState.progress} / {scanState.total} files</p>
+					</div>
+				{/if}
+				{#if scanState.enriching && scanState.enrichTotal > 0}
+					<div class="space-y-1 px-2 py-1">
+						<div class="w-full bg-muted rounded-full h-2">
+							<div
+								class="bg-primary h-2 rounded-full transition-all"
+								style="width: {Math.round((scanState.enrichDone / scanState.enrichTotal) * 100)}%"
+							></div>
+						</div>
+						<p class="text-xs text-muted-foreground">Enriching {scanState.enrichDone} / {scanState.enrichTotal}</p>
+					</div>
+				{/if}
+				<!-- {#if scanState.status}
+					<p class="text-xs text-muted-foreground px-2">{scanState.status}</p>
+				{/if} -->
 			</div>
 
 			<div class="app-nav bg-muted flex flex-col p-2 gap-1 rounded-md">
