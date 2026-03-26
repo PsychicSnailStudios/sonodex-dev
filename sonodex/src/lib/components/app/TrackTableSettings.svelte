@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { BadgePlus, CirclePlus, CircleCheck, View, Fullscreen } from "lucide-svelte";
+	import { List, TextAlignJustify } from "lucide-svelte";
 	import * as DropdownMenu from "$lib/components/ui/dropdown-menu/index.js";
 	import Button from "../ui/button/button.svelte";
 	import ScrollArea from "../ui/scroll-area/scroll-area.svelte";
@@ -27,9 +27,11 @@
 			<DropdownMenu.Label>View As</DropdownMenu.Label>
 			<Toggle onPressedChange={(v) => {compact = !compact}} >
 				{#if compact}
+					<List />
 					List
 				{:else}
-					Table
+					<TextAlignJustify />
+					Compact
 				{/if}
 			</Toggle>
 		</DropdownMenu.Group>

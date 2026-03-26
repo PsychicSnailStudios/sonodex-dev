@@ -3,17 +3,19 @@
 	import { setSelection } from "$lib/session.svelte";
 
 	import { createColumnState } from "$lib/columnConfig.svelte"
-	import ColumnToggle from "$lib/components/app/ColumnToggle.svelte"
 
 	import * as ToggleGroup from "$lib/components/ui/toggle-group/index.js";
 	import { ScrollArea } from "$lib/components/ui/scroll-area/index.js";
 	import { Input } from "$lib/components/ui/input/index.js";
+	import Toggle from "$lib/components/ui/toggle/toggle.svelte";
 
 	import AudioCard from "$lib/components/app/AudioCard.svelte";
 	import TrackTable from "$lib/components/app/TrackTable.svelte";
 	import ArtworkDisplay from "../app/ArtworkDisplay.svelte";
 	import TrackTableSettings from "$lib/components/app/TrackTableSettings.svelte";
 	import { SortState } from "$lib/sortConfig.svelte"
+   import { LayoutGrid, List } from "lucide-svelte";
+   import { parseArtists } from "$lib/helpers";
 	
 	let activeTab = $state("album");
 	let search = $state("");
@@ -80,9 +82,33 @@
 
 		{#if activeTab === "artist"}
 			<div class="flex flex-col h-full w-full overflow-hidden gap-3">
-				<span>{library.artists.length} artists</span>
-				<ScrollArea class="min-h-0 min-w-0 pr-4">
+				<div class="flex justify-between">
+					<span>{library.artists.length} {library.artists.length === 1 ? "artist" : "artists"}</span>
+					<Toggle onPressedChange={(v) => {compact = !compact}} >
+						{#if compact}
+							<LayoutGrid />
+							Table
+						{:else}
+							<List />
+							List
+						{/if}
+					</Toggle>
+				</div>
 
+				<ScrollArea class="min-h-0 min-w-0 pr-4">
+				{#if compact}
+					{#each filteredArtists as artist}
+					<div
+						class="grid items-center px-3 border-b hover:bg-muted/50"
+						style="grid-template-columns: 40px 1fr; height: 56px;"
+					>
+						<ArtworkDisplay uid={artist.uid} type="artist" size={40} />
+						<button onclick={() => setSelection(artist.uid, "artist")} class="pl-2 text-sm truncate text-left">
+							<p class="text-sm font-medium">{artist.name}</p>
+						</button>
+					</div>
+					{/each}
+				{:else}
 					<div class="app-music-grid grid gap-2">
 
 						{#each filteredArtists as artist}
@@ -99,26 +125,51 @@
 						{/each}
 
 					</div>
-
+				{/if}
 				</ScrollArea>
 			</div>
 		{:else if activeTab === "album"}
 			<div class="flex flex-col h-full w-full overflow-hidden gap-3">
-				<span>{library.albums.length} albums</span>
-				<ScrollArea class="min-h-0 min-w-0 pr-4">
-					<div class="app-music-grid grid gap-2">
+				<div class="flex justify-between">
+					<span>{library.albums.length} {library.albums.length === 1 ? "album" : "albums"}</span>
+					<Toggle onPressedChange={(v) => {compact = !compact}} >
+						{#if compact}
+							<LayoutGrid />
+							Table
+						{:else}
+							<List />
+							List
+						{/if}
+					</Toggle>
+				</div>
 
+				<ScrollArea class="min-h-0 min-w-0 pr-4">
+				{#if compact}
+					{#each filteredAlbums as album}
+					<div
+						class="grid items-center px-3 border-b hover:bg-muted/50"
+						style="grid-template-columns: 40px 1fr 1fr; height: 56px;"
+					>
+						<ArtworkDisplay uid={album.uid} type="album" size={40} />
+						<button onclick={() => setSelection(album.uid, "album")} class="pl-2 text-sm truncate text-left">
+							<p class="text-sm font-medium">{album.title}</p>
+						</button>
+						<p class="text-sm">{parseArtists(album.artists)}</p>
+					</div>
+					{/each}
+				{:else}
+					<div class="app-music-grid grid gap-2">
 						{#each filteredAlbums as album}
 							<AudioCard title={album.title} subTitle={album.album_artist} artworkUid={album.uid} type="album" />
 						{/each}
-
 					</div>
+				{/if}
 				</ScrollArea>
 			</div>
 		{:else if activeTab === "track"}
 			<div class="flex flex-col h-full overflow-hidden gap-3">
 				<div class="flex justify-between items-center gap-2">
-					<span>{library.tracks.length} tracks</span>
+					<span>{library.tracks.length} {library.tracks.length === 1 ? "track" : "tracks"}</span>
 					<TrackTableSettings columns={cols} sort={sort} bind:compact />
 				</div>
 				<ScrollArea class="h-full min-h-0 min-w-0 pr-4">
