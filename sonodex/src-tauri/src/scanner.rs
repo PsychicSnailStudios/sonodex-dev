@@ -1,6 +1,7 @@
 use crate::db::{
-	create_album, create_artist, get_all_albums, get_all_artists, get_setting, update_album,
-	update_artist, upsert_track, Album, AlbumUpdate, Artist, ArtistUpdate, Track,
+	create_album, create_artist, generate_uid, get_all_albums, get_all_artists, get_setting,
+	update_album, update_artist, update_track_metadata_by_uid, upsert_track, Album, AlbumUpdate,
+	Artist, ArtistUpdate, MetadataUpdate, Track,
 };
 use lofty::file::AudioFile;
 use lofty::file::TaggedFileExt;
@@ -10,7 +11,6 @@ use rusqlite::Connection;
 use std::path::Path;
 use std::time::UNIX_EPOCH;
 use tauri::{AppHandle, Emitter};
-use uuid::Uuid;
 use walkdir::WalkDir;
 
 const SUPPORTED_EXTENSIONS: &[&str] = &["mp3", "flac", "m4a", "aac", "wav", "aiff", "ogg"];
@@ -20,10 +20,6 @@ const ARTIST_TAG_DELIMITERS: &[&str] = &[" / ", "; "];
 const ARTIST_FILENAME_DELIMITERS: &[&str] = &[" / ", "; ", " feat. ", " ft. ", " featuring "];
 
 const GENRE_DELIMITERS: &[&str] = &[" / ", "; ", ", "];
-
-// ─────────────────────────────────────────────
-// UTILITIES
-// ─────────────────────────────────────────────
 
 fn is_supported(path: &Path) -> bool {
 	path.extension()
@@ -80,10 +76,6 @@ fn resolve_field(
 		_ => tag_value.or(filename_value),
 	}
 }
-
-// ─────────────────────────────────────────────
-// FILENAME PARSING
-// ─────────────────────────────────────────────
 
 #[derive(Debug)]
 struct FilenameMetadata {
@@ -206,10 +198,6 @@ fn parse_custom_pattern(stem: &str, pattern: &str) -> FilenameMetadata {
 	meta
 }
 
-// ─────────────────────────────────────────────
-// FOLDER PARSING
-// ─────────────────────────────────────────────
-
 fn parse_folder_path(path: &Path) -> FilenameMetadata {
 	let components: Vec<&str> = path
 		.parent()
@@ -280,10 +268,6 @@ fn extract_year_from_folder(folder: &str) -> Option<(String, String)> {
 
 	None
 }
-
-// ─────────────────────────────────────────────
-// TRACKS
-// ─────────────────────────────────────────────
 
 pub fn read_track(path: &Path) -> Option<Track> {
 	read_track_with_settings(
@@ -414,6 +398,7 @@ pub fn read_track_with_settings(
 
 	let albums = album_str.map(|a| {
 		serde_json::to_string(&vec![serde_json::json!({
+			"uid": "",
 			"name": a,
 			"track_number": tag_track_number
 		})])
@@ -435,7 +420,7 @@ pub fn read_track_with_settings(
 
 	Some(Track {
 		id: None,
-		uid: Uuid::new_v4().to_string(),
+		uid: generate_uid("t"),
 		path: path_str,
 		last_modified,
 		title,
@@ -456,10 +441,6 @@ pub fn read_track_with_settings(
 	})
 }
 
-// ─────────────────────────────────────────────
-// ALBUMS
-// ─────────────────────────────────────────────
-
 fn find_or_create_album(
 	conn: &Connection,
 	title: &str,
@@ -469,6 +450,7 @@ fn find_or_create_album(
 	artwork_blob: Option<Vec<u8>>,
 	track_uid: &str,
 	track_title: Option<&str>,
+	track_number: Option<u32>,
 ) -> Option<(i64, String)> {
 	let existing = get_all_albums(conn).ok()?;
 
@@ -495,7 +477,8 @@ fn find_or_create_album(
 			let mut updated = existing_tracks;
 			updated.push(serde_json::json!({
 				"uid": track_uid,
-				"name": track_title.unwrap_or("")
+				"name": track_title.unwrap_or(""),
+				"track_number": track_number
 			}));
 			let tracks_json = serde_json::to_string(&updated).ok()?;
 
@@ -524,10 +507,11 @@ fn find_or_create_album(
 		return Some((album_id, uid));
 	}
 
-	let uid = Uuid::new_v4().to_string();
+	let uid = generate_uid("a");
 	let tracks_json = serde_json::to_string(&vec![serde_json::json!({
 		"uid": track_uid,
-		"name": track_title.unwrap_or("")
+		"name": track_title.unwrap_or(""),
+		"track_number": track_number
 	})])
 	.unwrap_or_else(|_| "[]".to_string());
 
@@ -558,10 +542,6 @@ fn find_or_create_album(
 	Some((created_album.id?, uid))
 }
 
-// ─────────────────────────────────────────────
-// ARTISTS
-// ─────────────────────────────────────────────
-
 fn find_or_create_artist(conn: &Connection, name: &str) -> Option<(i64, String)> {
 	let existing = get_all_artists(conn).ok()?;
 	let name_lower = name.to_lowercase();
@@ -573,7 +553,7 @@ fn find_or_create_artist(conn: &Connection, name: &str) -> Option<(i64, String)>
 		return Some((artist.id?, artist.uid.clone()));
 	}
 
-	let uid = Uuid::new_v4().to_string();
+	let uid = generate_uid("ar");
 	let artist = Artist {
 		id: None,
 		uid: uid.clone(),
@@ -597,10 +577,6 @@ fn find_or_create_artist(conn: &Connection, name: &str) -> Option<(i64, String)>
 
 	Some((created_artist.id?, uid))
 }
-
-// ─────────────────────────────────────────────
-// SCAN
-// ─────────────────────────────────────────────
 
 pub fn scan_directory_with_progress(conn: &Connection, dir: &str, app: &AppHandle) {
 	let priority_title = get_setting(conn, "filename_priority_title")
@@ -721,11 +697,17 @@ pub fn scan_directory_with_progress(conn: &Connection, dir: &str, app: &AppHandl
 						if let Ok(albums_arr) =
 							serde_json::from_str::<Vec<serde_json::Value>>(albums_json)
 						{
-							for album_entry in albums_arr {
+							let mut updated_album_entries: Vec<serde_json::Value> = Vec::new();
+
+							for album_entry in &albums_arr {
 								if let Some(album_name) =
 									album_entry["name"].as_str().filter(|s| !s.is_empty())
 								{
-									find_or_create_album(
+									let track_number = album_entry["track_number"]
+										.as_u64()
+										.map(|n| n as u32);
+
+									if let Some((_album_id, album_uid)) = find_or_create_album(
 										conn,
 										album_name,
 										track.album_artist.as_deref(),
@@ -734,6 +716,40 @@ pub fn scan_directory_with_progress(conn: &Connection, dir: &str, app: &AppHandl
 										track.artwork_blob.clone(),
 										&track_uid,
 										track_title,
+										track_number,
+									) {
+										updated_album_entries.push(serde_json::json!({
+											"uid": album_uid,
+											"name": album_name,
+											"track_number": track_number
+										}));
+									}
+								}
+							}
+
+							if !updated_album_entries.is_empty() {
+								if let Ok(patched_albums) =
+									serde_json::to_string(&updated_album_entries)
+								{
+									let _ = update_track_metadata_by_uid(
+										conn,
+										&track_uid,
+										&MetadataUpdate {
+											title: None,
+											artists: None,
+											album_artist: None,
+											albums: Some(patched_albums),
+											year: None,
+											genres: None,
+											bpm: None,
+											rating: None,
+											tags: None,
+											key: None,
+											credits: None,
+											label: None,
+											artwork_blob: None,
+											artwork_path: None,
+										},
 									);
 								}
 							}
