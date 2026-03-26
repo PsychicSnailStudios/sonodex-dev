@@ -7,7 +7,7 @@
 	import { CirclePlus, Pencil } from "lucide-svelte";
 
 	import { createColumnState } from "$lib/columnConfig.svelte"
-	import ColumnToggle from "$lib/components/app/ColumnToggle.svelte"
+	import TrackTableSettings from "$lib/components/app/TrackTableSettings.svelte"
 
 	import ArtworkDisplay from "$lib/components/app/ArtworkDisplay.svelte";
 	import TrackTable from "$lib/components/app/TrackTable.svelte";
@@ -16,14 +16,17 @@
 	import { Input } from "$lib/components/ui/input/index.js";
 
 	import { getArtworkColor, parseArtists, totalDuration } from '$lib/helpers';
-    import Circle from "@lucide/svelte/icons/circle";
-    import { addTrackToPlaylist } from "$lib/playlistManager.svelte";
-    import { queueTracksByObject } from "$lib/audioManager.svelte";
-    import { invoke } from "@tauri-apps/api/core";
-
+   import Circle from "@lucide/svelte/icons/circle";
+   import { addTrackToPlaylist } from "$lib/playlistManager.svelte";
+   import { queueTracksByObject } from "$lib/audioManager.svelte";
+   import { invoke } from "@tauri-apps/api/core";
+	import { SortState } from "$lib/sortConfig.svelte"
+	 
 	const cols = createColumnState("playlist");
+	const sort = new SortState("number", "asc");
 	const searchCols = createColumnState();
 	let search = $state("");
+	let compact = $state(false);
 
 	let playlist = $derived(library.playlists.find(p => p.uid === selection.uid) ?? null);
 
@@ -88,12 +91,12 @@
 					<Button variant="default" onclick={() => queueTracksByObject(tracks, true)}>Play All</Button>
 					<Button variant="outline" onclick={() => queueTracksByObject(tracks, true, true)}>Shuffle</Button>
 					<Button variant="ghost" size="icon" onclick={() => openEditModal({ type: "playlist", uid: playlist!.uid })}><Pencil /></Button>
-					<ColumnToggle columns={cols} />
+					<TrackTableSettings columns={cols} sort={sort} bind:compact />
 				</div>
 			</div>
 		</div>
 
-		<TrackTable tracks={tracks} columns={cols} />
+		<TrackTable tracks={tracks} columns={cols} sort={sort} compact={compact} />
 		
 		<div class="flex flex-col gap-1 p-3 mt-8 m-4 rounded-md bg-accent">
 			<div class="flex items-center justify-between p-2">

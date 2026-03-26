@@ -20,6 +20,20 @@ export function parseArtists(artists: string | null): string {
 		}
 	}
 
+	export function parseTrackNumber(albums: string | null | undefined): number | null {
+		if (!albums) return null
+		try {
+			const parsed = JSON.parse(albums)
+			if (Array.isArray(parsed) && parsed.length > 0) {
+				const n = parsed[0]?.track_number
+				return typeof n === "number" ? n : null
+			}
+		} catch {
+			return null
+		}
+		return null
+	}
+
 	export function formatRating(rating: number | null): string {
 		if (rating === null) return "—";
 		return rating.toFixed(1);

@@ -13,19 +13,25 @@
 
 	import { createColumnState } from "$lib/columnConfig.svelte"
 	import ColumnToggle from "$lib/components/app/ColumnToggle.svelte"
+	import TrackTableSettings from "$lib/components/app/TrackTableSettings.svelte";
 
 	import ArtworkDisplay from "$lib/components/app/ArtworkDisplay.svelte";
 	import TrackTable from "$lib/components/app/TrackTable.svelte";
+	import SortDropdown from "$lib/components/app/SortDropdown.svelte";
 	import { ScrollArea } from "$lib/components/ui/scroll-area/index.js";
 	import { getArtworkColor } from "$lib/helpers"
 
 	import { formatDuration, totalDuration } from '$lib/helpers';
-    import AudioCard from "../app/AudioCard.svelte";
+   import AudioCard from "../app/AudioCard.svelte";
+	import { SortState } from "$lib/sortConfig.svelte";
+    import Table from "../ui/table/table.svelte";
 
+	const sort = new SortState("number", "asc");
 	const cols = createColumnState("album");
+	let compact = $state(false)
 
 	let album: Album | null = $state(null);
-	let color = $state("rgb(30, 30, 30)")
+	let color = $state("rgb(30, 30, 30)");
 
 	let tracks: Track[] = $derived.by(() => {
 		if (!album) return [];
@@ -86,10 +92,10 @@
 			<Button variant="default" onclick={() => queueTracksByObject(tracks, true)}>Play All</Button>
 			<Button variant="outline" onclick={() => queueTracksByObject(tracks, true, true)}>Shuffle</Button>
 			<Button variant="ghost" onclick={() => openEditModal({ type: "album", uid: album!.uid })}><Pencil /></Button>
-			<ColumnToggle columns={cols} />
+			<TrackTableSettings columns={cols} sort={sort} bind:compact />
 		</div>
 
-		<TrackTable tracks={tracks} columns={cols} />
+		<TrackTable tracks={tracks} columns={cols} sort={sort} compact={compact} />
 
 		<div class="flex flex-col gap-2 w-full pt-4">
 			<h4>More by {album.album_artist}</h4>

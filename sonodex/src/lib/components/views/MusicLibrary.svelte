@@ -12,11 +12,15 @@
 	import AudioCard from "$lib/components/app/AudioCard.svelte";
 	import TrackTable from "$lib/components/app/TrackTable.svelte";
 	import ArtworkDisplay from "../app/ArtworkDisplay.svelte";
-
+	import TrackTableSettings from "$lib/components/app/TrackTableSettings.svelte";
+	import { SortState } from "$lib/sortConfig.svelte"
+	
 	let activeTab = $state("album");
 	let search = $state("");
-
-	const cols = createColumnState("library")
+	
+	const sort = new SortState("year", "desc");
+	const cols = createColumnState("library");
+	let compact = $state(false);
 
 	const filteredTracks = $derived(
 		search.trim() === ""
@@ -115,10 +119,10 @@
 			<div class="flex flex-col h-full overflow-hidden gap-3">
 				<div class="flex justify-between items-center gap-2">
 					<span>{library.tracks.length} tracks</span>
-					<ColumnToggle columns={cols} />
+					<TrackTableSettings columns={cols} sort={sort} bind:compact />
 				</div>
 				<ScrollArea class="h-full min-h-0 min-w-0 pr-4">
-					<TrackTable tracks={filteredTracks} columns={cols} />
+					<TrackTable tracks={filteredTracks} columns={cols} sort={sort} compact={compact} />
 				</ScrollArea>
 			</div>
 		{/if}

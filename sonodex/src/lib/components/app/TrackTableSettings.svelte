@@ -1,0 +1,71 @@
+<script lang="ts">
+	import { BadgePlus, CirclePlus, CircleCheck, View, Fullscreen } from "lucide-svelte";
+	import * as DropdownMenu from "$lib/components/ui/dropdown-menu/index.js";
+	import Button from "../ui/button/button.svelte";
+	import ScrollArea from "../ui/scroll-area/scroll-area.svelte";
+	import { Toggle } from "$lib/components/ui/toggle/index.js";
+
+	import type { ColumnState, ColumnKey } from "$lib/columnConfig.svelte"
+	import { ALL_COLUMNS, COLUMN_LABELS, ALWAYS_VISIBLE } from "$lib/columnConfig.svelte"
+	import SortDropdown from "$lib/components/app/SortDropdown.svelte";
+
+	import { SortState } from "$lib/sortConfig.svelte";
+
+	let { columns, sort, compact = $bindable(false) } = $props<{ columns: ColumnState; sort: SortState, compact?: boolean }>()
+	const toggleable = ALL_COLUMNS.filter((col) => !ALWAYS_VISIBLE.includes(col))
+</script>
+
+<DropdownMenu.Root>
+	<DropdownMenu.Trigger>
+		{#snippet child({ props })}
+			<Button {...props} variant="ghost" size="icon">...</Button>
+		{/snippet}
+	</DropdownMenu.Trigger>
+
+	<DropdownMenu.Content>
+		<DropdownMenu.Group>
+			<DropdownMenu.Label>View As</DropdownMenu.Label>
+			<Toggle onPressedChange={(v) => {compact = !compact}} >
+				{#if compact}
+					List
+				{:else}
+					Table
+				{/if}
+			</Toggle>
+		</DropdownMenu.Group>
+
+		<DropdownMenu.Separator />
+
+		<DropdownMenu.Group>
+			<DropdownMenu.Label>Sort</DropdownMenu.Label>
+			<SortDropdown sort={sort} />
+		</DropdownMenu.Group>
+		
+		<DropdownMenu.Separator />
+
+		<DropdownMenu.Group>
+			<DropdownMenu.Label>View Columns</DropdownMenu.Label>
+			<div class="flex flex-col flex-wrap gap-1">
+				<p class="text-xs text-muted-foreground">Display Columns</p>
+				{#each toggleable as col (col)}
+					<Toggle
+						pressed={columns.visible[col as ColumnKey]}
+						onPressedChange={(v) => (columns.visible[col as ColumnKey] = v)}
+						size="sm"
+						variant="outline"
+						class="text-sm justify-start"
+					>
+						{COLUMN_LABELS[col as ColumnKey]}
+					</Toggle>
+				{/each}
+			</div>
+		</DropdownMenu.Group>
+	</DropdownMenu.Content>
+	<!-- <div>
+		<ScrollArea class="h-[250px]">
+			<div>
+				
+			</div>
+		</ScrollArea>
+	</div> -->
+</DropdownMenu.Root>
