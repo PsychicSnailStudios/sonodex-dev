@@ -11,6 +11,7 @@
 	import { buttonVariants } from "$lib/components/ui/button/index.js";
 
 	import AudioCard from "$lib/components/app/AudioCard.svelte";
+    import { FolderPlus, ListPlus } from "lucide-svelte";
 
 	let search = $state("");
 	let dialogOpen = $state(false);
@@ -55,47 +56,61 @@
 	<div class="flex justify-between items-center gap-2">
 		<h1 class="h1">Playlists</h1>
 
-		<AlertDialog.Root bind:open={dialogOpen}>
-			<AlertDialog.Trigger class={buttonVariants({ variant: "outline" })}>
-				Create New
-			</AlertDialog.Trigger>
-			<AlertDialog.Content>
-				<AlertDialog.Header>
-					<AlertDialog.Title>New Playlist</AlertDialog.Title>
-					<AlertDialog.Description>
-						<Input placeholder="New Playlist" bind:value={nameInput} class="w-48"/>
-					</AlertDialog.Description>
-				</AlertDialog.Header>
-				<AlertDialog.Footer>
-					<AlertDialog.Cancel>Cancel</AlertDialog.Cancel>
-					<AlertDialog.Action onclick={createPlaylist}>Create</AlertDialog.Action>
-				</AlertDialog.Footer>
-			</AlertDialog.Content>
-		</AlertDialog.Root>
-
 		<Input
 			placeholder="Search..."
 			bind:value={search}
 			class="w-48"
 		/>
-
 	</div>
 
-	<div class="min-h-0 flex-1 overflow-hidden">
-
-		<div class="flex flex-col h-full w-full overflow-hidden">
+	<div class="flex flex-col h-full w-full overflow-hidden">
+		<div class="flex justify-between">
 			<span>{playlists.length} playlists</span>
-			<ScrollArea class="min-h-0 min-w-0">
+			<div>
+				<AlertDialog.Root bind:open={dialogOpen}>
+					<AlertDialog.Trigger class={buttonVariants({ variant: "outline" })}>
+						<ListPlus/>
+					</AlertDialog.Trigger>
+					<AlertDialog.Content>
+						<AlertDialog.Header>
+							<AlertDialog.Title>New Playlist</AlertDialog.Title>
+							<AlertDialog.Description>
+								<Input placeholder="New Playlist" bind:value={nameInput} class="w-48"/>
+							</AlertDialog.Description>
+						</AlertDialog.Header>
+						<AlertDialog.Footer>
+							<AlertDialog.Cancel>Cancel</AlertDialog.Cancel>
+							<AlertDialog.Action onclick={createPlaylist}>Create</AlertDialog.Action>
+						</AlertDialog.Footer>
+					</AlertDialog.Content>
+				</AlertDialog.Root>
 
-				<div class="app-music-grid grid gap-2 p-3">
-					{#each filteredPlaylists as p}
-						<AudioCard title={p.title} subTitle={p.owner} artworkUid={p.uid} type="playlist" />
-					{/each}
-				</div>
-
-			</ScrollArea>
+				<AlertDialog.Root bind:open={dialogOpen}>
+					<AlertDialog.Trigger class={buttonVariants({ variant: "outline" })}>
+						<FolderPlus/>
+					</AlertDialog.Trigger>
+					<AlertDialog.Content>
+						<AlertDialog.Header>
+							<AlertDialog.Title>New Folder</AlertDialog.Title>
+							<AlertDialog.Description>
+								<Input placeholder="New Folder" bind:value={nameInput} class="w-48"/>
+							</AlertDialog.Description>
+						</AlertDialog.Header>
+						<AlertDialog.Footer>
+							<AlertDialog.Cancel>Cancel</AlertDialog.Cancel>
+							<AlertDialog.Action>Create</AlertDialog.Action>
+						</AlertDialog.Footer>
+					</AlertDialog.Content>
+				</AlertDialog.Root>
+			</div>
 		</div>
-
+		<ScrollArea class="min-h-0 min-w-0">
+			<div class="app-music-grid grid gap-2 pt-2">
+				{#each filteredPlaylists as p}
+					<AudioCard title={p.title} subTitle={p.owner} artworkUid={p.uid} type="playlist" />
+				{/each}
+			</div>
+		</ScrollArea>
 	</div>
 
 </div>

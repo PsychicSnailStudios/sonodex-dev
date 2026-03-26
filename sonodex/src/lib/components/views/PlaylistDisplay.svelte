@@ -70,64 +70,64 @@
 </script>
 
 <div class="flex flex-col gap-2 p-4 border-2 h-full w-full overflow-hidden rounded-md" style="background: linear-gradient(180deg, {color} 0%, transparent 80%)">
-{#if playlist}
+	{#if playlist}
 	<ScrollArea class="min-h-0 min-w-0">	
-	<div class="flex flex-col gap-4 pb-4 pr-4">
-		<NavButtons />
-		
-		<div class="flex gap-4 items-end p-0">
-			<ArtworkDisplay uid={playlist.uid} size={160} type="playlist" />
-
-			<div class="flex flex-col gap-2">
-				<h2 class="text-2xl font-bold">{playlist.title}</h2>
-				{#if playlist.description}
-					<span class="text-sm text-muted-foreground">{playlist.description}</span>
-				{/if}
-				<div class="flex gap-3 text-sm text-muted-foreground">
-					<span>{tracks.length} songs</span>
-					{#if tracks.length > 0}
-						<span>{totalDuration(tracks)}</span>
-					{/if}
-				</div>
-				<div class="flex gap-2">
-					<Button variant="default" onclick={() => queueTracksByObject(tracks, true)}>Play All</Button>
-					<Button variant="outline" onclick={() => queueTracksByObject(tracks, true, true)}>Shuffle</Button>
-					<Button variant="ghost" size="icon" onclick={() => openEditModal({ type: "playlist", uid: playlist!.uid })}><Pencil /></Button>
-					<TrackTableSettings columns={cols} sort={sort} bind:compact />
-				</div>
-			</div>
-		</div>
-
-		<TrackTable tracks={tracks} columns={cols} sort={sort} compact={compact} />
-		
-		<div class="flex flex-col gap-1 p-3 mt-8 m-4 rounded-md bg-accent">
-			<div class="flex items-center justify-between p-2">
-				<h3>Find More</h3>
-				<Input
-					placeholder="Search..."
-					bind:value={search}
-					class="w-48"
-				/>
-			</div>
+		<div class="flex flex-col gap-4 pb-4 pr-4">
+			<NavButtons />
 			
-			<ScrollArea class="min-h-0 min-w-0 h-[300px] p-2 ">
-				<div class="flex flex-col gap-0.5">
-					{#each filteredTracks as track}
-						<div class="grid gap-2 p-2" style="grid-template-columns: auto auto 1fr auto;">
-							<ArtworkDisplay uid={track.uid} size={30} type="track" />
-							<div class="min-w-0 grid">
-								<span class="text-sm font-medium truncate">{track.title}</span>
-								<span class="text-xs text-muted-foreground truncate">{parseArtists(track.artists)}</span>
-							</div>
-							<span></span>
-							<button class="" onclick={() => { addTrackToPlaylist(playlist, track)}}><CirclePlus size={20} /></button>
-						</div>
-					{/each}
-				</div>
-			</ScrollArea>
-		</div>
+			<div class="flex gap-4 items-end p-0">
+				<ArtworkDisplay uid={playlist.uid} size={160} type="playlist" />
 
-	</div>
+				<div class="flex flex-col gap-2">
+					<h2 class="text-2xl font-bold">{playlist.title}</h2>
+					{#if playlist.description}
+						<span class="text-sm text-muted-foreground">{playlist.description}</span>
+					{/if}
+					<div class="flex gap-3 text-sm text-muted-foreground">
+						<span>{tracks.length} songs</span>
+						{#if tracks.length > 0}
+							<span>{totalDuration(tracks)}</span>
+						{/if}
+					</div>
+					<div class="flex gap-2">
+						<Button variant="default" onclick={() => queueTracksByObject(tracks, true)}>Play All</Button>
+						<Button variant="outline" onclick={() => queueTracksByObject(tracks, true, true)}>Shuffle</Button>
+						<Button variant="ghost" size="icon" onclick={() => openEditModal({ type: "playlist", uid: playlist!.uid })}><Pencil /></Button>
+						<TrackTableSettings columns={cols} sort={sort} bind:compact />
+					</div>
+				</div>
+			</div>
+
+			<TrackTable tracks={tracks} columns={cols} sort={sort} compact={compact} />
+			
+			<div class="flex flex-col gap-1 p-3 mt-8 m-4 rounded-md bg-accent">
+				<div class="flex items-center justify-between p-2">
+					<h3>Find More</h3>
+					<Input
+						placeholder="Search..."
+						bind:value={search}
+						class="w-48"
+					/>
+				</div>
+				
+				<ScrollArea class="min-h-0 min-w-0 h-[300px] p-2 ">
+					<div class="flex flex-col gap-0.5">
+						{#each filteredTracks as track}
+							<div class="grid gap-2 p-2" style="grid-template-columns: auto auto 1fr auto;">
+								<ArtworkDisplay uid={track.uid} size={30} type="track" />
+								<div class="min-w-0 grid">
+									<span class="text-sm font-medium truncate">{track.title}</span>
+									<span class="text-xs text-muted-foreground truncate">{parseArtists(track.artists)}</span>
+								</div>
+								<span></span>
+								<button class="" onclick={() => { addTrackToPlaylist(playlist, track)}}><CirclePlus size={20} /></button>
+							</div>
+						{/each}
+					</div>
+				</ScrollArea>
+			</div>
+
+		</div>
 	</ScrollArea>
 
 	{:else}
