@@ -14,7 +14,8 @@
 	import ArtworkDisplay from "$lib/components/app/ArtworkDisplay.svelte";
    import NavButtons from "$lib/components/app/NavButtons.svelte";
    import { Pencil } from "lucide-svelte";
-    import { playTrackByObject } from "$lib/ts/audio/audioManager.svelte";
+   import { playTrackByObject } from "$lib/ts/audio/audioManager.svelte";
+   import TrackPlaylistEditButton from "$lib/components/app/TrackPlaylistEditButton.svelte";
 
 	let track = $derived(library.tracks.find(t => t.uid === selection.uid) ?? null);
 	let lyrics: Lyrics | null = $state(null);
@@ -46,6 +47,7 @@
 				<div class="text-sm">{formatRating(track.rating)}</div>
 				<div class="flex">
 					<Button variant="default" onclick={() => playTrackByObject(track)}>Play</Button>
+					<TrackPlaylistEditButton track={track} />
 					<Button variant="ghost" size="icon" onclick={() => openEditModal({ type: "track", uid: track!.uid })}><Pencil /></Button>
 				</div>
 			</div>
