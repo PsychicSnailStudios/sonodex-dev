@@ -66,10 +66,6 @@
 			<Input id="playlist-title" bind:value={title} />
 		</div>
 		<div class="space-y-1.5">
-			<Label for="playlist-owner">Owner</Label>
-			<Input id="playlist-owner" bind:value={owner} />
-		</div>
-		<div class="space-y-1.5">
 			<Label for="playlist-desc">Description</Label>
 			<Textarea id="playlist-desc" bind:value={description} rows={4} />
 		</div>
