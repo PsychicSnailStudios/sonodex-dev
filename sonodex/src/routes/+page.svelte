@@ -4,6 +4,7 @@
 	import { listen } from "@tauri-apps/api/event";
 	import { loadLibrary } from "$lib/library.svelte";
 	import { selection, scanState } from "$lib/session.svelte";
+	import { togglePlay, skipBack, skipNext } from "$lib/ts/audio/audioManager.svelte";
 
 	import * as Resizable from "$lib/components/ui/resizable/index.js";
 	import { Button } from "$lib/components/ui/button/index.js";
@@ -57,16 +58,34 @@
 		});
 
 		window.addEventListener("keydown", (e) => {
-			if (e.key === "F5") {
-				e.preventDefault();
-				location.reload();
-			}
+			keydown(e);
 		});
 	});
 
 	function onSetupComplete() {
 		needsSetup = false;
 		loadLibrary();
+	}
+
+	function keydown(e: KeyboardEvent) {
+		e.preventDefault();
+
+		switch (e.key) {
+			case 'F5':
+				location.reload();
+				break;
+			case 'MediaPlayPause':
+				togglePlay();
+				break;
+			case 'MediaTrackNext':
+				skipNext();
+				break;
+			case 'MediaTrackPrevious':
+				skipBack();
+				break;
+			default:
+				break;
+		} 
 	}
 </script>
 
