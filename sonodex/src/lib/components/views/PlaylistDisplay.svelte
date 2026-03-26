@@ -21,6 +21,7 @@
    import { queueTracksByObject } from "$lib/audioManager.svelte";
    import { invoke } from "@tauri-apps/api/core";
 	import { SortState } from "$lib/sortConfig.svelte"
+   import NavButtons from "$lib/components/app/NavButtons.svelte";
 	 
 	const cols = createColumnState("playlist");
 	const sort = new SortState("number", "asc");
@@ -72,7 +73,8 @@
 {#if playlist}
 	<ScrollArea class="min-h-0 min-w-0">	
 	<div class="flex flex-col gap-4 pb-4 pr-4">
-
+		<NavButtons />
+		
 		<div class="flex gap-4 items-end p-0">
 			<ArtworkDisplay uid={playlist.uid} size={160} type="playlist" />
 

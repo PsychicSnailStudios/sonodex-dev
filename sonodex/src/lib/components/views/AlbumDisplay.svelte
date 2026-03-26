@@ -12,7 +12,6 @@
 	import { Pencil } from "lucide-svelte";
 
 	import { createColumnState } from "$lib/columnConfig.svelte"
-	import ColumnToggle from "$lib/components/app/ColumnToggle.svelte"
 	import TrackTableSettings from "$lib/components/app/TrackTableSettings.svelte";
 
 	import ArtworkDisplay from "$lib/components/app/ArtworkDisplay.svelte";
@@ -22,9 +21,9 @@
 	import { getArtworkColor } from "$lib/helpers"
 
 	import { formatDuration, totalDuration } from '$lib/helpers';
-   import AudioCard from "../app/AudioCard.svelte";
+   import AudioCard from "$lib/components/app/AudioCard.svelte";
 	import { SortState } from "$lib/sortConfig.svelte";
-    import Table from "../ui/table/table.svelte";
+   import NavButtons from "$lib/components/app/NavButtons.svelte";
 
 	const sort = new SortState("number", "asc");
 	const cols = createColumnState("album");
@@ -64,6 +63,7 @@
 	{#if album}
 	<ScrollArea class="min-h-0 min-w-0 h-full">
 	<div class="flex flex-col gap-4 pb-4 pr-4">
+		<NavButtons />
 
 		<div class="flex gap-4 items-end">
 			<ArtworkDisplay uid={album.uid} size={160} type="album" />

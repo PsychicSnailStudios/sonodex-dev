@@ -12,6 +12,9 @@
 	import * as Tabs from "$lib/components/ui/tabs/index.js";
 	import { Button } from "$lib/components/ui/button/index.js";
 	import ArtworkDisplay from "$lib/components/app/ArtworkDisplay.svelte";
+   import NavButtons from "$lib/components/app/NavButtons.svelte";
+   import { Pencil } from "lucide-svelte";
+    import { playTrackByObject } from "$lib/audioManager.svelte";
 
 	let track = $derived(library.tracks.find(t => t.uid === selection.uid) ?? null);
 	let lyrics: Lyrics | null = $state(null);
@@ -24,6 +27,8 @@
 <div class="flex flex-col gap-4 p-4 border-2 h-full w-full overflow-hidden rounded-md">
 
 	{#if track}
+		<NavButtons />
+
 		<div class="flex gap-4 items-center">
 			<ArtworkDisplay uid={track.uid} size={160} type="track" />
 
@@ -39,7 +44,10 @@
 					<span>{formatDuration(track.duration_ms)}</span>
 				</div>
 				<div class="text-sm">{formatRating(track.rating)}</div>
-				<Button variant="ghost" size="icon" onclick={() => openEditModal({ type: "track", uid: track!.uid })}>...</Button>
+				<div class="flex">
+					<Button variant="default" onclick={() => playTrackByObject(track)}>Play</Button>
+					<Button variant="ghost" size="icon" onclick={() => openEditModal({ type: "track", uid: track!.uid })}><Pencil /></Button>
+				</div>
 			</div>
 		</div>
 

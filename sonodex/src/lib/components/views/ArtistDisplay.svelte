@@ -11,7 +11,8 @@
 	import * as Tabs from "$lib/components/ui/tabs/index.js";
 	import { Button } from "$lib/components/ui/button/index.js";
 	import AudioCard from "../app/AudioCard.svelte";
-    import ScrollArea from "../ui/scroll-area/scroll-area.svelte";
+   import ScrollArea from "../ui/scroll-area/scroll-area.svelte";
+   import NavButtons from "$lib/components/app/NavButtons.svelte";
 
 	let artist: Artist | null = $state(null);
 
@@ -43,6 +44,8 @@
 
 	{#if artist}
 		<div class="relative">
+			<NavButtons class="absolute top-4 left-4"/>
+
 			{#if artist.banner_art_path}
 				<img src={artist.banner_art_path} alt="" class="w-full h-32 object-cover rounded-t-md" />
 			{:else}
