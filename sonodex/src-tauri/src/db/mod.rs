@@ -1,3 +1,5 @@
+use uuid::Uuid;
+
 pub mod album_manager;
 pub mod artist_manager;
 pub mod lyrics_manager;
@@ -13,6 +15,10 @@ pub use settings_manager::*;
 pub use track_manager::*;
 
 use rusqlite::{Connection, Result};
+
+pub fn generate_uid(prefix: &str) -> String {
+	format!("{}-{}", prefix, Uuid::new_v4())
+}
 
 pub fn init_settings_db(conn: &Connection) -> Result<()> {
 	conn.execute_batch(

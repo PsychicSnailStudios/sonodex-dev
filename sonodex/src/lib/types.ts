@@ -1,3 +1,15 @@
+export type TrackAlbumEntry = {
+	uid: string;
+	name: string;
+	track_number: number | null;
+};
+
+export type PlaylistTrackEntry = {
+	uid: string;
+	name: string;
+	order: number;
+};
+
 export type Track = {
 	id: number;
 	uid: string;
@@ -6,7 +18,7 @@ export type Track = {
 	title: string | null;
 	artists: string | null;
 	album_artist: string | null;
-	albums: string | null;
+	albums: TrackAlbumEntry[] | null;
 	genres: string | null;
 	year: string | null;
 	rating: number | null;
@@ -55,7 +67,7 @@ export type Playlist = {
 	title: string;
 	description: string | null;
 	owner: string | null;
-	tracks: string | null;
+	tracks: PlaylistTrackEntry[] | null;
 	artwork_path: string | null;
 };
 

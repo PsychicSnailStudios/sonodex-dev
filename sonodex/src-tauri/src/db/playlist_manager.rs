@@ -2,6 +2,24 @@ use rusqlite::{params, Connection, Result};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct PlaylistTrackEntry {
+	pub uid: String,
+	pub name: String,
+	pub order: u32,
+}
+
+pub fn normalize_playlist_track_order(tracks: &mut Vec<PlaylistTrackEntry>) {
+	let any_nonzero = tracks.iter().any(|t| t.order != 0);
+	if !any_nonzero {
+		for (i, t) in tracks.iter_mut().enumerate() {
+			t.order = (i + 1) as u32;
+		}
+	} else {
+		tracks.sort_by_key(|t| t.order);
+	}
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Playlist {
 	pub id: Option<i64>,
 	pub uid: String,
