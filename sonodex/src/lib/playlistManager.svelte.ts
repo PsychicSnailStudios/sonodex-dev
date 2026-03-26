@@ -1,5 +1,5 @@
 import { library } from "./library.svelte";
-import type { Playlist, Track } from "./types";
+import type { Playlist, Track } from "./ts/util/types";
 import { invoke } from "@tauri-apps/api/core";
 
 export async function addTrackToPlaylist(playlist: Playlist, track: Track) {

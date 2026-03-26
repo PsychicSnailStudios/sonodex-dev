@@ -2,7 +2,7 @@
 	import { invoke, convertFileSrc } from "@tauri-apps/api/core";
 	import { Skeleton } from "$lib/components/ui/skeleton/index.js";
 	import { Music4, User, DiscAlbum, ListMusic } from "lucide-svelte";
-	import type { AudioCatagories } from "$lib/types";
+	import type { AudioCatagories } from "$lib/ts/util/types";
 	import { library } from "$lib/library.svelte";
 
 	let { uid, size = null, type = "track" }: { uid: string; size?: number | null; type?: AudioCatagories } = $props();

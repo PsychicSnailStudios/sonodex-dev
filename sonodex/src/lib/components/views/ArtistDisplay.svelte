@@ -3,8 +3,8 @@
 
 	import { selection } from "$lib/session.svelte";
 	import { library } from "$lib/library.svelte";
-	import type { Artist, Track, Album } from "$lib/types";
-	import { openEditModal } from "$lib/editModal.svelte";
+	import type { Artist, Track, Album } from "$lib/ts/util/types";
+	import { openEditModal } from "$lib/ts/app/editModal.svelte";
 
 	import ArtworkDisplay from "$lib/components/app/ArtworkDisplay.svelte";
 	import TrackTable from "$lib/components/app/TrackTable.svelte";

@@ -1,13 +1,13 @@
 <script lang="ts">
-	import type { Track } from "$lib/types"
-	import type { ColumnState } from "$lib/columnConfig.svelte"
-	import type { SortState } from "$lib/sortConfig.svelte"
+	import type { Track } from "$lib/ts/util/types"
+	import type { ColumnState } from "$lib/ts/app/columnConfig.svelte"
+	import type { SortState } from "$lib/ts/app/sortConfig.svelte"
 	import { setSelection } from "$lib/session.svelte"
 	import { Clock2, Star, ChevronUp, ChevronDown, ChevronsUpDown } from "lucide-svelte"
 	import ArtworkDisplay from "$lib/components/app/ArtworkDisplay.svelte"
-	import { playTrackByUid } from "$lib/audioManager.svelte"
+	import { playTrackByUid } from "$lib/ts/audio/audioManager.svelte"
 	import { getAlbumUidFromName, getArtistUidFromName } from "$lib/library.svelte"
-	import { formatDuration, formatRating, parseAlbum, parseArtists, parseTrackNumber } from "$lib/helpers"
+	import { formatDuration, formatRating, parseAlbum, parseArtists, parseTrackNumber } from "$lib/ts/util/helpers"
 	import TrackTableEditButton from "$lib/components/app/TrackTableEditButton.svelte"
 
 	let { tracks, columns, sort, compact = false  } = $props<{ tracks: Track[]; columns: ColumnState; sort: SortState, compact?: boolean }>()

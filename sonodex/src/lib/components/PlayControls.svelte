@@ -2,7 +2,7 @@
 	import { Button } from "$lib/components/ui/button";
 	import { Slider } from "$lib/components/ui/slider/index.js";
 	import { CirclePlay, CirclePause, SkipBack, SkipForward, Shuffle, Repeat, Repeat1, Volume, Volume2, VolumeX, Volume1, VolumeOff } from "lucide-svelte";
-	import { player, togglePlay, seek, skipBack, skipNext, toggleLoop, toggleShuffle, setVolume, toggleMute } from "$lib/audioManager.svelte";
+	import { player, togglePlay, seek, skipBack, skipNext, toggleLoop, toggleShuffle, setVolume, toggleMute } from "$lib/ts/audio/audioManager.svelte";
 
 
 	function formatTime(seconds: number): string {

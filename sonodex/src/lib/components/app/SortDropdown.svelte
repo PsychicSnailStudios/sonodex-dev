@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { SortState, SortField } from "$lib/sortConfig.svelte"
+	import type { SortState, SortField } from "$lib/ts/app/sortConfig.svelte"
 	import { Button } from "$lib/components/ui/button"
 	import * as DropdownMenu from "$lib/components/ui/dropdown-menu"
 	import { ArrowDownUp, ChevronUp, ChevronDown } from "lucide-svelte"

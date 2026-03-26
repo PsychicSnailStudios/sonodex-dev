@@ -1,12 +1,12 @@
 <script lang="ts">
 	import { selection } from "$lib/session.svelte";
 	import { library } from "$lib/library.svelte";
-	import type { Playlist, Track } from "$lib/types";
-	import { openEditModal } from "$lib/editModal.svelte";
+	import type { Playlist, Track } from "$lib/ts/util/types";
+	import { openEditModal } from "$lib/ts/app/editModal.svelte";
 
 	import { CirclePlus, Pencil } from "lucide-svelte";
 
-	import { createColumnState } from "$lib/columnConfig.svelte"
+	import { createColumnState } from "$lib/ts/app/columnConfig.svelte"
 	import TrackTableSettings from "$lib/components/app/TrackTableSettings.svelte"
 
 	import ArtworkDisplay from "$lib/components/app/ArtworkDisplay.svelte";
@@ -15,12 +15,12 @@
 	import { ScrollArea } from "$lib/components/ui/scroll-area/index.js";
 	import { Input } from "$lib/components/ui/input/index.js";
 
-	import { getArtworkColor, parseArtists, totalDuration } from '$lib/helpers';
+	import { getArtworkColor, parseArtists, totalDuration } from '$lib/ts/util/helpers';
    import Circle from "@lucide/svelte/icons/circle";
    import { addTrackToPlaylist } from "$lib/playlistManager.svelte";
-   import { queueTracksByObject } from "$lib/audioManager.svelte";
+   import { queueTracksByObject } from "$lib/ts/audio/audioManager.svelte";
    import { invoke } from "@tauri-apps/api/core";
-	import { SortState } from "$lib/sortConfig.svelte"
+	import { SortState } from "$lib/ts/app/sortConfig.svelte"
    import NavButtons from "$lib/components/app/NavButtons.svelte";
 	 
 	const cols = createColumnState("playlist");

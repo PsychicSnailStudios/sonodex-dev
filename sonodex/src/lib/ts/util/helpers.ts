@@ -1,4 +1,4 @@
-import type { Track, TrackAlbumEntry, PlaylistTrackEntry } from "$lib/types";
+import type { Track, TrackAlbumEntry, PlaylistTrackEntry } from "$lib/ts/util/types";
 
 export type UidType = "track" | "album" | "artist" | "playlist" | "unknown";
 

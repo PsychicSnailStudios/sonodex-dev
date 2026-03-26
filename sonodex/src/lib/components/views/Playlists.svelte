@@ -2,7 +2,7 @@
 	import { invoke } from "@tauri-apps/api/core";
 	import { onMount } from "svelte";
 
-	import type { Playlist } from '$lib/types';
+	import type { Playlist } from '$lib/ts/util/types';
 	import { library } from "$lib/library.svelte";
 
 	import { ScrollArea } from "$lib/components/ui/scroll-area/index.js";

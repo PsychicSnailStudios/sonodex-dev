@@ -2,7 +2,7 @@
 	import { library } from "$lib/library.svelte";
 	import { setSelection } from "$lib/session.svelte";
 
-	import { createColumnState } from "$lib/columnConfig.svelte"
+	import { createColumnState } from "$lib/ts/app/columnConfig.svelte"
 
 	import * as ToggleGroup from "$lib/components/ui/toggle-group/index.js";
 	import { ScrollArea } from "$lib/components/ui/scroll-area/index.js";
@@ -13,9 +13,9 @@
 	import TrackTable from "$lib/components/app/TrackTable.svelte";
 	import ArtworkDisplay from "../app/ArtworkDisplay.svelte";
 	import TrackTableSettings from "$lib/components/app/TrackTableSettings.svelte";
-	import { SortState } from "$lib/sortConfig.svelte"
+	import { SortState } from "$lib/ts/app/sortConfig.svelte"
    import { LayoutGrid, List } from "lucide-svelte";
-   import { parseArtists } from "$lib/helpers";
+   import { parseArtists } from "$lib/ts/util/helpers";
 	
 	let activeTab = $state("album");
 	let search = $state("");

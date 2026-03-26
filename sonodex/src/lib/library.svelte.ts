@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { Track, Album, Artist, Playlist } from "$lib/types";
+import type { Track, Album, Artist, Playlist } from "$lib/ts/util/types";
 
 export const library = $state({
 	tracks: [] as Track[],

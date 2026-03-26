@@ -5,8 +5,8 @@
 
 	import { BadgePlus, CirclePlus, CircleCheck } from "lucide-svelte";
 
-   import type { Track } from "$lib/types";
-   import { addTrackToQueue } from "$lib/audioManager.svelte";
+   import type { Track } from "$lib/ts/util/types";
+   import { addTrackToQueue } from "$lib/ts/audio/audioManager.svelte";
 	import { library } from "$lib/library.svelte";
 	import { removeTrackFromPlaylist } from "$lib/playlistManager.svelte";
    import TrackPlaylistEditButton from "./TrackPlaylistEditButton.svelte";

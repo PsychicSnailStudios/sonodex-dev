@@ -3,18 +3,18 @@
 	import { onMount } from "svelte";
 
 	import { library } from "$lib/library.svelte";
-	import type { Track, Lyrics } from "$lib/types";
+	import type { Track, Lyrics } from "$lib/ts/util/types";
 	import { selection } from "$lib/session.svelte";
-	import { openEditModal } from "$lib/editModal.svelte";
+	import { openEditModal } from "$lib/ts/app/editModal.svelte";
 
-	import { formatDuration, formatRating, parseAlbum, parseArtists } from '$lib/helpers';
+	import { formatDuration, formatRating, parseAlbum, parseArtists } from '$lib/ts/util/helpers';
 
 	import * as Tabs from "$lib/components/ui/tabs/index.js";
 	import { Button } from "$lib/components/ui/button/index.js";
 	import ArtworkDisplay from "$lib/components/app/ArtworkDisplay.svelte";
    import NavButtons from "$lib/components/app/NavButtons.svelte";
    import { Pencil } from "lucide-svelte";
-    import { playTrackByObject } from "$lib/audioManager.svelte";
+    import { playTrackByObject } from "$lib/ts/audio/audioManager.svelte";
 
 	let track = $derived(library.tracks.find(t => t.uid === selection.uid) ?? null);
 	let lyrics: Lyrics | null = $state(null);

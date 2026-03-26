@@ -1,9 +1,9 @@
 <script lang="ts">
    import { invoke } from "@tauri-apps/api/core";
-	import { currentlyPlaying } from "$lib/audioManager.svelte";
+	import { currentlyPlaying } from "$lib/ts/audio/audioManager.svelte";
 	import { setSelection } from "$lib/session.svelte";
-	import { formatDuration, formatRating, getArtworkColor, parseAlbum, parseArtists } from "$lib/helpers";
-	import { clearQueue, getQueuedTracks, player, getPlayedTracks } from "$lib/audioManager.svelte";
+	import { formatDuration, formatRating, getArtworkColor, parseAlbum, parseArtists } from "$lib/ts/util/helpers";
+	import { clearQueue, getQueuedTracks, player, getPlayedTracks } from "$lib/ts/audio/audioManager.svelte";
 	import { getArtistUidFromName } from "$lib/library.svelte";
 
 	import * as Tabs from "$lib/components/ui/tabs/index.js";

@@ -5,11 +5,11 @@
 	import ScrollArea from "../ui/scroll-area/scroll-area.svelte";
 	import { Toggle } from "$lib/components/ui/toggle/index.js";
 
-	import type { ColumnState, ColumnKey } from "$lib/columnConfig.svelte"
-	import { ALL_COLUMNS, COLUMN_LABELS, ALWAYS_VISIBLE } from "$lib/columnConfig.svelte"
+	import type { ColumnState, ColumnKey } from "$lib/ts/app/columnConfig.svelte"
+	import { ALL_COLUMNS, COLUMN_LABELS, ALWAYS_VISIBLE } from "$lib/ts/app/columnConfig.svelte"
 	import SortDropdown from "$lib/components/app/SortDropdown.svelte";
 
-	import { SortState } from "$lib/sortConfig.svelte";
+	import { SortState } from "$lib/ts/app/sortConfig.svelte";
 
 	let { columns, sort, compact = $bindable(false) } = $props<{ columns: ColumnState; sort: SortState, compact?: boolean }>()
 	const toggleable = ALL_COLUMNS.filter((col) => !ALWAYS_VISIBLE.includes(col))

@@ -7,7 +7,7 @@
 	import { BadgePlus, CirclePlus, CircleCheck } from "lucide-svelte";
 
 	import { library } from "$lib/library.svelte";
-	import type { Playlist, Track } from "$lib/types";
+	import type { Playlist, Track } from "$lib/ts/util/types";
 	import { addTrackToPlaylist, removeTrackFromPlaylist } from "$lib/playlistManager.svelte";
 
 	let search = $state("");

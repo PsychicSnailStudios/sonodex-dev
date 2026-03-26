@@ -2,9 +2,9 @@
 	import ArtworkDisplay from "./ArtworkDisplay.svelte";
 	import { setSelection } from "$lib/session.svelte";
 	import Button from "../ui/button/button.svelte";
-	import type { AudioCatagories } from "$lib/types";
+	import type { AudioCatagories } from "$lib/ts/util/types";
 
-	import { playTrackByUid, queueTracksFromUid } from "$lib/audioManager.svelte";
+	import { playTrackByUid, queueTracksFromUid } from "$lib/ts/audio/audioManager.svelte";
 
 	import { Play } from "lucide-svelte";
 

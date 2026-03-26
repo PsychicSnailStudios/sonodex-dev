@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { editModal, closeEditModal } from "$lib/editModal.svelte";
+	import { editModal, closeEditModal } from "$lib/ts/app/editModal.svelte";
 	import * as Dialog from "$lib/components/ui/dialog/index.js";
 	import TrackEditForm from "$lib/components/modals/TrackEditForm.svelte";
 	import AlbumEditForm from "$lib/components/modals/AlbumEditForm.svelte";

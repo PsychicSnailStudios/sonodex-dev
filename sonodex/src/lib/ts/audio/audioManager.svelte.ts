@@ -1,7 +1,7 @@
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { flushSync } from "svelte";
 import { library } from "$lib/library.svelte";
-import type { Track, AudioCatagories } from "$lib/types";
+import type { Track, AudioCatagories } from "$lib/ts/util/types";
 
 let audio: HTMLAudioElement | null = null;
 
