@@ -68,8 +68,10 @@
 
 <div class="flex flex-col gap-2 p-2 border-2 rounded-md h-full w-full overflow-hidden">
 
-	<div class="flex items-center justify-start gap-2">
-		<h1 class="h1 text-2xl text-primary">{profileState.active?.name}</h1>
+	<div class="flex items-center justify-between">
+		<div class="flex gap-2">
+			<h1 class="h1 text-2xl text-primary">{profileState.active?.name}</h1>
+		</div>
 		<Button variant="outline" size="sm" onclick={() => swichOpen = true}>
 			Swich Profile
 		</Button>

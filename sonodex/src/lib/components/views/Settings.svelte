@@ -141,7 +141,7 @@
 <ScrollArea class="h-full w-full">
 	<div class="flex flex-col gap-4 p-2 pr-4">
 		<h3 class="font-semibold">General</h3>
-		<div class="flex flex-col gap-2 p-2 border-2 rounded-md">
+		<div class="flex flex-col gap-2 p-2 bg-muted rounded-md">
 			<label class="text-sm">Theme</label>
 			<Select.Root
 				type="single"
@@ -159,7 +159,7 @@
 		</div>
 		
 		<h3 class="font-semibold">Library Management</h3>
-		<div class="flex flex-col gap-2 p-2 border-2 rounded-md">
+		<div class="flex flex-col gap-2 p-2 bg-muted rounded-md">
 
 			<h4 class="text-sm font-semibold">Add Library Path</h4>
 			<div class="flex gap-2">
@@ -185,8 +185,13 @@
 			<Button onclick={rescan} disabled={scanState.loading}>Rescan All</Button>
 		</div>
 
-		<h3 class="font-semibold">Metadata</h3>
-		<div class="flex flex-col gap-2 p-2 border-2 rounded-md">
+		<h3 class="font-semibold">EQ</h3>
+		<div class="flex flex-col gap-2 p-2 bg-muted rounded-md">
+			
+		</div>
+
+		<h3 class="font-semibold">Local Metadata</h3>
+		<div class="flex flex-col gap-2 p-2 bg-muted rounded-md">
 
 			<div class="space-y-2">
 			<h2 class="text-sm font-semibold">Metadata Priority</h2>
@@ -228,15 +233,19 @@
 			] as { key, label }}
 				<div class="flex items-center justify-between gap-4">
 				<label class="text-sm">{label}</label>
-				<input
-					type="checkbox"
-					checked={settings[key] === "true"}
-					onchange={(e) => saveSetting(key, (e.target as HTMLInputElement).checked ? "true" : "false")}
-				/>
+				<Switch checked={settings[key] === "true"} onCheckedChange={(checked) => saveSetting(key, checked ? "true" : "false")} />
 				</div>
 			{/each}
 			</div>
+		</div>
 
+		<h3 class="font-semibold">Connected Accounts</h3>
+		<div class="flex flex-col gap-2 p-2 bg-muted rounded-md">
+			
+		</div>
+
+		<h3 class="font-semibold">Metadata API's</h3>
+		<div class="flex flex-col gap-2 p-2 bg-muted rounded-md">
 			<div class="space-y-2">
 			<h2 class="text-sm font-semibold">Online Metadata Enrichment</h2>
 			<p class="text-xs text-muted-foreground">Fetch missing metadata from MusicBrainz and TheAudioDB. Primary API is tried first; falls back to the other if not found.</p>
@@ -294,17 +303,13 @@
 			</div>
 
 			<div class="space-y-2">
-			<h2 class="text-sm font-semibold">Enrich Library</h2>
-			<p class="text-xs text-muted-foreground">Fetch online metadata for all tracks. Respects the priority settings above.</p>
-			<div class="flex items-center gap-4">
-				<Button onclick={enrichAll} disabled={scanState.enriching}>
-				{scanState.enriching ? `Enriching... ${scanState.enrichDone}/${scanState.enrichTotal}` : "Enrich All Tracks"}
-				</Button>
-			</div>
-			</div>
-
-			<div class="flex items-center gap-4">
-			<Button onclick={rescan} disabled={scanState.loading}>Apply & Rescan</Button>
+				<h2 class="text-sm font-semibold">Enrich Library</h2>
+				<p class="text-xs text-muted-foreground">Fetch online metadata for all tracks. Respects the priority settings above.</p>
+				<div class="flex items-center gap-4">
+					<Button onclick={enrichAll} disabled={scanState.enriching}>
+					{scanState.enriching ? `Enriching... ${scanState.enrichDone}/${scanState.enrichTotal}` : "Enrich All Tracks"}
+					</Button>
+				</div>
 			</div>
 
 		</div>
