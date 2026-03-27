@@ -2,6 +2,7 @@ import { convertFileSrc } from "@tauri-apps/api/core";
 import { flushSync } from "svelte";
 import { library } from "$lib/library.svelte";
 import type { Track, AudioCatagories } from "$lib/ts/util/types";
+import { parseUidType } from "../util/helpers";
 
 let audio: HTMLAudioElement | null = null;
 
@@ -64,7 +65,7 @@ function startAudio(track: Track) {
 
 function playTrack(track: Track) {
 	if (currentlyPlaying.track) {
-		playedTracks.push(currentlyPlaying.track);
+		playedTracks.unshift(currentlyPlaying.track);
 	}
 	startAudio(track);
 }
@@ -131,10 +132,11 @@ export function queueTracksByUid(uids: string[], play: boolean = false, shuffle:
 	if (play) startPlayingQueue();
 }
 
-export function queueTracksFromUid(uid: string, type: AudioCatagories, play: boolean = false, shuffle: boolean = false) {
+export function queueTracksFromUid(uid: string, play: boolean = false, shuffle: boolean = false) {
 	if (play) clearQueue();
 
 	let tracks: Track[] = [];
+	let type = parseUidType(uid);
 
 	if (type === "album") {
 		const album = library.albums.find((a) => a.uid === uid);
@@ -193,20 +195,23 @@ export function skipBack() {
 		return;
 	}
 
-	const prev = playedTracks.pop();
-	if (!prev) {
-		el.currentTime = 0;
-		return;
-	}
+	if (queueIndex < 1) return;
+		
+	queueIndex--;
 
-	startAudio(prev);
-
-	if (queueIndex > 0) queueIndex--;
+	playTrack(queuedTracks[queueIndex]);
 }
 
 export function skipNext() {
-	const nextIndex = queueIndex + 1;
-	if (nextIndex >= queuedTracks.length) return;
+	let nextIndex = queueIndex + 1;
+	if (nextIndex >= queuedTracks.length) {
+		if (player.loopType === 2) {
+			nextIndex = 0;
+		}
+		else {
+			return;
+		}
+	};
 
 	queueIndex = nextIndex;
 	playTrack(queuedTracks[queueIndex]);

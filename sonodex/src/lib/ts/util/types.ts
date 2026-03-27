@@ -80,4 +80,4 @@ export type Lyrics = {
 	instrumental: boolean;
 };
 
-export type AudioCatagories = "track" | "album" | "artist" | "playlist";
+export type AudioCatagories = "track" | "album" | "artist" | "playlist" | "unknown";

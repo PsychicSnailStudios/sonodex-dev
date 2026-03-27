@@ -1,8 +1,6 @@
-import type { Track, TrackAlbumEntry, PlaylistTrackEntry } from "$lib/ts/util/types";
+import type { Track, TrackAlbumEntry, PlaylistTrackEntry, AudioCatagories } from "$lib/ts/util/types";
 
-export type UidType = "track" | "album" | "artist" | "playlist" | "unknown";
-
-export function parseUidType(uid: string): UidType {
+export function parseUidType(uid: string): AudioCatagories {
 	if (uid.startsWith("t-")) return "track";
 	if (uid.startsWith("ar-")) return "artist";
 	if (uid.startsWith("a-")) return "album";
