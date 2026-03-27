@@ -6,25 +6,27 @@
 	let { class: className }: ButtonProps = $props();
 </script>
 
-<div class="{className} flex justify-start gap-1">
+<div class="{className} flex justify-between">
+	<div class="flex gap-1">
+		<Button
+			variant="ghost"
+			size="icon-sm"
+			class="rounded-full"
+			disabled={!canGoBack()}
+			onclick={() => moveSelection(-1)}>
+			<CircleArrowLeft class="w-4 h-4"/>
+		</Button>
+		<Button
+			variant="ghost"
+			size="icon-sm"
+			class="rounded-full"
+			disabled={!canGoForward()}
+			onclick={() => moveSelection(1)}>
+			<CircleArrowRight class="w-4 h-4"/>
+		</Button>
+	</div>
 	<Button
-		variant="outline"
-		size="icon-sm"
-		class="rounded-full"
-		disabled={!canGoBack()}
-		onclick={() => moveSelection(-1)}>
-		<CircleArrowLeft class="w-4 h-4"/>
-	</Button>
-	<Button
-		variant="outline"
-		size="icon-sm"
-		class="rounded-full"
-		disabled={!canGoForward()}
-		onclick={() => moveSelection(1)}>
-		<CircleArrowRight class="w-4 h-4"/>
-	</Button>
-	<Button
-		variant="outline"
+		variant="ghost"
 		size="icon-sm"
 		class="rounded-full"
 		onclick={() => clearSelection()}>
