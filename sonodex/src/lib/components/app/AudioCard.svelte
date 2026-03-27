@@ -15,7 +15,7 @@
 		if (type === "track") {
 			playTrackByUid(artworkUid);
 		} else {
-			queueTracksFromUid(artworkUid, type, true);
+			queueTracksFromUid(artworkUid, true);
 		}
 	}
 </script>
