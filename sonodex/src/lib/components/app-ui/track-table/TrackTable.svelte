@@ -38,11 +38,17 @@
 				case "duration": return dir * ((a.duration_ms ?? 0) - (b.duration_ms ?? 0))
 				case "label":    return dir * (a.label ?? "").localeCompare(b.label ?? "")
 				case "artist":   return dir * (a.album_artist ?? "").localeCompare(b.album_artist ?? "")
-				case "number":   return dir * ((parseTrackNumber(a.albums) ?? 0) - (parseTrackNumber(b.albums) ?? 0))
+				case "number":   return dir * (sortByNumber(a, b))
 				default:         return 0
 			}
 		})
 	})
+
+	function sortByNumber(a, b) {
+		if (playlistUid) return 0
+		
+		return (parseTrackNumber(a.albums) ?? 0) - (parseTrackNumber(b.albums) ?? 0)
+	}
 
 	const orderedUids = $derived(sortedTracks.map((t) => t.uid))
 
