@@ -16,7 +16,7 @@
 		createProfile,
 		deleteProfile,
 		getProfileAvatar,
-	} from "$lib/profiles.svelte";
+	} from "$lib/ts/profiles.svelte";
 
 	import { User } from "lucide-svelte";
 

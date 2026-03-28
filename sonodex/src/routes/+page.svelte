@@ -2,8 +2,8 @@
 	import { onMount } from "svelte";
 	import { invoke } from "@tauri-apps/api/core";
 	import { listen } from "@tauri-apps/api/event";
-	import { loadLibrary } from "$lib/library.svelte";
-	import { selection, scanState } from "$lib/session.svelte";
+	import { loadLibrary } from "$lib/ts/library.svelte";
+	import { selection, scanState } from "$lib/ts/session.svelte";
 	import { togglePlay, skipBack, skipNext } from "$lib/ts/audio/audioManager.svelte";
 	import { dragState } from "$lib/ts/app/dragState.svelte";
 
@@ -13,13 +13,13 @@
 	import HomeView from "$lib/components/views/Profile.svelte";
 	import MusicView from "$lib/components/views/MusicLibrary.svelte";
 	import PlaylistsView from "$lib/components/views/Playlists.svelte";
-	import PlayControls from "$lib/components/PlayControls.svelte";
-	import NowPlaying from "$lib/components/NowPlaying.svelte";
+	import PlayControls from "$lib/components/app/PlayControls.svelte";
+	import NowPlaying from "$lib/components/app/NowPlaying.svelte";
 	import AlbumDisplay from "$lib/components/views/AlbumDisplay.svelte";
 	import ArtistDisplay from "$lib/components/views/ArtistDisplay.svelte";
 	import PlaylistDisplay from "$lib/components/views/PlaylistDisplay.svelte";
 	import TrackDisplay from "$lib/components/views/TrackDisplay.svelte";
-	import ProfileSetup from "$lib/components/ProfileSetup.svelte";
+	import ProfileSetup from "$lib/components/modals/ProfileSetup.svelte";
 
 	import { House, Music, ListMusic, Search, Tags } from "lucide-svelte";
 

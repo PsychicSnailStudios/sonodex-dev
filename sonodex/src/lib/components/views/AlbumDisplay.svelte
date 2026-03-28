@@ -3,8 +3,8 @@
 
 	import Button from "../ui/button/button.svelte";
 
-	import { selection, setSelection } from "$lib/session.svelte";
-	import { getArtistUidFromName, library } from "$lib/library.svelte";
+	import { selection, setSelection } from "$lib/ts/session.svelte";
+	import { getArtistUidFromName, library } from "$lib/ts/library.svelte";
 	import type { Album, Track } from "$lib/ts/util/types";
 	import { queueTracksByObject } from "$lib/ts/audio/audioManager.svelte";
 	import { openEditModal } from "$lib/ts/app/editModal.svelte";
@@ -12,18 +12,18 @@
 	import { Pencil } from "lucide-svelte";
 
 	import { createColumnState } from "$lib/ts/app/columnConfig.svelte"
-	import TrackTableSettings from "$lib/components/app/TrackTableSettings.svelte";
+	import TrackTableSettings from "$lib/components/app-ui/track-table/TrackTableSettings.svelte";
 
-	import ArtworkDisplay from "$lib/components/app/ArtworkDisplay.svelte";
-	import TrackTable from "$lib/components/app/TrackTable.svelte";
-	import SortDropdown from "$lib/components/app/SortDropdown.svelte";
+	import ArtworkDisplay from "$lib/components/app-ui/ArtworkDisplay.svelte";
+	import TrackTable from "$lib/components/app-ui/track-table/TrackTable.svelte";
+	import SortDropdown from "$lib/components/app-ui/SortDropdown.svelte";
 	import { ScrollArea } from "$lib/components/ui/scroll-area/index.js";
 	import { getArtworkColor } from "$lib/ts/util/helpers"
 
 	import { formatDuration, totalDuration } from '$lib/ts/util/helpers';
-   import AudioCard from "$lib/components/app/AudioCard.svelte";
+   import AudioCard from "$lib/components/app-ui/AudioCard.svelte";
 	import { SortState } from "$lib/ts/app/sortConfig.svelte";
-   import NavButtons from "$lib/components/app/NavButtons.svelte";
+   import NavButtons from "$lib/components/app-ui/NavButtons.svelte";
     import { get } from "svelte/store";
 
 	const sort = new SortState("number", "asc");

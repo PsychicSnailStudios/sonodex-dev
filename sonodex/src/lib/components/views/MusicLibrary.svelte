@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { library } from "$lib/library.svelte";
-	import { setSelection } from "$lib/session.svelte";
+	import { library } from "$lib/ts/library.svelte";
+	import { setSelection } from "$lib/ts/session.svelte";
 
 	import { createColumnState } from "$lib/ts/app/columnConfig.svelte"
 
@@ -9,10 +9,10 @@
 	import { Input } from "$lib/components/ui/input/index.js";
 	import Toggle from "$lib/components/ui/toggle/toggle.svelte";
 
-	import AudioCard from "$lib/components/app/AudioCard.svelte";
-	import TrackTable from "$lib/components/app/TrackTable.svelte";
-	import ArtworkDisplay from "../app/ArtworkDisplay.svelte";
-	import TrackTableSettings from "$lib/components/app/TrackTableSettings.svelte";
+	import AudioCard from "$lib/components/app-ui/AudioCard.svelte";
+	import TrackTable from "$lib/components/app-ui/track-table/TrackTable.svelte";
+	import ArtworkDisplay from "../app-ui/ArtworkDisplay.svelte";
+	import TrackTableSettings from "$lib/components/app-ui/track-table/TrackTableSettings.svelte";
 	import { SortState } from "$lib/ts/app/sortConfig.svelte"
    import { LayoutGrid, List } from "lucide-svelte";
    import { parseArtists } from "$lib/ts/util/helpers";

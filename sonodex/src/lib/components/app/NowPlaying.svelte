@@ -1,10 +1,10 @@
 <script lang="ts">
    import { invoke } from "@tauri-apps/api/core";
 	import { currentlyPlaying } from "$lib/ts/audio/audioManager.svelte";
-	import { setSelection } from "$lib/session.svelte";
+	import { setSelection } from "$lib/ts/session.svelte";
 	import { formatDuration, formatRating, getArtworkColor, parseAlbum, parseArtists } from "$lib/ts/util/helpers";
 	import { clearQueue, getQueuedTracks, player, getPlayedTracks } from "$lib/ts/audio/audioManager.svelte";
-	import { getArtistUidFromName } from "$lib/library.svelte";
+	import { getArtistUidFromName } from "$lib/ts/library.svelte";
 
 	import * as Tabs from "$lib/components/ui/tabs/index.js";
 	import { Button } from "$lib/components/ui/button";
@@ -12,10 +12,10 @@
 
 	import { Rows4, BadgePlus, Square } from "lucide-svelte";
 
-	import ArtworkDisplay from "$lib/components/app/ArtworkDisplay.svelte";
-	import TrackTable from "$lib/components/app/TrackTable.svelte";
-   import AddToPlaylist from "$lib/components/app/TrackPlaylistEditButton.svelte";
-	import ScrollingText from "$lib/components/app/ScrollingText.svelte";
+	import ArtworkDisplay from "$lib/components/app-ui/ArtworkDisplay.svelte";
+	import TrackTable from "$lib/components/app-ui/track-table/TrackTable.svelte";
+   import AddToPlaylist from "$lib/components/app-ui/TrackPlaylistEditButton.svelte";
+	import ScrollingText from "$lib/components/app-ui/ScrollingText.svelte";
 
 	let showQueue = $state(false);
 

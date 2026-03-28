@@ -3,7 +3,7 @@
 	import { Skeleton } from "$lib/components/ui/skeleton/index.js";
 	import { Music4, User, DiscAlbum, ListMusic } from "lucide-svelte";
 	import type { AudioCatagories } from "$lib/types";
-	import { library } from "$lib/library.svelte";
+	import { library } from "$lib/ts/library.svelte";
 	import { untrack } from "svelte";
 
 	let { uid, size = null, type = "track" }: { uid: string; size?: number | null; type?: AudioCatagories } = $props();

@@ -2,20 +2,20 @@
 	import { invoke } from "@tauri-apps/api/core";
 	import { onMount } from "svelte";
 
-	import { getArtistUidFromName, library } from "$lib/library.svelte";
+	import { getArtistUidFromName, library } from "$lib/ts/library.svelte";
 	import type { Track, Lyrics } from "$lib/ts/util/types";
-	import { selection, setSelection } from "$lib/session.svelte";
+	import { selection, setSelection } from "$lib/ts/session.svelte";
 	import { openEditModal } from "$lib/ts/app/editModal.svelte";
 
 	import { formatDuration, formatRating, parseAlbum, parseArtists } from '$lib/ts/util/helpers';
 
 	import * as Tabs from "$lib/components/ui/tabs/index.js";
 	import { Button } from "$lib/components/ui/button/index.js";
-	import ArtworkDisplay from "$lib/components/app/ArtworkDisplay.svelte";
-   import NavButtons from "$lib/components/app/NavButtons.svelte";
+	import ArtworkDisplay from "$lib/components/app-ui/ArtworkDisplay.svelte";
+   import NavButtons from "$lib/components/app-ui/NavButtons.svelte";
    import { Pencil } from "lucide-svelte";
    import { playTrackByObject } from "$lib/ts/audio/audioManager.svelte";
-   import TrackPlaylistEditButton from "$lib/components/app/TrackPlaylistEditButton.svelte";
+   import TrackPlaylistEditButton from "$lib/components/app-ui/TrackPlaylistEditButton.svelte";
     import { get } from "svelte/store";
 
 	let track = $derived(library.tracks.find(t => t.uid === selection.uid) ?? null);

@@ -7,8 +7,8 @@
 	import { parseAlbum, parseTrackNumber } from "$lib/ts/util/helpers"
 	import { trackSelection, setTrackSelectionContext, clearTrackSelection, copySelectedToClipboard } from "$lib/ts/app/trackSelection.svelte"
 	import { dragState, endDrag } from "$lib/ts/app/dragState.svelte"
-	import { removeTracksFromPlaylist, reorderPlaylistTracks, addTracksToPlaylist } from "$lib/playlistManager.svelte"
-	import TrackRow from "$lib/components/app/TrackRow.svelte"
+	import { removeTracksFromPlaylist, reorderPlaylistTracks, addTracksToPlaylist } from "$lib/ts/audio/playlistManager.svelte"
+	import TrackRow from "$lib/components/app-ui/track-table/TrackRow.svelte"
 
 	let {
 		tracks,

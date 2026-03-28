@@ -1,18 +1,18 @@
 <script lang="ts">
 	import { invoke } from "@tauri-apps/api/core";
 
-	import { selection } from "$lib/session.svelte";
-	import { library } from "$lib/library.svelte";
+	import { selection } from "$lib/ts/session.svelte";
+	import { library } from "$lib/ts/library.svelte";
 	import type { Artist, Track, Album } from "$lib/ts/util/types";
 	import { openEditModal } from "$lib/ts/app/editModal.svelte";
 
-	import ArtworkDisplay from "$lib/components/app/ArtworkDisplay.svelte";
-	import TrackTable from "$lib/components/app/TrackTable.svelte";
+	import ArtworkDisplay from "$lib/components/app-ui/ArtworkDisplay.svelte";
+	import TrackTable from "$lib/components/app-ui/track-table/TrackTable.svelte";
 	import * as Tabs from "$lib/components/ui/tabs/index.js";
 	import { Button } from "$lib/components/ui/button/index.js";
-	import AudioCard from "../app/AudioCard.svelte";
+	import AudioCard from "../app-ui/AudioCard.svelte";
    import ScrollArea from "../ui/scroll-area/scroll-area.svelte";
-   import NavButtons from "$lib/components/app/NavButtons.svelte";
+   import NavButtons from "$lib/components/app-ui/NavButtons.svelte";
 
 	let artist: Artist | null = $state(null);
 

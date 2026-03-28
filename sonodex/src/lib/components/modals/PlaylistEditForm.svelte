@@ -9,7 +9,7 @@
 	import { Separator } from "$lib/components/ui/separator";
 	import * as Tabs from "$lib/components/ui/tabs";
 	import { editModal, closeEditModal } from "$lib/ts/app/editModal.svelte";
-	import { loadLibrary } from "$lib/library.svelte";
+	import { loadLibrary } from "$lib/ts/library.svelte";
 
 	let { uid } = $props<{ uid: string }>();
 

@@ -1,8 +1,8 @@
 <script lang="ts">
-	import { library } from "$lib/library.svelte";
+	import { library } from "$lib/ts/library.svelte";
 	import { dragState, setHoveredPlaylist, endDrag } from "$lib/ts/app/dragState.svelte";
-	import { addTracksToPlaylist, createPlaylist } from "$lib/playlistManager.svelte";
-	import { profileState } from "$lib/profiles.svelte";
+	import { addTracksToPlaylist, createPlaylist } from "$lib/ts/audio/playlistManager.svelte";
+	import { profileState } from "$lib/ts/profiles.svelte";
 	import { invoke } from "@tauri-apps/api/core";
 	import type { Playlist } from "$lib/types";
 
@@ -10,7 +10,7 @@
 	import { Input } from "$lib/components/ui/input/index.js";
 	import * as AlertDialog from "$lib/components/ui/alert-dialog/index.js";
 	import { Button, buttonVariants } from "$lib/components/ui/button/index.js";
-	import AudioCard from "$lib/components/app/AudioCard.svelte";
+	import AudioCard from "$lib/components/app-ui/AudioCard.svelte";
 	import {
 		FolderPlus, ListPlus, FileDown,
 		LayoutGrid, List,

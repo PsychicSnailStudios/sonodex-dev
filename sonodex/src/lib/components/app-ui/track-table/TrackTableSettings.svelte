@@ -1,13 +1,13 @@
 <script lang="ts">
 	import { List, TextAlignJustify } from "lucide-svelte";
 	import * as DropdownMenu from "$lib/components/ui/dropdown-menu/index.js";
-	import Button from "../ui/button/button.svelte";
-	import ScrollArea from "../ui/scroll-area/scroll-area.svelte";
+	import Button from "../../ui/button/button.svelte";
+	import ScrollArea from "../../ui/scroll-area/scroll-area.svelte";
 	import { Toggle } from "$lib/components/ui/toggle/index.js";
 
 	import type { ColumnState, ColumnKey } from "$lib/ts/app/columnConfig.svelte"
 	import { ALL_COLUMNS, COLUMN_LABELS, ALWAYS_VISIBLE } from "$lib/ts/app/columnConfig.svelte"
-	import SortDropdown from "$lib/components/app/SortDropdown.svelte";
+	import SortDropdown from "$lib/components/app-ui/SortDropdown.svelte";
 
 	import { SortState } from "$lib/ts/app/sortConfig.svelte";
 

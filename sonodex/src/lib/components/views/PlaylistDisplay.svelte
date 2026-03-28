@@ -1,26 +1,26 @@
 <script lang="ts">
-	import { selection } from "$lib/session.svelte";
-	import { library } from "$lib/library.svelte";
+	import { selection } from "$lib/ts/session.svelte";
+	import { library } from "$lib/ts/library.svelte";
 	import type { Playlist, Track } from "$lib/ts/util/types";
 	import { openEditModal } from "$lib/ts/app/editModal.svelte";
 
 	import { CirclePlus, Pencil } from "lucide-svelte";
 
 	import { createColumnState } from "$lib/ts/app/columnConfig.svelte"
-	import TrackTableSettings from "$lib/components/app/TrackTableSettings.svelte"
+	import TrackTableSettings from "$lib/components/app-ui/track-table/TrackTableSettings.svelte"
 
-	import ArtworkDisplay from "$lib/components/app/ArtworkDisplay.svelte";
-	import TrackTable from "$lib/components/app/TrackTable.svelte";
+	import ArtworkDisplay from "$lib/components/app-ui/ArtworkDisplay.svelte";
+	import TrackTable from "$lib/components/app-ui/track-table/TrackTable.svelte";
 	import { Button } from "$lib/components/ui/button/index.js";
 	import { ScrollArea } from "$lib/components/ui/scroll-area/index.js";
 	import { Input } from "$lib/components/ui/input/index.js";
 
 	import { getArtworkColor, parseArtists, totalDuration } from '$lib/ts/util/helpers';
-	import { addTrackToPlaylist, addTracksToPlaylist, parseTracks } from "$lib/playlistManager.svelte";
+	import { addTrackToPlaylist, addTracksToPlaylist, parseTracks } from "$lib/ts/audio/playlistManager.svelte";
 	import { queueTracksByObject } from "$lib/ts/audio/audioManager.svelte";
 	import { invoke } from "@tauri-apps/api/core";
 	import { SortState } from "$lib/ts/app/sortConfig.svelte"
-	import NavButtons from "$lib/components/app/NavButtons.svelte";
+	import NavButtons from "$lib/components/app-ui/NavButtons.svelte";
 	import { dragState, endDrag } from "$lib/ts/app/dragState.svelte";
 
 	const cols = createColumnState("playlist");

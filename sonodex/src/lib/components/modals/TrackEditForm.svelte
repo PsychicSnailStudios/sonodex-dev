@@ -9,7 +9,7 @@
 	import { Separator } from "$lib/components/ui/separator";
 	import * as Tabs from "$lib/components/ui/tabs";
 	import { editModal, closeEditModal } from "$lib/ts/app/editModal.svelte";
-	import { loadLibrary } from "$lib/library.svelte";
+	import { loadLibrary } from "$lib/ts/library.svelte";
 
 	let { uid } = $props<{ uid: string }>();
 
@@ -17,6 +17,7 @@
 	let artists = $state("");
 	let albumArtist = $state("");
 	let album = $state("");
+	// let albums = $state([{uid: string; name: string; track_number: number | null;}]);
 	let trackNumber = $state<string>("");
 	let year = $state("");
 	let genres = $state("");

@@ -1,13 +1,13 @@
 <script lang="ts">
 	import type { Track } from "$lib/ts/util/types";
-	import { setSelection } from "$lib/session.svelte";
+	import { setSelection } from "$lib/ts/session.svelte";
 	import { trackSelection, selectTrack } from "$lib/ts/app/trackSelection.svelte";
 	import { startDrag, endDrag } from "$lib/ts/app/dragState.svelte";
 	import { playTrackByUid } from "$lib/ts/audio/audioManager.svelte";
-	import { getAlbumUidFromName, getArtistUidFromName } from "$lib/library.svelte";
+	import { getAlbumUidFromName, getArtistUidFromName } from "$lib/ts/library.svelte";
 	import { formatDuration, formatRating, parseAlbum, parseArtists, parseTrackNumber } from "$lib/ts/util/helpers";
-	import ArtworkDisplay from "$lib/components/app/ArtworkDisplay.svelte";
-	import TrackTableEditButton from "$lib/components/app/TrackTableEditButton.svelte";
+	import ArtworkDisplay from "$lib/components/app-ui/ArtworkDisplay.svelte";
+	import TrackTableEditButton from "$lib/components/app-ui/track-table/TrackTableEditButton.svelte";
     import { get } from "svelte/store";
 
 	let {

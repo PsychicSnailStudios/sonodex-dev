@@ -1,6 +1,6 @@
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { flushSync } from "svelte";
-import { library } from "$lib/library.svelte";
+import { library } from "$lib/ts/library.svelte";
 import type { Track, AudioCatagories } from "$lib/ts/util/types";
 import { parseUidType } from "../util/helpers";
 

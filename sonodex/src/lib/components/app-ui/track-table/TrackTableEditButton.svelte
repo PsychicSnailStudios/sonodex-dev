@@ -1,15 +1,15 @@
 <script lang="ts">
 	import * as DropdownMenu from "$lib/components/ui/dropdown-menu/index.js";
-	import Button from "../ui/button/button.svelte";
-	import ScrollArea from "../ui/scroll-area/scroll-area.svelte";
+	import Button from "../../ui/button/button.svelte";
+	import ScrollArea from "../../ui/scroll-area/scroll-area.svelte";
 
 	import { BadgePlus, CirclePlus, CircleCheck } from "lucide-svelte";
 
    import type { Track } from "$lib/ts/util/types";
    import { addTrackToQueue } from "$lib/ts/audio/audioManager.svelte";
-	import { library } from "$lib/library.svelte";
-	import { removeTrackFromPlaylist } from "$lib/playlistManager.svelte";
-   import TrackPlaylistEditButton from "./TrackPlaylistEditButton.svelte";
+	import { library } from "$lib/ts/library.svelte";
+	import { removeTrackFromPlaylist } from "$lib/ts/audio/playlistManager.svelte";
+   import TrackPlaylistEditButton from "../TrackPlaylistEditButton.svelte";
 
 	let { track } = $props<{ track: Track; }>()
 	

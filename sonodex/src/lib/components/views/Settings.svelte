@@ -4,8 +4,8 @@
   import { onMount } from "svelte";
   import { open } from "@tauri-apps/plugin-dialog";
   import { setMode, mode } from "mode-watcher";
-  import { loadLibrary } from "$lib/library.svelte";
-  import { scanState } from "$lib/session.svelte";
+  import { loadLibrary } from "$lib/ts/library.svelte";
+  import { scanState } from "$lib/ts/session.svelte";
   
   import { ScrollArea } from "$lib/components/ui/scroll-area/index.js";
   import { Button } from "$lib/components/ui/button/index.js";

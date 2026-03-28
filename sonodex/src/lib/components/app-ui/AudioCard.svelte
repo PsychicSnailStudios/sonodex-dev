@@ -1,6 +1,6 @@
 <script lang="ts">
 	import ArtworkDisplay from "./ArtworkDisplay.svelte";
-	import { setSelection } from "$lib/session.svelte";
+	import { setSelection } from "$lib/ts/session.svelte";
 	import Button from "../ui/button/button.svelte";
 	import type { AudioCatagories } from "$lib/ts/util/types";
 
