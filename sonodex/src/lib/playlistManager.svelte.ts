@@ -2,35 +2,120 @@ import { library } from "./library.svelte";
 import type { Playlist, Track } from "./ts/util/types";
 import { invoke } from "@tauri-apps/api/core";
 
-export async function addTrackToPlaylist(playlist: Playlist, track: Track) {
-	let current: { uid: string; name: string }[] = playlist.tracks ? JSON.parse(playlist.tracks) : []
+type TrackEntry = { uid: string; name: string; order: number }
 
-	let already = current.some((t) => t.uid === track.uid)
-	if (already) return
+export function parseTracks(raw: unknown): TrackEntry[] {
+	if (!raw) return []
+	if (typeof raw === "string") return JSON.parse(raw)
+	if (Array.isArray(raw)) return raw
+	return []
+}
 
-	let updated = [...current, { uid: track.uid!, name: track.title ?? "Unknown Title" }]
-
-	await invoke("update_playlist_entry", {
-		uid: String(playlist.uid),
-		update: {
-			tracks: JSON.stringify(updated),
-		},
-	})
-
+async function refreshPlaylists() {
 	library.playlists = await invoke("get_playlists")
 }
 
-export async function removeTrackFromPlaylist(playlist: Playlist, track: Track) {
-	let current: { uid: string; name: string }[] = playlist.tracks ? JSON.parse(playlist.tracks) : []
+export async function addTrackToPlaylist(playlist: Playlist, track: Track) {
+	const current = parseTracks(playlist.tracks)
+	if (current.some((t) => t.uid === track.uid)) return
 
-	let updated = current.filter((t) => t.uid !== track.uid)
+	const maxOrder = current.reduce((m, t) => Math.max(m, t.order ?? 0), 0)
+	const updated = [...current, { uid: track.uid!, name: track.title ?? "Unknown Title", order: maxOrder + 1 }]
 
 	await invoke("update_playlist_entry", {
 		uid: String(playlist.uid),
-		update: {
-			tracks: JSON.stringify(updated),
+		update: { tracks: JSON.stringify(updated) },
+	})
+
+	await refreshPlaylists()
+}
+
+export async function addTracksToPlaylist(playlistUid: string, trackUids: string[]) {
+	const playlist = library.playlists.find((p) => p.uid === playlistUid)
+	if (!playlist) return
+
+	const current = parseTracks(playlist.tracks)
+	const existingUids = new Set(current.map((t) => t.uid))
+	const toAdd = trackUids.filter((uid) => !existingUids.has(uid))
+	if (toAdd.length === 0) return
+
+	let maxOrder = current.reduce((m, t) => Math.max(m, t.order ?? 0), 0)
+
+	const newEntries: TrackEntry[] = toAdd.map((uid) => {
+		const track = library.tracks.find((t) => t.uid === uid)
+		maxOrder += 1
+		return { uid, name: track?.title ?? "Unknown Title", order: maxOrder }
+	})
+
+	await invoke("update_playlist_entry", {
+		uid: playlistUid,
+		update: { tracks: JSON.stringify([...current, ...newEntries]) },
+	})
+
+	await refreshPlaylists()
+}
+
+export async function removeTrackFromPlaylist(playlist: Playlist, track: Track) {
+	const current = parseTracks(playlist.tracks)
+	const updated = current.filter((t) => t.uid !== track.uid)
+
+	await invoke("update_playlist_entry", {
+		uid: String(playlist.uid),
+		update: { tracks: JSON.stringify(updated) },
+	})
+
+	await refreshPlaylists()
+}
+
+export async function removeTracksFromPlaylist(playlistUid: string, trackUids: string[]) {
+	const playlist = library.playlists.find((p) => p.uid === playlistUid)
+	if (!playlist) return
+
+	const toRemove = new Set(trackUids)
+	const updated = parseTracks(playlist.tracks).filter((t) => !toRemove.has(t.uid))
+
+	await invoke("update_playlist_entry", {
+		uid: playlistUid,
+		update: { tracks: JSON.stringify(updated) },
+	})
+
+	await refreshPlaylists()
+}
+
+export async function reorderPlaylistTracks(playlistUid: string, orderedUids: string[]) {
+	const playlist = library.playlists.find((p) => p.uid === playlistUid)
+	if (!playlist) return
+
+	const current = parseTracks(playlist.tracks)
+	const byUid = new Map(current.map((t) => [t.uid, t]))
+
+	const updated = orderedUids
+		.map((uid, i) => {
+			const entry = byUid.get(uid)
+			if (!entry) return null
+			return { ...entry, order: i + 1 }
+		})
+		.filter(Boolean)
+
+	await invoke("update_playlist_entry", {
+		uid: playlistUid,
+		update: { tracks: JSON.stringify(updated) },
+	})
+
+	await refreshPlaylists()
+}
+
+export async function createPlaylist(name: string, owner: string | null = null) {
+	await invoke("create_playlist_entry", {
+		playlist: {
+			uid: "p-" + crypto.randomUUID(),
+			title: name.trim(),
+			description: null,
+			owner: owner,
+			tracks: null,
+			artwork_path: null,
 		},
 	})
 
-	library.playlists = await invoke("get_playlists")
+	await refreshPlaylists()
 }

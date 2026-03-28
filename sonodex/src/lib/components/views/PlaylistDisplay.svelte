@@ -16,13 +16,13 @@
 	import { Input } from "$lib/components/ui/input/index.js";
 
 	import { getArtworkColor, parseArtists, totalDuration } from '$lib/ts/util/helpers';
-   import Circle from "@lucide/svelte/icons/circle";
-   import { addTrackToPlaylist } from "$lib/playlistManager.svelte";
-   import { queueTracksByObject } from "$lib/ts/audio/audioManager.svelte";
-   import { invoke } from "@tauri-apps/api/core";
+	import { addTrackToPlaylist, addTracksToPlaylist, parseTracks } from "$lib/playlistManager.svelte";
+	import { queueTracksByObject } from "$lib/ts/audio/audioManager.svelte";
+	import { invoke } from "@tauri-apps/api/core";
 	import { SortState } from "$lib/ts/app/sortConfig.svelte"
-   import NavButtons from "$lib/components/app/NavButtons.svelte";
-	 
+	import NavButtons from "$lib/components/app/NavButtons.svelte";
+	import { dragState, endDrag } from "$lib/dragState.svelte";
+
 	const cols = createColumnState("playlist");
 	const sort = new SortState("number", "asc");
 	const searchCols = createColumnState();
@@ -33,8 +33,10 @@
 
 	let tracks: Track[] = $derived.by(() => {
 		if (!playlist) return [];
-		const playlistTrackUids: string[] = JSON.parse(playlist.tracks ?? "[]").map((t: { uid: string }) => t.uid);
-		return library.tracks.filter(t => playlistTrackUids.includes(t.uid));
+		const sorted = [...parseTracks(playlist.tracks)].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+		return sorted
+			.map((e) => library.tracks.find((t) => t.uid === e.uid))
+			.filter(Boolean) as Track[];
 	});
 
 	const filteredTracks = $derived(
@@ -45,7 +47,7 @@
 					const title = t.title?.toLowerCase() ?? "";
 					const artists = t.artists?.toLowerCase() ?? "";
 					const album_artist = t.album_artist?.toLowerCase() ?? "";
-					const albums = t.albums?.toLowerCase() ?? "";
+					const albums = t.albums ? JSON.stringify(t.albums).toLowerCase() : "";
 					return title.includes(q) || artists.includes(q) || album_artist.includes(q) || albums.includes(q);
 			  })
 	);
@@ -67,9 +69,27 @@
 			}
 		});
 	});
+
+	function handleDisplayDragOver(e: DragEvent) {
+		if (dragState.active) e.preventDefault();
+	}
+
+	async function handleDisplayDrop(e: DragEvent) {
+		e.preventDefault();
+		if (!dragState.payload || !playlist) return;
+		await addTracksToPlaylist(playlist.uid, dragState.payload.uids);
+		endDrag();
+	}
 </script>
 
-<div class="flex flex-col gap-2 p-4 border-2 h-full w-full overflow-hidden rounded-md" style="background: linear-gradient(180deg, {color} 0%, transparent 80%)">
+<div
+	class="flex flex-col gap-2 p-4 border-2 h-full w-full overflow-hidden rounded-md"
+	style="background: linear-gradient(180deg, {color} 0%, transparent 80%)"
+	ondragover={handleDisplayDragOver}
+	ondrop={handleDisplayDrop}
+	aria-label="Playlist"
+	role="region"
+>
 	{#if playlist}
 	<ScrollArea class="min-h-0 min-w-0">	
 		<div class="flex flex-col gap-4 pb-4 pr-4">
@@ -98,7 +118,13 @@
 				</div>
 			</div>
 
-			<TrackTable tracks={tracks} columns={cols} sort={sort} compact={compact} />
+			<TrackTable
+				tracks={tracks}
+				columns={cols}
+				sort={sort}
+				compact={compact}
+				playlistUid={playlist.uid}
+			/>
 			
 			<div class="flex flex-col gap-1 p-3 mt-8 m-4 rounded-md bg-accent">
 				<div class="flex items-center justify-between p-2">
@@ -110,7 +136,7 @@
 					/>
 				</div>
 				
-				<ScrollArea class="min-h-0 min-w-0 h-[300px] p-2 ">
+				<ScrollArea class="min-h-0 min-w-0 h-[300px] p-2">
 					<div class="flex flex-col gap-0.5">
 						{#each filteredTracks as track}
 							<div class="grid gap-2 p-2" style="grid-template-columns: auto auto 1fr auto;">
@@ -120,7 +146,7 @@
 									<span class="text-xs text-muted-foreground truncate">{parseArtists(track.artists)}</span>
 								</div>
 								<span></span>
-								<button class="" onclick={() => { addTrackToPlaylist(playlist, track)}}><CirclePlus size={20} /></button>
+								<button onclick={() => { addTrackToPlaylist(playlist!, track) }}><CirclePlus size={20} /></button>
 							</div>
 						{/each}
 					</div>

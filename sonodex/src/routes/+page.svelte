@@ -5,6 +5,7 @@
 	import { loadLibrary } from "$lib/library.svelte";
 	import { selection, scanState } from "$lib/session.svelte";
 	import { togglePlay, skipBack, skipNext } from "$lib/ts/audio/audioManager.svelte";
+	import { dragState } from "$lib/dragState.svelte";
 
 	import * as Resizable from "$lib/components/ui/resizable/index.js";
 	import { Button } from "$lib/components/ui/button/index.js";
@@ -40,6 +41,8 @@
 	let maxSidebarWidth = $derived(containerWidth ? (480 / containerWidth) * 100 : 40);
 	let defaultSidebarWidth = $derived(containerWidth ? (300 / containerWidth) * 100 : 40);
 
+	let hoverTabTimeouts = new Map<string, ReturnType<typeof setTimeout>>();
+
 	onMount(async () => {
 		needsSetup = await invoke<boolean>("needs_profile_setup");
 		setupChecked = true;
@@ -68,8 +71,6 @@
 	}
 
 	function keydown(e: KeyboardEvent) {
-		e.preventDefault();
-
 		switch (e.key) {
 			case 'F5':
 				location.reload();
@@ -83,9 +84,27 @@
 			case 'MediaTrackPrevious':
 				skipBack();
 				break;
-			default:
-				break;
-		} 
+		}
+	}
+
+	function handleTabDragEnter(tabValue: string) {
+		if (!dragState.active) return;
+		if (tabValue === activeView) return;
+
+		const timeout = setTimeout(() => {
+			activeView = tabValue;
+			hoverTabTimeouts.delete(tabValue);
+		}, 700);
+
+		hoverTabTimeouts.set(tabValue, timeout);
+	}
+
+	function handleTabDragLeave(tabValue: string) {
+		const timeout = hoverTabTimeouts.get(tabValue);
+		if (timeout) {
+			clearTimeout(timeout);
+			hoverTabTimeouts.delete(tabValue);
+		}
 	}
 </script>
 
@@ -121,9 +140,6 @@
 						<p class="text-xs text-muted-foreground">Enriching {scanState.enrichDone} / {scanState.enrichTotal}</p>
 					</div>
 				{/if}
-				<!-- {#if scanState.status}
-					<p class="text-xs text-muted-foreground px-2">{scanState.status}</p>
-				{/if} -->
 			</div>
 
 			<div class="app-nav bg-muted flex flex-col p-2 gap-1 rounded-md">
@@ -132,6 +148,8 @@
 						variant="{activeView === tab.value ? 'default' : 'outline'}"
 						onclick={() => activeView = tab.value}
 						class="justify-start"
+						ondragenter={() => handleTabDragEnter(tab.value)}
+						ondragleave={() => handleTabDragLeave(tab.value)}
 					>
 						<svelte:component this={tab.icon} />
 						<span>{tab.label}</span>
