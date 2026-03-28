@@ -49,7 +49,7 @@
 	</DropdownMenu.Trigger>
 	{:else}
 	<DropdownMenu.Trigger>
-		Add to playlist
+		<span class="text-sm">Add to playlist</span>
 	</DropdownMenu.Trigger>
 	{/if}
 

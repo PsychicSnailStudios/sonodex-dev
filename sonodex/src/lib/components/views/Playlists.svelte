@@ -3,14 +3,15 @@
 	import { dragState, setHoveredPlaylist, endDrag } from "$lib/ts/app/dragState.svelte";
 	import { addTracksToPlaylist, createPlaylist } from "$lib/ts/audio/playlistManager.svelte";
 	import { profileState } from "$lib/ts/profiles.svelte";
-	import { invoke } from "@tauri-apps/api/core";
-	import type { Playlist } from "$lib/types";
+	import type { Playlist } from "$lib/ts/util/types";
 
 	import { ScrollArea } from "$lib/components/ui/scroll-area/index.js";
 	import { Input } from "$lib/components/ui/input/index.js";
 	import * as AlertDialog from "$lib/components/ui/alert-dialog/index.js";
 	import { Button, buttonVariants } from "$lib/components/ui/button/index.js";
 	import AudioCard from "$lib/components/app-ui/AudioCard.svelte";
+	import PlaylistRow from "$lib/components/app-ui/PlaylistRow.svelte";
+	import ArtworkDisplay from "$lib/components/app-ui/ArtworkDisplay.svelte";
 	import {
 		FolderPlus, ListPlus, FileDown,
 		LayoutGrid, List,
@@ -21,76 +22,84 @@
 
 	type ViewMode = "tiled" | "compact";
 
-	let search       = $state("");
-	let viewMode     = $state<ViewMode>("tiled");
-	let currentPath  = $state<string | null>(null);
-
-	let createDialogOpen = $state(false);
-	let folderDialogOpen = $state(false);
-	let nameInput        = $state("");
-	let folderNameInput  = $state("");
-
-	let expandedFolders = $state<Set<string>>(new Set());
+	let search            = $state("");
+	let viewMode          = $state<ViewMode>("tiled");
+	let currentPath       = $state<string | null>(null);
+	let createDialogOpen  = $state(false);
+	let folderDialogOpen  = $state(false);
+	let nameInput         = $state("");
+	let folderNameInput   = $state("");
+	let expandedFolders   = $state<Set<string>>(new Set());
 
 	let playlists = $derived(library.playlists ?? []);
 
-	function getFolder(p: Playlist): string | null {
-		return (p as any).folder ?? null;
+	function folderOf(p: Playlist): string | null {
+		const f = (p as any).folder;
+		return f && f !== "" ? f : null;
 	}
 
-	function isInFolder(p: Playlist, folder: string | null): boolean {
-		const pf = getFolder(p);
-		if (folder === null) return pf === null || pf === "";
-		return pf === folder || (pf?.startsWith(folder + "/") ?? false);
-	}
-
-	function immediateChildFolder(parentPath: string | null, folderPath: string): string | null {
+	function immediateChild(parentPath: string | null, folderPath: string): string | null {
 		if (parentPath === null) {
-			const parts = folderPath.split("/");
-			return parts[0];
+			return folderPath.split("/")[0];
 		}
 		if (!folderPath.startsWith(parentPath + "/")) return null;
-		const rest = folderPath.slice(parentPath.length + 1);
-		return rest.split("/")[0];
+		return folderPath.slice(parentPath.length + 1).split("/")[0];
 	}
 
 	function getChildFolders(parentPath: string | null): string[] {
 		const seen = new Set<string>();
 		for (const p of playlists) {
-			const pf = getFolder(p);
+			const pf = folderOf(p);
 			if (!pf) continue;
-			const child = immediateChildFolder(parentPath, pf);
+			const child = immediateChild(parentPath, pf);
 			if (child) {
-				const fullPath = parentPath === null ? child : `${parentPath}/${child}`;
-				seen.add(fullPath);
+				seen.add(parentPath === null ? child : `${parentPath}/${child}`);
 			}
 		}
 		return [...seen].sort();
 	}
 
 	function getDirectPlaylists(folderPath: string | null): Playlist[] {
-		return playlists.filter((p) => {
-			const pf = getFolder(p);
-			if (folderPath === null) return pf === null || pf === "";
-			return pf === folderPath;
-		});
+		return playlists.filter((p) => folderOf(p) === folderPath);
 	}
 
 	function getFolderArtworkUids(folderPath: string): string[] {
-		const inside = playlists.filter((p) => isInFolder(p, folderPath));
-		return inside.map((p) => p.uid).slice(0, 4);
+		return playlists
+			.filter((p) => {
+				const pf = folderOf(p);
+				return pf === folderPath || (pf?.startsWith(folderPath + "/") ?? false);
+			})
+			.map((p) => p.uid)
+			.slice(0, 4);
 	}
 
 	function breadcrumbs(): { label: string; path: string | null }[] {
 		const crumbs: { label: string; path: string | null }[] = [{ label: "Playlists", path: null }];
 		if (!currentPath) return crumbs;
-		const parts = currentPath.split("/");
 		let acc = "";
-		for (const part of parts) {
+		for (const part of currentPath.split("/")) {
 			acc = acc ? `${acc}/${part}` : part;
 			crumbs.push({ label: part, path: acc });
 		}
 		return crumbs;
+	}
+
+	function folderLabel(fullPath: string): string {
+		return fullPath.split("/").at(-1) ?? fullPath;
+	}
+
+	function compactFolderRows(
+		parentPath: string | null,
+		depth: number = 0
+	): { path: string; depth: number }[] {
+		const result: { path: string; depth: number }[] = [];
+		for (const fp of getChildFolders(parentPath)) {
+			result.push({ path: fp, depth });
+			if (expandedFolders.has(fp)) {
+				result.push(...compactFolderRows(fp, depth + 1));
+			}
+		}
+		return result;
 	}
 
 	const filteredDirect = $derived(
@@ -98,7 +107,10 @@
 			? getDirectPlaylists(currentPath)
 			: playlists.filter((p) => {
 				const q = search.toLowerCase();
-				return p.title.toLowerCase().includes(q) || ((p as any).description?.toLowerCase() ?? "").includes(q);
+				return (
+					p.title.toLowerCase().includes(q) ||
+					((p as any).description?.toLowerCase() ?? "").includes(q)
+				);
 			})
 	);
 
@@ -108,8 +120,7 @@
 
 	async function handleCreatePlaylist() {
 		if (!nameInput.trim()) return;
-		const ownerName = profileState.active?.name ?? null;
-		await createPlaylist(nameInput.trim(), ownerName, currentPath ?? undefined);
+		await createPlaylist(nameInput.trim(), profileState.active?.name ?? null, currentPath);
 		nameInput = "";
 		createDialogOpen = false;
 	}
@@ -119,19 +130,14 @@
 		const newPath = currentPath
 			? `${currentPath}/${folderNameInput.trim()}`
 			: folderNameInput.trim();
-		const ownerName = profileState.active?.name ?? null;
-		await createPlaylist("New Playlist", ownerName, newPath);
+		await createPlaylist("New Playlist", profileState.active?.name ?? null, newPath);
 		folderNameInput = "";
 		folderDialogOpen = false;
 	}
 
 	function toggleExpand(folderPath: string) {
 		const next = new Set(expandedFolders);
-		if (next.has(folderPath)) {
-			next.delete(folderPath);
-		} else {
-			next.add(folderPath);
-		}
+		next.has(folderPath) ? next.delete(folderPath) : next.add(folderPath);
 		expandedFolders = next;
 	}
 
@@ -143,10 +149,6 @@
 	function navigateTo(path: string | null) {
 		currentPath = path;
 		search = "";
-	}
-
-	function folderLabel(fullPath: string): string {
-		return fullPath.split("/").at(-1) ?? fullPath;
 	}
 
 	function handleCardDragLeave(e: DragEvent, playlistUid: string) {
@@ -168,20 +170,6 @@
 		await addTracksToPlaylist(playlistUid, uids);
 		endDrag();
 	}
-
-	function compactFolderRows(
-		parentPath: string | null,
-		depth: number = 0
-	): { type: "folder"; path: string; depth: number }[] {
-		const result: { type: "folder"; path: string; depth: number }[] = [];
-		for (const fp of getChildFolders(parentPath)) {
-			result.push({ type: "folder", path: fp, depth });
-			if (expandedFolders.has(fp)) {
-				result.push(...compactFolderRows(fp, depth + 1));
-			}
-		}
-		return result;
-	}
 </script>
 
 <div class="flex flex-col gap-2 p-4 border-2 h-full w-full overflow-hidden rounded-md">
@@ -193,7 +181,7 @@
 			<Button
 				variant="outline"
 				size="icon"
-				onclick={() => viewMode = viewMode === "tiled" ? "compact" : "tiled"}
+				onclick={() => (viewMode = viewMode === "tiled" ? "compact" : "tiled")}
 			>
 				{#if viewMode === "tiled"}
 					<List class="size-4" />
@@ -215,9 +203,7 @@
 					class:text-foreground={i === breadcrumbs().length - 1}
 					onclick={() => navigateTo(crumb.path)}
 				>
-					{#if i === 0}
-						<House class="size-3 inline mr-1" />
-					{/if}
+					{#if i === 0}<House class="size-3 inline mr-1" />{/if}
 					{crumb.label}
 				</button>
 			{/each}
@@ -228,6 +214,7 @@
 		<div class="flex justify-between items-center">
 			<span class="text-sm text-muted-foreground">{playlists.length} playlists</span>
 			<div class="flex gap-1">
+
 				<AlertDialog.Root bind:open={createDialogOpen}>
 					<AlertDialog.Trigger class={buttonVariants({ variant: "outline", size: "icon" })}>
 						<ListPlus class="size-4" />
@@ -267,6 +254,7 @@
 				<Button variant="outline" size="icon">
 					<FileDown class="size-4" />
 				</Button>
+
 			</div>
 		</div>
 
@@ -278,20 +266,20 @@
 					{#each visibleChildFolders as folderPath (folderPath)}
 						{@const artUids = getFolderArtworkUids(folderPath)}
 						<button
-							class="flex flex-col items-center gap-1 w-full text-left cursor-pointer"
+							class="flex flex-col gap-1 w-full text-left cursor-pointer"
 							onclick={() => navigateInto(folderPath)}
 						>
-							<div class="w-full aspect-square rounded-md bg-muted flex items-center justify-center overflow-hidden">
+							<div class="w-full aspect-square rounded-md bg-muted overflow-hidden">
 								{#if artUids.length >= 4}
 									<div class="grid grid-cols-2 w-full h-full">
 										{#each artUids.slice(0, 4) as uid}
-											<AudioCard artworkUid={uid} type="playlist" title={folderLabel(folderPath)} subTitle="" />
+											<ArtworkDisplay {uid} type="playlist" />
 										{/each}
 									</div>
 								{:else if artUids.length > 0}
 									<div class="grid grid-cols-2 w-full h-full">
 										{#each artUids as uid}
-											<AudioCard artworkUid={uid} type="playlist" title={folderLabel(folderPath)} subTitle="" />
+											<ArtworkDisplay {uid} type="playlist" />
 										{/each}
 										{#each Array(4 - artUids.length) as _}
 											<div class="bg-muted-foreground/10 flex items-center justify-center">
@@ -300,12 +288,14 @@
 										{/each}
 									</div>
 								{:else}
-									<Folder class="size-12 text-muted-foreground/40" />
+									<div class="w-full h-full flex items-center justify-center">
+										<Folder class="size-12 text-muted-foreground/40" />
+									</div>
 								{/if}
 							</div>
-							<div class="w-full px-1">
+							<div class="px-1">
 								<p class="text-sm font-medium truncate">{folderLabel(folderPath)}</p>
-								<p class="text-xs text-muted-foreground truncate">Folder</p>
+								<p class="text-xs text-muted-foreground">Folder</p>
 							</div>
 						</button>
 					{/each}
@@ -322,7 +312,7 @@
 							role="region"
 							aria-label="Playlist drop target"
 						>
-							<AudioCard title={p.title} subTitle={(p as any).owner} artworkUid={p.uid} type="playlist" />
+							<AudioCard title={p.title} subTitle={(p as any).owner ?? ""} artworkUid={p.uid} type="playlist" />
 						</div>
 					{/each}
 
@@ -333,10 +323,9 @@
 
 					{#each compactFolderRows(currentPath) as row (row.path)}
 						{@const isExpanded = expandedFolders.has(row.path)}
-						{@const label = folderLabel(row.path)}
 						<div
-							class="flex items-center gap-1 py-1.5 px-2 rounded-md hover:bg-muted/50 group"
-							style="padding-left: {(row.depth + 1) * 16}px"
+							class="flex items-center gap-1 py-1.5 rounded-md hover:bg-muted/50"
+							style="padding-left: {(row.depth + 1) * 16}px; padding-right: 8px;"
 						>
 							<button
 								class="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
@@ -359,52 +348,33 @@
 								{:else}
 									<Folder class="size-4 shrink-0 text-muted-foreground" />
 								{/if}
-								<span class="text-sm truncate">{label}</span>
+								<span class="text-sm truncate">{folderLabel(row.path)}</span>
 							</button>
 						</div>
 
 						{#if isExpanded}
 							{#each getDirectPlaylists(row.path) as p (p.uid)}
-								<div
-									class="flex items-center gap-2 py-1.5 rounded-md hover:bg-muted/50"
-									style="padding-left: {(row.depth + 2) * 16}px"
+								<PlaylistRow
+									playlist={p}
+									indent={(row.depth + 2) * 16}
+									highlighted={dragState.hoveredPlaylistUid === p.uid}
 									ondragover={(e) => handleCardDragOver(e, p.uid)}
 									ondragleave={(e) => handleCardDragLeave(e, p.uid)}
 									ondrop={(e) => handleCardDrop(e, p.uid)}
-									role="region"
-									aria-label="Playlist drop target"
-								>
-									<div class="size-6 rounded shrink-0 overflow-hidden bg-muted">
-										<AudioCard title={p.title} subTitle={p.owner} artworkUid={p.uid} type="playlist" />
-									</div>
-									<span class="text-sm truncate flex-1">{p.title}</span>
-									{#if (p as any).owner}
-										<span class="text-xs text-muted-foreground mr-2 shrink-0">{(p as any).owner}</span>
-									{/if}
-								</div>
+								/>
 							{/each}
 						{/if}
 					{/each}
 
 					{#each filteredDirect as p (p.uid)}
-						<div
-							class="flex items-center gap-2 py-1.5 px-2 rounded-md hover:bg-muted/50"
-							class:ring-1={dragState.hoveredPlaylistUid === p.uid}
-							class:ring-primary={dragState.hoveredPlaylistUid === p.uid}
+						<PlaylistRow
+							playlist={p}
+							indent={8}
+							highlighted={dragState.hoveredPlaylistUid === p.uid}
 							ondragover={(e) => handleCardDragOver(e, p.uid)}
 							ondragleave={(e) => handleCardDragLeave(e, p.uid)}
 							ondrop={(e) => handleCardDrop(e, p.uid)}
-							role="region"
-							aria-label="Playlist drop target"
-						>
-							<div class="size-8 rounded shrink-0 overflow-hidden bg-muted">
-								<AudioCard title={p.title} subTitle={p.owner} artworkUid={p.uid} type="playlist" />
-							</div>
-							<span class="text-sm truncate flex-1">{p.title}</span>
-							{#if (p as any).owner}
-								<span class="text-xs text-muted-foreground mr-2 shrink-0">{(p as any).owner}</span>
-							{/if}
-						</div>
+						/>
 					{/each}
 
 				</div>

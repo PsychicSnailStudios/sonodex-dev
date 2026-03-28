@@ -2,14 +2,10 @@
 	import * as DropdownMenu from "$lib/components/ui/dropdown-menu/index.js";
 	import Button from "../../ui/button/button.svelte";
 	import ScrollArea from "../../ui/scroll-area/scroll-area.svelte";
-
-	import { BadgePlus, CirclePlus, CircleCheck } from "lucide-svelte";
-
    import type { Track } from "$lib/ts/util/types";
    import { addTrackToQueue } from "$lib/ts/audio/audioManager.svelte";
-	import { library } from "$lib/ts/library.svelte";
-	import { removeTrackFromPlaylist } from "$lib/ts/audio/playlistManager.svelte";
    import TrackPlaylistEditButton from "../TrackPlaylistEditButton.svelte";
+   import { copySelectedNameToClipboard } from "$lib/ts/app/trackSelection.svelte";
 
 	let { track } = $props<{ track: Track; }>()
 	
@@ -31,9 +27,14 @@
 					</div>
 				</ScrollArea>
 			</div> -->
+			<DropdownMenu.Item onSelect={() => copySelectedNameToClipboard(track)}>Copy Track & Artist Name</DropdownMenu.Item>
 			<DropdownMenu.Item onSelect={() => addTrackToQueue(track)}>Add to Queue</DropdownMenu.Item>
-			<!-- <DropdownMenu.Item onSelect={() => removeTrackFromPlaylist(track)}>Remove from Playlist</DropdownMenu.Item> -->
-			<TrackPlaylistEditButton track={track} isButton={false} />
+		</DropdownMenu.Group>
+		<DropdownMenu.Separator />
+		<DropdownMenu.Group>
+			<DropdownMenu.Item>
+				<TrackPlaylistEditButton track={track} isButton={false} />
+			</DropdownMenu.Item>
 		</DropdownMenu.Group>
 	</DropdownMenu.Content>
 </DropdownMenu.Root>

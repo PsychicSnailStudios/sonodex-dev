@@ -1,5 +1,6 @@
 import { library } from "$lib/ts/library.svelte";
 import { writeText } from "@tauri-apps/plugin-clipboard-manager";
+import type { Track } from "../util/types";
 
 type SelectionContext = "library" | "playlist";
 
@@ -74,4 +75,29 @@ export function copySelectedToClipboard(orderedUids: string[]) {
 	const uids = tracks.map((t) => t!.uid).join("\n");
 
 	writeText(trackNames + "\n---\n" + uids).catch(() => {});
+}
+
+export function copySelectedNamesToClipboard(orderedUids: string[]) {
+	const tracks = orderedUids
+		.filter((uid) => selectedUids.has(uid))
+		.map((uid) => library.tracks.find((t) => t.uid === uid))
+		.filter(Boolean);
+
+	const trackNames = tracks.map((t) => (t!.title ?? "Unknown Title") + "; " + (t!.album_artist ?? "Unknown Artist")).join("\n");
+
+	writeText(trackNames).catch(() => {});
+}
+
+export function copySelectedUIDsToClipboard(orderedUids: string[]) {
+	const tracks = orderedUids
+		.filter((uid) => selectedUids.has(uid))
+		.map((uid) => library.tracks.find((t) => t.uid === uid))
+		.filter(Boolean);
+
+	const uids = tracks.map((t) => t!.uid).join("\n");
+
+	writeText(uids).catch(() => {});
+}
+export function copySelectedNameToClipboard(track: Track) {
+	writeText(track.title ?? "Unknown Title" + "; " + (track.album_artist ?? "Unknown Artist")).catch(() => {});
 }
