@@ -2,14 +2,16 @@
 	import { invoke, convertFileSrc } from "@tauri-apps/api/core";
 	import { Skeleton } from "$lib/components/ui/skeleton/index.js";
 	import { Music4, User, DiscAlbum, ListMusic } from "lucide-svelte";
-	import type { AudioCatagories } from "$lib/ts/util/types";
+	import type { AudioCatagories } from "$lib/types";
 	import { library } from "$lib/library.svelte";
+	import { untrack } from "svelte";
 
 	let { uid, size = null, type = "track" }: { uid: string; size?: number | null; type?: AudioCatagories } = $props();
 
 	let artworkUrl: string | null = $state(null);
 	let loaded = $state(false);
 	let el: HTMLDivElement;
+	let fetchedKey = $state<string | null>(null);
 
 	const commandMap = {
 		track: "get_track_artwork",
@@ -25,19 +27,24 @@
 		playlist: () => library.playlists.find(p => p.uid === uid)?.artwork_path ?? null,
 	};
 
-	let artworkPath = $derived(pathMap[type]?.() ?? null);
-
 	$effect(() => {
 		const currentUid = uid;
 		const currentType = type;
-		const localPath = artworkPath;
-		let url: string | null = null;
+		const currentKey = `${currentType}:${currentUid}`;
+
+		if (untrack(() => fetchedKey) === currentKey && untrack(() => artworkUrl) !== null) {
+			return;
+		}
+
 		let observer: IntersectionObserver | null = null;
 
 		loaded = false;
 
+		const localPath = untrack(() => pathMap[currentType]?.() ?? null);
+
 		if (localPath) {
 			artworkUrl = convertFileSrc(localPath);
+			fetchedKey = currentKey;
 			return;
 		}
 
@@ -51,8 +58,8 @@
 						const bytes: number[] | null = await invoke(commandMap[currentType], { uid: currentUid });
 						if (bytes) {
 							const blob = new Blob([new Uint8Array(bytes)], { type: "image/jpeg" });
-							url = URL.createObjectURL(blob);
-							artworkUrl = url;
+							artworkUrl = URL.createObjectURL(blob);
+							fetchedKey = currentKey;
 						} else {
 							artworkUrl = null;
 						}
@@ -67,7 +74,6 @@
 
 		return () => {
 			observer?.disconnect();
-			if (url) URL.revokeObjectURL(url);
 		};
 	});
 </script>

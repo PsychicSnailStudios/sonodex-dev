@@ -21,7 +21,7 @@
 </script>
 
 <button
-	class="text-left flex flex-col gap-2 p-2 rounded-md bg-background border hover:border-primary transition-colors cursor-default justify-start group"
+	class="w-full text-left flex flex-col gap-2 p-2 rounded-md bg-background border hover:border-primary transition-colors cursor-default justify-start group"
 	onclick={() => setSelection(artworkUid, type)}
 >
 	<div class="relative w-full">
