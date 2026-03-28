@@ -120,3 +120,7 @@ export async function createPlaylist(name: string, owner: string | null = null, 
 
 	await refreshPlaylists()
 }
+
+export async function importPlaylist() {
+	
+}

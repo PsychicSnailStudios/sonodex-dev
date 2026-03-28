@@ -1,6 +1,22 @@
 <script lang="ts">
 	import { library } from "$lib/ts/library.svelte";
-	import { dragState, setHoveredPlaylist, endDrag } from "$lib/ts/app/dragState.svelte";
+	import {
+		dragState,
+		setHoveredPlaylist,
+		endDrag,
+		onFolderDragOver,
+		onFolderDragExit,
+		onBreadcrumbDragOver,
+		onBreadcrumbDragExit,
+		dropOnPlaylist,
+		movePlaylists,
+	} from "$lib/ts/app/dragState.svelte";
+	import {
+		folderSelection,
+		navigateTo,
+		breadcrumbs,
+		registerFolder,
+	} from "$lib/ts/app/folderSelection.svelte";
 	import { addTracksToPlaylist, createPlaylist } from "$lib/ts/audio/playlistManager.svelte";
 	import { profileState } from "$lib/ts/profiles.svelte";
 	import type { Playlist } from "$lib/ts/util/types";
@@ -8,6 +24,7 @@
 	import { ScrollArea } from "$lib/components/ui/scroll-area/index.js";
 	import { Input } from "$lib/components/ui/input/index.js";
 	import * as AlertDialog from "$lib/components/ui/alert-dialog/index.js";
+	import * as ContextMenu from "$lib/components/ui/context-menu/index.js";
 	import { Button, buttonVariants } from "$lib/components/ui/button/index.js";
 	import AudioCard from "$lib/components/app-ui/AudioCard.svelte";
 	import PlaylistRow from "$lib/components/app-ui/PlaylistRow.svelte";
@@ -22,16 +39,20 @@
 
 	type ViewMode = "tiled" | "compact";
 
-	let search            = $state("");
-	let viewMode          = $state<ViewMode>("tiled");
-	let currentPath       = $state<string | null>(null);
-	let createDialogOpen  = $state(false);
-	let folderDialogOpen  = $state(false);
-	let nameInput         = $state("");
-	let folderNameInput   = $state("");
-	let expandedFolders   = $state<Set<string>>(new Set());
+	let search           = $state("");
+	let viewMode         = $state<ViewMode>("tiled");
+	let expandedFolders  = $state<Set<string>>(new Set());
 
-	let playlists = $derived(library.playlists ?? []);
+	let createDialogOpen   = $state(false);
+	let createDialogFolder = $state<string | null>(null);
+	let folderDialogOpen   = $state(false);
+	let folderDialogParent = $state<string | null>(null);
+	let nameInput          = $state("");
+	let folderNameInput    = $state("");
+
+	let playlists   = $derived(library.playlists ?? []);
+	let currentPath = $derived(folderSelection.currentPath);
+	let crumbs      = $derived(breadcrumbs());
 
 	function folderOf(p: Playlist): string | null {
 		const f = (p as any).folder;
@@ -39,23 +60,26 @@
 	}
 
 	function immediateChild(parentPath: string | null, folderPath: string): string | null {
-		if (parentPath === null) {
-			return folderPath.split("/")[0];
-		}
+		if (parentPath === null) return folderPath.split("/")[0];
 		if (!folderPath.startsWith(parentPath + "/")) return null;
 		return folderPath.slice(parentPath.length + 1).split("/")[0];
 	}
 
 	function getChildFolders(parentPath: string | null): string[] {
 		const seen = new Set<string>();
+
 		for (const p of playlists) {
 			const pf = folderOf(p);
 			if (!pf) continue;
 			const child = immediateChild(parentPath, pf);
-			if (child) {
-				seen.add(parentPath === null ? child : `${parentPath}/${child}`);
-			}
+			if (child) seen.add(parentPath === null ? child : `${parentPath}/${child}`);
 		}
+
+		for (const known of folderSelection.knownFolders) {
+			const child = immediateChild(parentPath, known);
+			if (child) seen.add(parentPath === null ? child : `${parentPath}/${child}`);
+		}
+
 		return [...seen].sort();
 	}
 
@@ -71,17 +95,6 @@
 			})
 			.map((p) => p.uid)
 			.slice(0, 4);
-	}
-
-	function breadcrumbs(): { label: string; path: string | null }[] {
-		const crumbs: { label: string; path: string | null }[] = [{ label: "Playlists", path: null }];
-		if (!currentPath) return crumbs;
-		let acc = "";
-		for (const part of currentPath.split("/")) {
-			acc = acc ? `${acc}/${part}` : part;
-			crumbs.push({ label: part, path: acc });
-		}
-		return crumbs;
 	}
 
 	function folderLabel(fullPath: string): string {
@@ -118,21 +131,40 @@
 		search.trim() === "" ? getChildFolders(currentPath) : []
 	);
 
+	const allFolderPaths = $derived(
+		[...new Set([
+			...playlists.map((p) => folderOf(p)).filter((f): f is string => f !== null),
+			...folderSelection.knownFolders,
+		])].sort()
+	);
+
 	async function handleCreatePlaylist() {
 		if (!nameInput.trim()) return;
-		await createPlaylist(nameInput.trim(), profileState.active?.name ?? null, currentPath);
+		await createPlaylist(nameInput.trim(), profileState.active?.name ?? null, createDialogFolder);
 		nameInput = "";
 		createDialogOpen = false;
 	}
 
 	async function handleCreateFolder() {
 		if (!folderNameInput.trim()) return;
-		const newPath = currentPath
-			? `${currentPath}/${folderNameInput.trim()}`
-			: folderNameInput.trim();
-		await createPlaylist("New Playlist", profileState.active?.name ?? null, newPath);
+		const parent = folderDialogParent;
+		const newPath = parent ? `${parent}/${folderNameInput.trim()}` : folderNameInput.trim();
+		registerFolder(newPath);
 		folderNameInput = "";
 		folderDialogOpen = false;
+		navigateTo(newPath);
+	}
+
+	function openCreatePlaylistIn(folder: string | null) {
+		createDialogFolder = folder;
+		nameInput = "";
+		createDialogOpen = true;
+	}
+
+	function openCreateFolderIn(parent: string | null) {
+		folderDialogParent = parent;
+		folderNameInput = "";
+		folderDialogOpen = true;
 	}
 
 	function toggleExpand(folderPath: string) {
@@ -141,36 +173,79 @@
 		expandedFolders = next;
 	}
 
-	function navigateInto(folderPath: string) {
-		currentPath = folderPath;
-		search = "";
-	}
-
-	function navigateTo(path: string | null) {
-		currentPath = path;
-		search = "";
-	}
-
-	function handleCardDragLeave(e: DragEvent, playlistUid: string) {
-		if (dragState.hoveredPlaylistUid === playlistUid) setHoveredPlaylist(null);
-	}
-
-	function handleCardDragOver(e: DragEvent, playlistUid: string) {
+	function handlePlaylistDragOver(e: DragEvent, playlistUid: string) {
 		e.preventDefault();
 		if (e.dataTransfer) e.dataTransfer.dropEffect = "move";
 		setHoveredPlaylist(playlistUid);
 	}
 
-	async function handleCardDrop(e: DragEvent, playlistUid: string) {
+	function handlePlaylistDragLeave(playlistUid: string) {
+		if (dragState.hoveredPlaylistUid === playlistUid) setHoveredPlaylist(null);
+	}
+
+	async function handleFolderDrop(e: DragEvent, folderPath: string) {
 		e.preventDefault();
-		setHoveredPlaylist(null);
+		onFolderDragExit(folderPath);
 		const raw = e.dataTransfer?.getData("text/plain");
-		if (!raw) return;
+		if (!raw) { endDrag(); return; }
 		const uids = raw.split(",").map((u) => u.trim()).filter(Boolean);
-		await addTracksToPlaylist(playlistUid, uids);
+		if (uids.every((u) => u.startsWith("p-"))) {
+			await movePlaylists(uids, folderPath);
+		} else {
+			const first = getDirectPlaylists(folderPath)[0];
+			if (first) await addTracksToPlaylist(first.uid, uids);
+		}
 		endDrag();
 	}
+
+	async function handleRootDrop(e: DragEvent) {
+		e.preventDefault();
+		const raw = e.dataTransfer?.getData("text/plain");
+		if (!raw) { endDrag(); return; }
+		const uids = raw.split(",").map((u) => u.trim()).filter(Boolean);
+		if (uids.every((u) => u.startsWith("p-"))) {
+			await movePlaylists(uids, null);
+		}
+		endDrag();
+	}
+
+	function startPlaylistDrag(e: DragEvent, playlistUid: string) {
+		if (e.dataTransfer) {
+			e.dataTransfer.setData("text/plain", playlistUid);
+			e.dataTransfer.effectAllowed = "move";
+		}
+	}
 </script>
+
+<AlertDialog.Root bind:open={createDialogOpen}>
+	<AlertDialog.Content>
+		<AlertDialog.Header>
+			<AlertDialog.Title>New Playlist</AlertDialog.Title>
+			<AlertDialog.Description>
+				<Input placeholder="Playlist name" bind:value={nameInput} class="w-full mt-2" />
+			</AlertDialog.Description>
+		</AlertDialog.Header>
+		<AlertDialog.Footer>
+			<AlertDialog.Cancel>Cancel</AlertDialog.Cancel>
+			<AlertDialog.Action onclick={handleCreatePlaylist}>Create</AlertDialog.Action>
+		</AlertDialog.Footer>
+	</AlertDialog.Content>
+</AlertDialog.Root>
+
+<AlertDialog.Root bind:open={folderDialogOpen}>
+	<AlertDialog.Content>
+		<AlertDialog.Header>
+			<AlertDialog.Title>New Folder</AlertDialog.Title>
+			<AlertDialog.Description>
+				<Input placeholder="Folder name" bind:value={folderNameInput} class="w-full mt-2" />
+			</AlertDialog.Description>
+		</AlertDialog.Header>
+		<AlertDialog.Footer>
+			<AlertDialog.Cancel>Cancel</AlertDialog.Cancel>
+			<AlertDialog.Action onclick={handleCreateFolder}>Create</AlertDialog.Action>
+		</AlertDialog.Footer>
+	</AlertDialog.Content>
+</AlertDialog.Root>
 
 <div class="flex flex-col gap-2 p-4 border-2 h-full w-full overflow-hidden rounded-md">
 
@@ -192,128 +267,148 @@
 		</div>
 	</div>
 
-	{#if breadcrumbs().length > 1}
+	<div class="flex items-center justify-between gap-2">
 		<div class="flex items-center gap-1 text-sm text-muted-foreground flex-wrap">
-			{#each breadcrumbs() as crumb, i}
+			{#each crumbs as crumb, i}
 				{#if i > 0}
 					<ChevronRight class="size-3 shrink-0" />
 				{/if}
 				<button
-					class="hover:text-foreground transition-colors"
-					class:text-foreground={i === breadcrumbs().length - 1}
+					class="hover:text-foreground transition-colors px-1 py-0.5 rounded"
+					class:text-foreground={i === crumbs.length - 1}
+					class:bg-primary={dragState.active}
 					onclick={() => navigateTo(crumb.path)}
+					ondragover={(e) => { e.preventDefault(); onBreadcrumbDragOver(crumb.path, navigateTo); }}
+					ondragleave={onBreadcrumbDragExit}
+					ondrop={(e) => { e.preventDefault(); navigateTo(crumb.path); endDrag(); }}
 				>
 					{#if i === 0}<House class="size-3 inline mr-1" />{/if}
 					{crumb.label}
 				</button>
 			{/each}
 		</div>
-	{/if}
+
+		<div class="flex gap-1 shrink-0">
+			<Button variant="outline" size="icon" onclick={() => openCreatePlaylistIn(currentPath)}>
+				<ListPlus class="size-4" />
+			</Button>
+			<Button variant="outline" size="icon" onclick={() => openCreateFolderIn(currentPath)}>
+				<FolderPlus class="size-4" />
+			</Button>
+			<Button variant="outline" size="icon">
+				<FileDown class="size-4" />
+			</Button>
+		</div>
+	</div>
 
 	<div class="flex flex-col h-full w-full overflow-hidden">
-		<div class="flex justify-between items-center">
-			<span class="text-sm text-muted-foreground">{playlists.length} playlists</span>
-			<div class="flex gap-1">
+		<span class="text-sm text-muted-foreground mb-2">{playlists.length} playlists</span>
 
-				<AlertDialog.Root bind:open={createDialogOpen}>
-					<AlertDialog.Trigger class={buttonVariants({ variant: "outline", size: "icon" })}>
-						<ListPlus class="size-4" />
-					</AlertDialog.Trigger>
-					<AlertDialog.Content>
-						<AlertDialog.Header>
-							<AlertDialog.Title>New Playlist</AlertDialog.Title>
-							<AlertDialog.Description>
-								<Input placeholder="Playlist name" bind:value={nameInput} class="w-full mt-2" />
-							</AlertDialog.Description>
-						</AlertDialog.Header>
-						<AlertDialog.Footer>
-							<AlertDialog.Cancel>Cancel</AlertDialog.Cancel>
-							<AlertDialog.Action onclick={handleCreatePlaylist}>Create</AlertDialog.Action>
-						</AlertDialog.Footer>
-					</AlertDialog.Content>
-				</AlertDialog.Root>
+		<ScrollArea class="min-h-0 min-w-0">
 
-				<AlertDialog.Root bind:open={folderDialogOpen}>
-					<AlertDialog.Trigger class={buttonVariants({ variant: "outline", size: "icon" })}>
-						<FolderPlus class="size-4" />
-					</AlertDialog.Trigger>
-					<AlertDialog.Content>
-						<AlertDialog.Header>
-							<AlertDialog.Title>New Folder</AlertDialog.Title>
-							<AlertDialog.Description>
-								<Input placeholder="Folder name" bind:value={folderNameInput} class="w-full mt-2" />
-							</AlertDialog.Description>
-						</AlertDialog.Header>
-						<AlertDialog.Footer>
-							<AlertDialog.Cancel>Cancel</AlertDialog.Cancel>
-							<AlertDialog.Action onclick={handleCreateFolder}>Create</AlertDialog.Action>
-						</AlertDialog.Footer>
-					</AlertDialog.Content>
-				</AlertDialog.Root>
-
-				<Button variant="outline" size="icon">
-					<FileDown class="size-4" />
-				</Button>
-
-			</div>
-		</div>
-
-		<ScrollArea class="min-h-0 min-w-0 mt-2">
+			{#if currentPath !== null && dragState.active}
+				<button
+					class="w-full mb-2 py-1.5 px-3 rounded-md border border-dashed border-muted-foreground/30 text-xs text-muted-foreground hover:border-primary hover:text-primary transition-colors flex items-center gap-2"
+					ondragover={(e) => { e.preventDefault(); onBreadcrumbDragOver(null, navigateTo); }}
+					ondragleave={onBreadcrumbDragExit}
+					ondrop={handleRootDrop}
+				>
+					<House class="size-3" /> Drop here to move to root
+				</button>
+			{/if}
 
 			{#if viewMode === "tiled"}
 				<div class="app-music-grid grid gap-2">
 
 					{#each visibleChildFolders as folderPath (folderPath)}
 						{@const artUids = getFolderArtworkUids(folderPath)}
-						<button
-							class="flex flex-col gap-1 w-full text-left cursor-pointer"
-							onclick={() => navigateInto(folderPath)}
-						>
-							<div class="w-full aspect-square rounded-md bg-muted overflow-hidden">
-								{#if artUids.length >= 4}
-									<div class="grid grid-cols-2 w-full h-full">
-										{#each artUids.slice(0, 4) as uid}
-											<ArtworkDisplay {uid} type="playlist" />
-										{/each}
-									</div>
-								{:else if artUids.length > 0}
-									<div class="grid grid-cols-2 w-full h-full">
-										{#each artUids as uid}
-											<ArtworkDisplay {uid} type="playlist" />
-										{/each}
-										{#each Array(4 - artUids.length) as _}
-											<div class="bg-muted-foreground/10 flex items-center justify-center">
-												<Folder class="size-6 text-muted-foreground/40" />
+						{@const folderHovered = dragState.hoveredFolderPath === folderPath}
+
+						<ContextMenu.Root>
+							<ContextMenu.Trigger class="w-full text-left">
+								<button
+									class="flex flex-col gap-1 w-full text-left cursor-pointer rounded-md transition-all"
+									class:ring-2={folderHovered}
+									class:ring-primary={folderHovered}
+									onclick={() => navigateTo(folderPath)}
+									ondragover={(e) => { e.preventDefault(); onFolderDragOver(folderPath, navigateTo); }}
+									ondragleave={() => onFolderDragExit(folderPath)}
+									ondrop={(e) => handleFolderDrop(e, folderPath)}
+								>
+									<div class="w-full aspect-square rounded-md bg-muted overflow-hidden">
+										{#if artUids.length >= 4}
+											<div class="grid grid-cols-2 w-full h-full gap-2 p-2">
+												{#each artUids.slice(0, 4) as uid}
+													<ArtworkDisplay {uid} type="playlist" />
+												{/each}
 											</div>
-										{/each}
+										{:else if artUids.length > 0}
+											<div class="grid grid-cols-2 w-full h-full gap-2 p-2">
+												{#each artUids as uid}
+													<ArtworkDisplay {uid} type="playlist" />
+												{/each}
+											</div>
+										{:else}
+											<div class="w-full h-full flex items-center justify-center">
+												<Folder class="size-12 text-muted-foreground/40" />
+											</div>
+										{/if}
 									</div>
-								{:else}
-									<div class="w-full h-full flex items-center justify-center">
-										<Folder class="size-12 text-muted-foreground/40" />
+									<div class="px-1">
+										<p class="text-sm font-medium truncate">{folderLabel(folderPath)}</p>
+										<p class="text-xs text-muted-foreground">Folder</p>
 									</div>
-								{/if}
-							</div>
-							<div class="px-1">
-								<p class="text-sm font-medium truncate">{folderLabel(folderPath)}</p>
-								<p class="text-xs text-muted-foreground">Folder</p>
-							</div>
-						</button>
+								</button>
+							</ContextMenu.Trigger>
+							<ContextMenu.Content>
+								<ContextMenu.Item onclick={() => openCreatePlaylistIn(folderPath)}>
+									New playlist inside
+								</ContextMenu.Item>
+								<ContextMenu.Item onclick={() => openCreateFolderIn(folderPath)}>
+									New folder inside
+								</ContextMenu.Item>
+							</ContextMenu.Content>
+						</ContextMenu.Root>
 					{/each}
 
 					{#each filteredDirect as p (p.uid)}
-						<div
-							class="relative transition-all w-full"
-							class:ring-2={dragState.hoveredPlaylistUid === p.uid}
-							class:ring-primary={dragState.hoveredPlaylistUid === p.uid}
-							class:rounded-md={dragState.hoveredPlaylistUid === p.uid}
-							ondragover={(e) => handleCardDragOver(e, p.uid)}
-							ondragleave={(e) => handleCardDragLeave(e, p.uid)}
-							ondrop={(e) => handleCardDrop(e, p.uid)}
-							role="region"
-							aria-label="Playlist drop target"
-						>
-							<AudioCard title={p.title} subTitle={(p as any).owner ?? ""} artworkUid={p.uid} type="playlist" />
-						</div>
+						<ContextMenu.Root>
+							<ContextMenu.Trigger class="w-full">
+								<div
+									class="relative transition-all w-full"
+									class:ring-2={dragState.hoveredPlaylistUid === p.uid}
+									class:ring-primary={dragState.hoveredPlaylistUid === p.uid}
+									class:rounded-md={dragState.hoveredPlaylistUid === p.uid}
+									draggable="true"
+									ondragstart={(e) => startPlaylistDrag(e, p.uid)}
+									ondragover={(e) => handlePlaylistDragOver(e, p.uid)}
+									ondragleave={() => handlePlaylistDragLeave(p.uid)}
+									ondrop={(e) => dropOnPlaylist(e, p.uid)}
+									role="region"
+									aria-label="Playlist"
+								>
+									<AudioCard title={p.title} subTitle={(p as any).owner ?? ""} artworkUid={p.uid} type="playlist" />
+								</div>
+							</ContextMenu.Trigger>
+							<ContextMenu.Content>
+								<ContextMenu.Sub>
+									<ContextMenu.SubTrigger>Move to folder</ContextMenu.SubTrigger>
+									<ContextMenu.SubContent>
+										<ContextMenu.Item onclick={() => movePlaylists([p.uid], null)}>
+											Root (no folder)
+										</ContextMenu.Item>
+										{#if allFolderPaths.length > 0}
+											<ContextMenu.Separator />
+											{#each allFolderPaths as fp}
+												<ContextMenu.Item onclick={() => movePlaylists([p.uid], fp)}>
+													{fp}
+												</ContextMenu.Item>
+											{/each}
+										{/if}
+									</ContextMenu.SubContent>
+								</ContextMenu.Sub>
+							</ContextMenu.Content>
+						</ContextMenu.Root>
 					{/each}
 
 				</div>
@@ -323,58 +418,124 @@
 
 					{#each compactFolderRows(currentPath) as row (row.path)}
 						{@const isExpanded = expandedFolders.has(row.path)}
-						<div
-							class="flex items-center gap-1 py-1.5 rounded-md hover:bg-muted/50"
-							style="padding-left: {(row.depth + 1) * 16}px; padding-right: 8px;"
-						>
-							<button
-								class="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
-								onclick={() => toggleExpand(row.path)}
-								aria-label={isExpanded ? "Collapse folder" : "Expand folder"}
-							>
-								{#if isExpanded}
-									<ChevronDown class="size-4" />
-								{:else}
-									<ChevronRight class="size-4" />
-								{/if}
-							</button>
+						{@const folderHovered = dragState.hoveredFolderPath === row.path}
 
-							<button
-								class="flex items-center gap-2 flex-1 min-w-0 text-left"
-								onclick={() => navigateInto(row.path)}
-							>
-								{#if isExpanded}
-									<FolderOpen class="size-4 shrink-0 text-muted-foreground" />
-								{:else}
-									<Folder class="size-4 shrink-0 text-muted-foreground" />
-								{/if}
-								<span class="text-sm truncate">{folderLabel(row.path)}</span>
-							</button>
-						</div>
+						<ContextMenu.Root>
+							<ContextMenu.Trigger class="w-full">
+								<div
+									class="flex items-center gap-1 py-1.5 rounded-md hover:bg-muted/50 transition-all"
+									class:ring-1={folderHovered}
+									class:ring-primary={folderHovered}
+									style="padding-left: {(row.depth + 1) * 16}px; padding-right: 8px;"
+									ondragover={(e) => { e.preventDefault(); onFolderDragOver(row.path, navigateTo); }}
+									ondragleave={() => onFolderDragExit(row.path)}
+									ondrop={(e) => handleFolderDrop(e, row.path)}
+								>
+									<button
+										class="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
+										onclick={() => toggleExpand(row.path)}
+										aria-label={isExpanded ? "Collapse" : "Expand"}
+									>
+										{#if isExpanded}
+											<ChevronDown class="size-4" />
+										{:else}
+											<ChevronRight class="size-4" />
+										{/if}
+									</button>
+									<button
+										class="flex items-center gap-2 flex-1 min-w-0 text-left"
+										onclick={() => navigateTo(row.path)}
+									>
+										{#if isExpanded}
+											<FolderOpen class="size-4 shrink-0 text-muted-foreground" />
+										{:else}
+											<Folder class="size-4 shrink-0 text-muted-foreground" />
+										{/if}
+										<span class="text-sm truncate">{folderLabel(row.path)}</span>
+									</button>
+								</div>
+							</ContextMenu.Trigger>
+							<ContextMenu.Content>
+								<ContextMenu.Item onclick={() => openCreatePlaylistIn(row.path)}>
+									New playlist inside
+								</ContextMenu.Item>
+								<ContextMenu.Item onclick={() => openCreateFolderIn(row.path)}>
+									New folder inside
+								</ContextMenu.Item>
+							</ContextMenu.Content>
+						</ContextMenu.Root>
 
 						{#if isExpanded}
 							{#each getDirectPlaylists(row.path) as p (p.uid)}
-								<PlaylistRow
-									playlist={p}
-									indent={(row.depth + 2) * 16}
-									highlighted={dragState.hoveredPlaylistUid === p.uid}
-									ondragover={(e) => handleCardDragOver(e, p.uid)}
-									ondragleave={(e) => handleCardDragLeave(e, p.uid)}
-									ondrop={(e) => handleCardDrop(e, p.uid)}
-								/>
+								<ContextMenu.Root>
+									<ContextMenu.Trigger class="w-full">
+										<div draggable="true" ondragstart={(e) => startPlaylistDrag(e, p.uid)}>
+											<PlaylistRow
+												playlist={p}
+												indent={(row.depth + 2) * 16}
+												highlighted={dragState.hoveredPlaylistUid === p.uid}
+												ondragover={(e) => handlePlaylistDragOver(e, p.uid)}
+												ondragleave={() => handlePlaylistDragLeave(p.uid)}
+												ondrop={(e) => dropOnPlaylist(e, p.uid)}
+											/>
+										</div>
+									</ContextMenu.Trigger>
+									<ContextMenu.Content>
+										<ContextMenu.Sub>
+											<ContextMenu.SubTrigger>Move to folder</ContextMenu.SubTrigger>
+											<ContextMenu.SubContent>
+												<ContextMenu.Item onclick={() => movePlaylists([p.uid], null)}>
+													Root (no folder)
+												</ContextMenu.Item>
+												{#if allFolderPaths.length > 0}
+													<ContextMenu.Separator />
+													{#each allFolderPaths as fp}
+														<ContextMenu.Item onclick={() => movePlaylists([p.uid], fp)}>
+															{fp}
+														</ContextMenu.Item>
+													{/each}
+												{/if}
+											</ContextMenu.SubContent>
+										</ContextMenu.Sub>
+									</ContextMenu.Content>
+								</ContextMenu.Root>
 							{/each}
 						{/if}
 					{/each}
 
 					{#each filteredDirect as p (p.uid)}
-						<PlaylistRow
-							playlist={p}
-							indent={8}
-							highlighted={dragState.hoveredPlaylistUid === p.uid}
-							ondragover={(e) => handleCardDragOver(e, p.uid)}
-							ondragleave={(e) => handleCardDragLeave(e, p.uid)}
-							ondrop={(e) => handleCardDrop(e, p.uid)}
-						/>
+						<ContextMenu.Root>
+							<ContextMenu.Trigger class="w-full">
+								<div draggable="true" ondragstart={(e) => startPlaylistDrag(e, p.uid)}>
+									<PlaylistRow
+										playlist={p}
+										indent={8}
+										highlighted={dragState.hoveredPlaylistUid === p.uid}
+										ondragover={(e) => handlePlaylistDragOver(e, p.uid)}
+										ondragleave={() => handlePlaylistDragLeave(p.uid)}
+										ondrop={(e) => dropOnPlaylist(e, p.uid)}
+									/>
+								</div>
+							</ContextMenu.Trigger>
+							<ContextMenu.Content>
+								<ContextMenu.Sub>
+									<ContextMenu.SubTrigger>Move to folder</ContextMenu.SubTrigger>
+									<ContextMenu.SubContent>
+										<ContextMenu.Item onclick={() => movePlaylists([p.uid], null)}>
+											Root (no folder)
+										</ContextMenu.Item>
+										{#if allFolderPaths.length > 0}
+											<ContextMenu.Separator />
+											{#each allFolderPaths as fp}
+												<ContextMenu.Item onclick={() => movePlaylists([p.uid], fp)}>
+													{fp}
+												</ContextMenu.Item>
+											{/each}
+										{/if}
+									</ContextMenu.SubContent>
+								</ContextMenu.Sub>
+							</ContextMenu.Content>
+						</ContextMenu.Root>
 					{/each}
 
 				</div>
