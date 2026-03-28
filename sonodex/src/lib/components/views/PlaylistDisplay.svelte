@@ -25,7 +25,6 @@
 
 	const cols = createColumnState("playlist");
 	const sort = new SortState();
-	const searchCols = createColumnState();
 	let search = $state("");
 	let compact = $state(false);
 
