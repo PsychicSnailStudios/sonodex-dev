@@ -8,7 +8,6 @@
 	import { formatDuration, formatRating, parseAlbum, parseArtists, parseTrackNumber } from "$lib/ts/util/helpers";
 	import ArtworkDisplay from "$lib/components/app-ui/ArtworkDisplay.svelte";
 	import TrackTableEditButton from "$lib/components/app-ui/track-table/TrackTableEditButton.svelte";
-    import { get } from "svelte/store";
 
 	let {
 		track,
@@ -19,11 +18,13 @@
 		showNumber,
 		showArtwork,
 		showTitle,
+		showArtist,
 		showAlbum,
 		showYear,
 		showRating,
 		showDuration,
 		showLabel,
+		showOptions,
 		playlistUid = null,
 	} = $props<{
 		track: Track;
@@ -34,11 +35,13 @@
 		showNumber: boolean;
 		showArtwork: boolean;
 		showTitle: boolean;
+		showArtist: boolean;
 		showAlbum: boolean;
 		showYear: boolean;
 		showRating: boolean;
 		showDuration: boolean;
 		showLabel: boolean;
+		showOptions: boolean;
 		playlistUid?: string | null;
 	}>();
 
@@ -95,6 +98,7 @@
 	ondragstart={handleDragStart}
 	ondragend={handleDragEnd}
 	tabindex="0"
+	aria-disabled={track.path ? "false" : "true"}
 >
 	{#if showNumber}
 		<span class="text-sm pointer-events-none">{getTrackNumber()}</span>
@@ -113,11 +117,11 @@
 					{track.title ?? "Unknown Title"}
 				</span>
 			</div>
-			<div class="min-w-0 flex items-center">
+			<!-- <div class="min-w-0 flex items-center">
 				<span role="button" tabindex="0" onclick={() => setSelection(getArtistUidFromName(track.album_artist ?? ""), "artist")} onkeydown={(e) => { if (e.key === 'Enter') setSelection(getArtistUidFromName(track.album_artist ?? ""), "artist"); }} class="text-xs text-muted-foreground truncate cursor-pointer hover:underline">
 					{parseArtists(track.artists)}
 				</span>
-			</div>
+			</div> -->
 		{:else}
 			<div class="flex flex-col min-w-0">
 				<div class="min-w-0 flex items-center">
@@ -132,6 +136,12 @@
 				</div>
 			</div>
 		{/if}
+	{/if}
+
+	{#if showArtist}
+		<span role="button" tabindex="0" onclick={() => setSelection(getAlbumUidFromName(track.album_artist.uid), "artist")} onkeydown={(e) => { if (e.key === 'Enter') setSelection(getAlbumUidFromName(track.album_artist.uid), "artist"); }} class="text-sm truncate cursor-pointer hover:underline">
+			{parseArtists(track.artists)}
+		</span>
 	{/if}
 
 	{#if showAlbum}
@@ -158,5 +168,7 @@
 		<span class="text-sm truncate pointer-events-none">{track.label ?? "—"}</span>
 	{/if}
 
-	<TrackTableEditButton {track} />
+	{#if showOptions}
+		<TrackTableEditButton {track} />
+	{/if}
 </div>

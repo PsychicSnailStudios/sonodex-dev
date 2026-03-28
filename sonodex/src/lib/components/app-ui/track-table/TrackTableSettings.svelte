@@ -6,13 +6,12 @@
 	import { Toggle } from "$lib/components/ui/toggle/index.js";
 
 	import type { ColumnState, ColumnKey } from "$lib/ts/app/columnConfig.svelte"
-	import { ALL_COLUMNS, COLUMN_LABELS, ALWAYS_VISIBLE } from "$lib/ts/app/columnConfig.svelte"
+	import { ALL_COLUMNS, COLUMN_LABELS } from "$lib/ts/app/columnConfig.svelte"
 	import SortDropdown from "$lib/components/app-ui/SortDropdown.svelte";
 
 	import { SortState } from "$lib/ts/app/sortConfig.svelte";
 
 	let { columns, sort, compact = $bindable(false) } = $props<{ columns: ColumnState; sort: SortState, compact?: boolean }>()
-	const toggleable = ALL_COLUMNS.filter((col) => !ALWAYS_VISIBLE.includes(col))
 </script>
 
 <DropdownMenu.Root>
@@ -49,7 +48,7 @@
 			<DropdownMenu.Label>View Columns</DropdownMenu.Label>
 			<div class="flex flex-col flex-wrap gap-1">
 				<p class="text-xs text-muted-foreground">Display Columns</p>
-				{#each toggleable as col (col)}
+				{#each ALL_COLUMNS as col (col)}
 					<Toggle
 						pressed={columns.visible[col as ColumnKey]}
 						onPressedChange={(v) => (columns.visible[col as ColumnKey] = v)}

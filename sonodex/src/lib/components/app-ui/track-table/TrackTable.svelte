@@ -60,7 +60,7 @@
 		if (v.number)            parts.push("40px")
 		if (v.artwork)           parts.push("40px")
 		if (v.title)             parts.push("1fr")
-		if (compact && v.title)  parts.push("1fr")
+		if (v.artist)				 parts.push("1fr")
 		if (v.album)             parts.push("1fr")
 		if (v.year)              parts.push("60px")
 		if (v.rating)            parts.push("60px")
@@ -198,7 +198,7 @@
 				{/if}
 			</button>
 		{/if}
-		{#if compact && v.title}
+		{#if v.artist}
 			<button class="flex items-center gap-1 hover:text-foreground transition-colors" onclick={() => sort.cycle("artist")}>
 				Artist
 				{#if sort.active("artist")}
@@ -258,7 +258,9 @@
 				{/if}
 			</button>
 		{/if}
-		<span></span>
+		{#if v.options}
+			<span></span>
+		{/if}
 	</div>
 
 	<div>
@@ -286,11 +288,13 @@
 							showNumber={v.number}
 							showArtwork={v.artwork}
 							showTitle={v.title}
+							showArtist={v.artist}
 							showAlbum={v.album}
 							showYear={v.year}
 							showRating={v.rating}
 							showDuration={v.duration}
 							showLabel={v.label}
+							showOptions={v.options}
 							{playlistUid}
 						/>
 					</ContextMenu.Trigger>

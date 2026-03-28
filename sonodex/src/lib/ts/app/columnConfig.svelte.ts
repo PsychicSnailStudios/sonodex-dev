@@ -2,6 +2,7 @@ export type ColumnKey =
 	| "number"
 	| "artwork"
 	| "title"
+	| "artist"
 	| "album"
 	| "year"
 	| "rating"
@@ -17,6 +18,7 @@ export const ALL_COLUMNS: ColumnKey[] = [
 	"number",
 	"artwork",
 	"title",
+	"artist",
 	"album",
 	"year",
 	"rating",
@@ -29,6 +31,7 @@ export const COLUMN_LABELS: Record<ColumnKey, string> = {
 	number: "#",
 	artwork: "Artwork",
 	title: "Title",
+	artist: "Artist",
 	album: "Album",
 	year: "Year",
 	rating: "Rating",
@@ -37,13 +40,12 @@ export const COLUMN_LABELS: Record<ColumnKey, string> = {
 	options: "Options",
 }
 
-export const ALWAYS_VISIBLE: ColumnKey[] = ["options"]
-
 const PRESETS: Record<string, Partial<Record<ColumnKey, boolean>>> = {
 	default: {
 		artwork: true,
 		title: true,
 		duration: true,
+		options: true,
 	},
 	library: {
 		artwork: true,
@@ -52,12 +54,14 @@ const PRESETS: Record<string, Partial<Record<ColumnKey, boolean>>> = {
 		year: true,
 		rating: true,
 		duration: true,
+		options: true,
 	},
 	album: {
 		number: true,
 		title: true,
 		rating: true,
 		duration: true,
+		options: true,
 	},
 	playlist: {
 		artwork: true,
@@ -65,6 +69,7 @@ const PRESETS: Record<string, Partial<Record<ColumnKey, boolean>>> = {
 		title: true,
 		album: true,
 		duration: true,
+		options: true,
 	},
 	simple: {
 		artwork: true,
@@ -78,7 +83,7 @@ export function createColumnState(preset: keyof typeof PRESETS = "default"): Col
 		Object.fromEntries(
 			ALL_COLUMNS.map((col) => [
 				col,
-				ALWAYS_VISIBLE.includes(col) ? true : (base[col] ?? false),
+				base[col] ?? false,
 			])
 		) as Record<ColumnKey, boolean>
 	)
