@@ -102,13 +102,14 @@
 					{#if playlist.description}
 						<span class="text-sm text-muted-foreground">{playlist.description}</span>
 					{/if}
-					<div class="flex gap-3 text-sm text-muted-foreground">
+					<div class="flex gap-3 text-sm text-muted-foreground flex-wrap">
 						<span>{tracks.length} songs</span>
 						{#if tracks.length > 0}
+							<span>|</span>
 							<span>{totalDuration(tracks)}</span>
 						{/if}
 					</div>
-					<div class="flex gap-2">
+					<div class="flex gap-2 flex-wrap">
 						<Button variant="default" onclick={() => queueTracksByObject(tracks, true)}>Play All</Button>
 						<Button variant="outline" onclick={() => queueTracksByObject(tracks, true, true)}>Shuffle</Button>
 						<Button variant="ghost" size="icon" onclick={() => openEditModal({ type: "playlist", uid: playlist!.uid })}><Pencil /></Button>

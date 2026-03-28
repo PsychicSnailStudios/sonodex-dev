@@ -15,10 +15,10 @@
 	import PlaylistsView from "$lib/components/views/Playlists.svelte";
 	import PlayControls from "$lib/components/app/PlayControls.svelte";
 	import NowPlaying from "$lib/components/app/NowPlaying.svelte";
-	import AlbumDisplay from "$lib/components/views/AlbumDisplay.svelte";
-	import ArtistDisplay from "$lib/components/views/ArtistDisplay.svelte";
-	import PlaylistDisplay from "$lib/components/views/PlaylistDisplay.svelte";
-	import TrackDisplay from "$lib/components/views/TrackDisplay.svelte";
+	import AlbumDisplay from "$lib/components/displays/AlbumDisplay.svelte";
+	import ArtistDisplay from "$lib/components/displays/ArtistDisplay.svelte";
+	import PlaylistDisplay from "$lib/components/displays/PlaylistDisplay.svelte";
+	import TrackDisplay from "$lib/components/displays/TrackDisplay.svelte";
 	import ProfileSetup from "$lib/components/modals/ProfileSetup.svelte";
 
 	import { House, Music, ListMusic, Search, Tags } from "lucide-svelte";

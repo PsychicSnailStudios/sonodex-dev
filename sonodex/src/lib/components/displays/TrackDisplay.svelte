@@ -36,7 +36,7 @@
 
 			<div class="flex flex-col gap-1">
 				<h2 class="text-2xl font-bold">{track.title ?? "Unknown Title"}</h2>
-				<div class="flex gap-2 text-sm text-muted-foreground">
+				<div class="flex gap-2 text-sm text-muted-foreground flex-wrap">
 					<span role="button" tabindex="0" onclick={() => setSelection(getArtistUidFromName(track.album_artist), "artist")} onkeydown={(e) => { if (e.key === 'Enter') setSelection(getArtistUidFromName(track.album_artist), "artist"); }} class="text-sm truncate cursor-pointer hover:underline">
 						{parseArtists(track.artists)}
 					</span>
@@ -50,7 +50,7 @@
 					<span>{formatDuration(track.duration_ms)}</span>
 				</div>
 				<div class="text-sm">{formatRating(track.rating)}</div>
-				<div class="flex">
+				<div class="flex gap-1 flex-wrap">
 					<Button variant="default" onclick={() => playTrackByObject(track)}>Play</Button>
 					<TrackPlaylistEditButton track={track} />
 					<Button variant="ghost" size="icon" onclick={() => openEditModal({ type: "track", uid: track!.uid })}><Pencil /></Button>

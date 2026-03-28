@@ -24,7 +24,6 @@
    import AudioCard from "$lib/components/app-ui/AudioCard.svelte";
 	import { SortState } from "$lib/ts/app/sortConfig.svelte";
    import NavButtons from "$lib/components/app-ui/NavButtons.svelte";
-    import { get } from "svelte/store";
 
 	const sort = new SortState("number", "asc");
 	const cols = createColumnState("album");
@@ -74,24 +73,27 @@
 					<span class="text-xs text-muted-foreground">{album.format}</span>
 				{/if}
 				<h2 class="text-2xl font-bold">{album.title}</h2>
-				<div class="flex gap-3 text-sm text-muted-foreground">
+				<div class="flex gap-3 text-sm text-muted-foreground flex-wrap">
 					{#if album.album_artist}
 						<span role="button" tabindex="0" onclick={() => setSelection(getArtistUidFromName(album.album_artist), "artist")} onkeydown={(e) => { if (e.key === 'Enter') setSelection(getArtistUidFromName(album.album_artist)); }} class="text-sm truncate cursor-pointer hover:underline">
 							{album.album_artist}
 						</span>
 					{/if}
 					{#if album.release_date}
+						<span>|</span>
 						<span>{album.release_date}</span>
 					{/if}
-					<span>{tracks.length} songs</span>
+					<span>|</span>
+					<span>{tracks.length} {tracks.length === 1 ? "song" : "songs"}</span>
 					{#if tracks.length > 0}
+						<span>|</span>
 						<span>{totalDuration(tracks)}</span>
 					{/if}
 				</div>
 			</div>
 		</div>
 
-		<div class="flex gap-2">
+		<div class="flex gap-2  flex-wrap">
 			<Button variant="default" onclick={() => queueTracksByObject(tracks, true)}>Play All</Button>
 			<Button variant="outline" onclick={() => queueTracksByObject(tracks, true, true)}>Shuffle</Button>
 			<Button variant="ghost" onclick={() => openEditModal({ type: "album", uid: album!.uid })}><Pencil /></Button>
