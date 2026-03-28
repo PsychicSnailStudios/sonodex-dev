@@ -3,8 +3,8 @@
 
 	import Button from "../ui/button/button.svelte";
 
-	import { selection } from "$lib/session.svelte";
-	import { library } from "$lib/library.svelte";
+	import { selection, setSelection } from "$lib/session.svelte";
+	import { getArtistUidFromName, library } from "$lib/library.svelte";
 	import type { Album, Track } from "$lib/ts/util/types";
 	import { queueTracksByObject } from "$lib/ts/audio/audioManager.svelte";
 	import { openEditModal } from "$lib/ts/app/editModal.svelte";
@@ -24,6 +24,7 @@
    import AudioCard from "$lib/components/app/AudioCard.svelte";
 	import { SortState } from "$lib/ts/app/sortConfig.svelte";
    import NavButtons from "$lib/components/app/NavButtons.svelte";
+    import { get } from "svelte/store";
 
 	const sort = new SortState("number", "asc");
 	const cols = createColumnState("album");
@@ -75,7 +76,9 @@
 				<h2 class="text-2xl font-bold">{album.title}</h2>
 				<div class="flex gap-3 text-sm text-muted-foreground">
 					{#if album.album_artist}
-						<span>{album.album_artist}</span>
+						<span role="button" tabindex="0" onclick={() => setSelection(getArtistUidFromName(album.album_artist), "artist")} onkeydown={(e) => { if (e.key === 'Enter') setSelection(getArtistUidFromName(album.album_artist)); }} class="text-sm truncate cursor-pointer hover:underline">
+							{album.album_artist}
+						</span>
 					{/if}
 					{#if album.release_date}
 						<span>{album.release_date}</span>

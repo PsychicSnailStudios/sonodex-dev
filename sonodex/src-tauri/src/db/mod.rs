@@ -17,12 +17,12 @@ pub use track_manager::*;
 use rusqlite::{Connection, Result};
 
 pub fn generate_uid(prefix: &str) -> String {
-    format!("{}-{}", prefix, Uuid::new_v4())
+	format!("{}-{}", prefix, Uuid::new_v4())
 }
 
 pub fn init_settings_db(conn: &Connection) -> Result<()> {
-    conn.execute_batch(
-        "
+	conn.execute_batch(
+		"
 		CREATE TABLE IF NOT EXISTS library_paths (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			path TEXT NOT NULL UNIQUE
@@ -83,12 +83,12 @@ pub fn init_settings_db(conn: &Connection) -> Result<()> {
 			('scan_create_artists', 'true'),
 			('scan_create_albums', 'true');
 	",
-    )
+	)
 }
 
 pub fn init_lib_db(conn: &Connection) -> Result<()> {
-    conn.execute_batch(
-        "
+	conn.execute_batch(
+		"
 		CREATE TABLE IF NOT EXISTS tracks (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			uid TEXT NOT NULL UNIQUE,
@@ -108,7 +108,8 @@ pub fn init_lib_db(conn: &Connection) -> Result<()> {
 			credits TEXT,
 			label TEXT,
 			artwork_blob BLOB,
-			artwork_path TEXT
+			artwork_path TEXT,
+			user_options TEXT
 		);
 
 		CREATE TABLE IF NOT EXISTS albums (
@@ -152,6 +153,7 @@ pub fn init_lib_db(conn: &Connection) -> Result<()> {
 			description TEXT,
 			owner TEXT,
 			tracks TEXT DEFAULT '[]',
+			folder TEXT,
 			artwork_blob BLOB,
 			artwork_path TEXT
 		);
@@ -172,6 +174,7 @@ pub fn init_lib_db(conn: &Connection) -> Result<()> {
 		CREATE UNIQUE INDEX IF NOT EXISTS idx_albums_uid ON albums(uid);
 		CREATE UNIQUE INDEX IF NOT EXISTS idx_artists_uid ON artists(uid);
 		CREATE UNIQUE INDEX IF NOT EXISTS idx_playlists_uid ON playlists(uid);
+		CREATE INDEX IF NOT EXISTS idx_playlists_folder ON playlists(folder);
 	",
-    )
+	)
 }

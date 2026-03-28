@@ -80,6 +80,7 @@
 	<Tabs.Root value="statistics" class="flex flex-col min-h-0 flex-1">
 		<Tabs.List class="w-full">
 			<Tabs.Trigger value="statistics" class="flex-1">Stats</Tabs.Trigger>
+			<Tabs.Trigger value="feed" class="flex-1">Feed</Tabs.Trigger>
 			<Tabs.Trigger value="settings" class="flex-1">Settings</Tabs.Trigger>
 		</Tabs.List>
 

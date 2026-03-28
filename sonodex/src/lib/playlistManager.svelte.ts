@@ -105,7 +105,7 @@ export async function reorderPlaylistTracks(playlistUid: string, orderedUids: st
 	await refreshPlaylists()
 }
 
-export async function createPlaylist(name: string, owner: string | null = null) {
+export async function createPlaylist(name: string, owner: string | null = null, folder: string | null = null) {
 	await invoke("create_playlist_entry", {
 		playlist: {
 			uid: "p-" + crypto.randomUUID(),
@@ -114,6 +114,7 @@ export async function createPlaylist(name: string, owner: string | null = null) 
 			owner: owner,
 			tracks: null,
 			artwork_path: null,
+			folder: folder,
 		},
 	})
 

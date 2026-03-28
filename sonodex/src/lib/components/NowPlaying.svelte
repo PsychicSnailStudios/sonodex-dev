@@ -61,13 +61,19 @@
 				<div class="flex gap-2 p-2">
 					<ArtworkDisplay uid={player.track!.uid} size={30} type="track" />
 					<div class="min-w-0 grid">
-						<p class="text-sm font-medium truncate">{player.track!.title}</p>
-						<p class="text-xs text-muted-foreground truncate">{parseArtists(player.track!.artists)}</p>
+						<span role="button" tabindex="0"
+						onclick={() => setSelection(player.track!.uid, "track")} onkeydown={(e) => { if (e.key === 'Enter') setSelection(player.track!.uid, "track"); }} class="text-sm truncate cursor-pointer hover:underline">
+							{player.track!.title}
+						</span>
+						<span role="button" tabindex="0"
+						onclick={() => setSelection(getArtistUidFromName(player.track!.album_artist!), "artist")} onkeydown={(e) => { if (e.key === 'Enter') setSelection(getArtistUidFromName(player.track!.album_artist!), "artist"); }} class="text-xs text-muted-foreground truncate cursor-pointer hover:underline">
+							{parseArtists(player.track!.artists)}
+						</span>
 					</div>
 				</div>
 
 				<div class="flex justify-between p-2">
-					<p class="text-xs text-muted-foreground">Next up:</p>
+					<p class="text-xs text-muted-foreground">Next up from: </p>
 					<p class="text-xs text-muted-foreground">{formatTotalRemaining()} Remaining</p>
 					<button class="text-xs text-muted-foreground" onclick={clearQueue}>Clear</button>
 				</div>
@@ -78,8 +84,13 @@
 							<div class="flex gap-2 p-2">
 								<ArtworkDisplay uid={track.uid} size={30} type="track" />
 								<div class="min-w-0 grid">
-									<button onclick={() => setSelection(track.uid, "track")} class="text-sm font-medium truncate">{track.title}</button>
-									<button onclick={() => setSelection(getArtistUidFromName(track.album_artist!), "artist")} class="text-xs text-muted-foreground truncate">{parseArtists(track.artists)}</button>
+									<span role="button" tabindex="0" onclick={() => setSelection(track.uid, "track")} onkeydown={(e) => { if (e.key === 'Enter') setSelection(track.uid, "track"); }} class="text-sm truncate cursor-pointer hover:underline">
+										{track.title}
+									</span>
+									<span role="button" tabindex="0"
+									onclick={() => setSelection(getArtistUidFromName(player.track!.album_artist!), "artist")} onkeydown={(e) => { if (e.key === 'Enter') setSelection(getArtistUidFromName(player.track!.album_artist!), "artist"); }} class="text-xs text-muted-foreground truncate cursor-pointer hover:underline">
+										{parseArtists(player.track!.artists)}
+									</span>
 								</div>
 							</div>
 						{/each}
@@ -94,8 +105,13 @@
 							<div class="flex gap-2 p-2">
 								<ArtworkDisplay uid={track.uid} size={30} type="track" />
 								<div class="min-w-0 grid">
-									<p class="text-sm font-medium truncate">{track.title}</p>
-									<p class="text-xs text-muted-foreground truncate">{parseArtists(track.artists)}</p>
+									<span role="button" tabindex="0" onclick={() => setSelection(track.uid, "track")} onkeydown={(e) => { if (e.key === 'Enter') setSelection(track.uid, "track"); }} class="text-sm truncate cursor-pointer hover:underline">
+										{track.title}
+									</span>
+									<span role="button" tabindex="0"
+									onclick={() => setSelection(getArtistUidFromName(player.track!.album_artist!), "artist")} onkeydown={(e) => { if (e.key === 'Enter') setSelection(getArtistUidFromName(player.track!.album_artist!), "artist"); }} class="text-xs text-muted-foreground truncate cursor-pointer hover:underline">
+										{parseArtists(player.track!.artists)}
+									</span>
 								</div>
 							</div>
 						{/each}
@@ -118,13 +134,13 @@
 			<div class="flex flex-col min-w-0">
 				<ScrollingText
 					text={currentlyPlaying.track?.title!}
-					class="text-sm font-medium"
+					class="text-sm font-medium cursor-pointer hover:underline"
 					onclick={() => setSelection(currentlyPlaying.track?.uid!, "track")}
 					
 				/>
 				<ScrollingText
 					text={parseArtists(currentlyPlaying.track?.artists ?? null)}
-					class="text-xs text-muted-foreground"
+					class="text-xs text-muted-foreground cursor-pointer hover:underline"
 					onclick={() => setSelection(getArtistUidFromName(currentlyPlaying.track?.album_artist!), "artist")}
 					hoverOnly
 				/>

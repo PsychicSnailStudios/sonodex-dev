@@ -2,9 +2,9 @@
 	import { invoke } from "@tauri-apps/api/core";
 	import { onMount } from "svelte";
 
-	import { library } from "$lib/library.svelte";
+	import { getArtistUidFromName, library } from "$lib/library.svelte";
 	import type { Track, Lyrics } from "$lib/ts/util/types";
-	import { selection } from "$lib/session.svelte";
+	import { selection, setSelection } from "$lib/session.svelte";
 	import { openEditModal } from "$lib/ts/app/editModal.svelte";
 
 	import { formatDuration, formatRating, parseAlbum, parseArtists } from '$lib/ts/util/helpers';
@@ -16,6 +16,7 @@
    import { Pencil } from "lucide-svelte";
    import { playTrackByObject } from "$lib/ts/audio/audioManager.svelte";
    import TrackPlaylistEditButton from "$lib/components/app/TrackPlaylistEditButton.svelte";
+    import { get } from "svelte/store";
 
 	let track = $derived(library.tracks.find(t => t.uid === selection.uid) ?? null);
 	let lyrics: Lyrics | null = $state(null);
@@ -36,9 +37,13 @@
 			<div class="flex flex-col gap-1">
 				<h2 class="text-2xl font-bold">{track.title ?? "Unknown Title"}</h2>
 				<div class="flex gap-2 text-sm text-muted-foreground">
-					<span>{parseArtists(track.artists)}</span>
+					<span role="button" tabindex="0" onclick={() => setSelection(getArtistUidFromName(track.album_artist), "artist")} onkeydown={(e) => { if (e.key === 'Enter') setSelection(getArtistUidFromName(track.album_artist), "artist"); }} class="text-sm truncate cursor-pointer hover:underline">
+						{parseArtists(track.artists)}
+					</span>
 					<span>|</span>
-					<span>{parseAlbum(track.albums)}</span>
+					<span role="button" tabindex="0" onclick={() => setSelection(track.albums![0].uid, "album")} onkeydown={(e) => { if (e.key === 'Enter') setSelection(track.albums![0].uid, "album"); }} class="text-sm truncate cursor-pointer hover:underline">
+						{parseAlbum(track.albums)}
+					</span>
 					<span>|</span>
 					<span>{track.year ?? "—"}</span>
 					<span>|</span>

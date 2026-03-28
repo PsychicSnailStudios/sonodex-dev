@@ -26,6 +26,7 @@ export type Track = {
 	duration_ms: number | null;
 	bpm: number | null;
 	key: string | null;
+	user_options: string | null;
 	credits: string | null;
 	label: string | null;
 };
@@ -69,6 +70,7 @@ export type Playlist = {
 	owner: string | null;
 	tracks: PlaylistTrackEntry[] | null;
 	artwork_path: string | null;
+	folder: string | null;
 };
 
 export type Lyrics = {
@@ -81,3 +83,23 @@ export type Lyrics = {
 };
 
 export type AudioCatagories = "track" | "album" | "artist" | "playlist" | "unknown";
+
+export type UserOptions = {
+	linkedShuffle: string | null;
+	trimStart:     number | null;
+	trimEnd:       number | null;
+};
+ 
+export function parseUserOptions(raw: string | null | undefined): UserOptions {
+	const defaults: UserOptions = { linkedShuffle: null, trimStart: null, trimEnd: null };
+	if (!raw) return defaults;
+	try {
+		return { ...defaults, ...JSON.parse(raw) };
+	} catch {
+		return defaults;
+	}
+}
+ 
+export function serializeUserOptions(opts: UserOptions): string {
+	return JSON.stringify(opts);
+}
