@@ -1,4 +1,5 @@
 import { library } from "$lib/library.svelte";
+import { writeText } from "@tauri-apps/plugin-clipboard-manager";
 
 type SelectionContext = "library" | "playlist";
 
@@ -69,8 +70,8 @@ export function copySelectedToClipboard(orderedUids: string[]) {
 		.map((uid) => library.tracks.find((t) => t.uid === uid))
 		.filter(Boolean);
 
-	const titles = tracks.map((t) => t!.title ?? "Unknown Title").join("\n");
+	const trackNames = tracks.map((t) => (t!.title ?? "Unknown Title") + "; " + (t!.album_artist ?? "Unknown Artist")).join("\n");
 	const uids = tracks.map((t) => t!.uid).join("\n");
 
-	navigator.clipboard.writeText(titles + "\n---\n" + uids).catch(() => {});
+	writeText(trackNames + "\n---\n" + uids).catch(() => {});
 }

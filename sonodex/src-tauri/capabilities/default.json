@@ -25,6 +25,9 @@
     "media:allow-set-metadata",
     "media:allow-set-playback-info",
     "media:allow-set-playback-status",
-    "media:allow-set-position"
+    "media:allow-set-position",
+    "clipboard-manager:default",
+    "clipboard-manager:allow-read-text",
+    "clipboard-manager:allow-write-text"
   ]
 }

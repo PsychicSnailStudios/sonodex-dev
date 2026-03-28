@@ -9,7 +9,7 @@ type Selection = {
 let viewIndex = $state(0);
 let viewHistory = $state([] as Selection[]);
 
-export let selection = $state({} as Selection);
+export let selection = $state({ "uid": "", "type": "none"} as Selection);
 
 export const scanState = $state({
 	loading: false,

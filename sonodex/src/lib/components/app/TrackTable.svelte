@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { Track } from "$lib/ts/util/types"
+	import { readText } from "@tauri-apps/plugin-clipboard-manager";
 	import type { ColumnState } from "$lib/ts/app/columnConfig.svelte"
 	import type { SortState } from "$lib/ts/app/sortConfig.svelte"
 	import { Clock2, Star, ChevronUp, ChevronDown, ChevronsUpDown } from "lucide-svelte"
@@ -87,12 +88,24 @@
 			clearTrackSelection()
 			return
 		}
+		if ((e.ctrlKey || e.metaKey) && e.key === "v") {
+			if (!playlistUid) return;
+			e.preventDefault();
+			readText().then(async (text) => {
+				const parts = text.split("\n---\n");
+				if (parts.length < 2) return;
+				const uids = parts[1].split("\n").map((u) => u.trim()).filter(Boolean);
+				if (uids.length === 0) return;
+				await addTracksToPlaylist(playlistUid, uids);
+			});
+			return;
+		}
 	}
 
 	function handleRowDragOver(e: DragEvent, index: number) {
-		if (!playlistUid || !dragState.active) return
 		e.preventDefault()
 		if (e.dataTransfer) e.dataTransfer.dropEffect = "move"
+		if (!playlistUid) return
 		const target = e.currentTarget as HTMLElement
 		const rect = target.getBoundingClientRect()
 		dragOverIndex = index
@@ -104,25 +117,27 @@
 	}
 
 	async function handleRowDrop(e: DragEvent, dropIndex: number) {
-		e.preventDefault()
-		if (!playlistUid || !dragState.payload) return
-
-		const { uids, sourcePlaylistUid } = dragState.payload
+		e.preventDefault();
+		if (!playlistUid) return;
+		const raw = e.dataTransfer?.getData("text/plain");
+		if (!raw) return;
+		const uids = raw.split(",").map((u) => u.trim()).filter(Boolean);
+		const sourcePlaylistUid = dragState.payload?.sourcePlaylistUid ?? null;
 
 		if (sourcePlaylistUid === playlistUid) {
-			const movingSet = new Set(uids)
-			const without = orderedUids.filter((uid) => !movingSet.has(uid))
-			const anchor = orderedUids[dropIndex]
-			const anchorIndexInWithout = without.indexOf(anchor)
-			const insertAt = dragOverPosition === "above" ? anchorIndexInWithout : anchorIndexInWithout + 1
-			without.splice(insertAt, 0, ...uids)
-			await reorderPlaylistTracks(playlistUid, without)
+			const movingSet = new Set(uids);
+			const without = orderedUids.filter((uid) => !movingSet.has(uid));
+			const anchor = orderedUids[dropIndex];
+			const anchorIndexInWithout = without.indexOf(anchor);
+			const insertAt = dragOverPosition === "above" ? anchorIndexInWithout : anchorIndexInWithout + 1;
+			without.splice(insertAt, 0, ...uids);
+			await reorderPlaylistTracks(playlistUid, without);
 		} else {
-			await addTracksToPlaylist(playlistUid, uids)
+			await addTracksToPlaylist(playlistUid, uids);
 		}
 
-		dragOverIndex = null
-		endDrag()
+		dragOverIndex = null;
+		endDrag();
 	}
 
 	async function handleTableDrop(e: DragEvent) {
@@ -146,7 +161,7 @@
 	class="flex flex-col p-0 outline-none"
 	onclick={handleTableClick}
 	onkeydown={handleKeyDown}
-	ondragover={(e) => { if (playlistUid && dragState.active) e.preventDefault() }}
+	ondragover={(e) => e.preventDefault()}
 	ondrop={handleTableDrop}
 >
 	<div

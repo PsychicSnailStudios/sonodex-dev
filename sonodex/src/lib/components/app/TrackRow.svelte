@@ -8,6 +8,7 @@
 	import { formatDuration, formatRating, parseAlbum, parseArtists, parseTrackNumber } from "$lib/ts/util/helpers";
 	import ArtworkDisplay from "$lib/components/app/ArtworkDisplay.svelte";
 	import TrackTableEditButton from "$lib/components/app/TrackTableEditButton.svelte";
+    import { get } from "svelte/store";
 
 	let {
 		track,
@@ -71,6 +72,16 @@
 	function handleDragEnd() {
 		endDrag();
 	}
+
+	function getTrackNumber(): string {
+		let num = parseTrackNumber(track.albums) ?? "#"
+
+		if (playlistUid) {
+			num = orderedUids.indexOf(track.uid) + 1
+		}
+
+		return num.toString();
+	}
 </script>
 
 <div
@@ -86,7 +97,7 @@
 	tabindex="0"
 >
 	{#if showNumber}
-		<span class="text-sm pointer-events-none">{parseTrackNumber(track.albums) ?? "#"}</span>
+		<span class="text-sm pointer-events-none">{getTrackNumber()}</span>
 	{/if}
 
 	{#if !compact && showArtwork}

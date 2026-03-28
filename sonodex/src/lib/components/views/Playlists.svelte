@@ -1,9 +1,5 @@
 <script lang="ts">
-	import { onMount } from "svelte";
-	import { invoke } from "@tauri-apps/api/core";
-	import type { Playlist } from '$lib/ts/util/types';
 	import { library } from "$lib/library.svelte";
-	import { setSelection } from "$lib/session.svelte";
 	import { dragState, setHoveredPlaylist, endDrag } from "$lib/dragState.svelte";
 	import { addTracksToPlaylist, createPlaylist } from "$lib/playlistManager.svelte";
 	import { profileState } from "$lib/profiles.svelte";
@@ -13,7 +9,7 @@
 	import * as AlertDialog from "$lib/components/ui/alert-dialog/index.js";
 	import { buttonVariants } from "$lib/components/ui/button/index.js";
 	import AudioCard from "$lib/components/app/AudioCard.svelte";
-	import { FolderPlus, ListPlus } from "lucide-svelte";
+	import { FolderPlus, ListPlus, FileDown } from "lucide-svelte";
 
 	let search = $state("");
 	let dialogOpen = $state(false);
@@ -39,24 +35,25 @@
 		createDialogOpen = false;
 	}
 
-	function handleCardDragOver(e: DragEvent, playlistUid: string) {
-		if (!dragState.active) return;
-		e.preventDefault();
-		if (e.dataTransfer) e.dataTransfer.dropEffect = "copy";
-		setHoveredPlaylist(playlistUid);
-	}
-
 	function handleCardDragLeave(e: DragEvent, playlistUid: string) {
 		if (dragState.hoveredPlaylistUid === playlistUid) {
 			setHoveredPlaylist(null);
 		}
 	}
 
+	function handleCardDragOver(e: DragEvent, playlistUid: string) {
+		e.preventDefault();
+		if (e.dataTransfer) e.dataTransfer.dropEffect = "move";
+		setHoveredPlaylist(playlistUid);
+	}
+
 	async function handleCardDrop(e: DragEvent, playlistUid: string) {
 		e.preventDefault();
 		setHoveredPlaylist(null);
-		if (!dragState.payload) return;
-		await addTracksToPlaylist(playlistUid, dragState.payload.uids);
+		const raw = e.dataTransfer?.getData("text/plain");
+		if (!raw) return;
+		const uids = raw.split(",").map((u) => u.trim()).filter(Boolean);
+		await addTracksToPlaylist(playlistUid, uids);
 		endDrag();
 	}
 </script>
@@ -112,14 +109,32 @@
 						</AlertDialog.Footer>
 					</AlertDialog.Content>
 				</AlertDialog.Root>
+
+				<AlertDialog.Root bind:open={dialogOpen}>
+					<AlertDialog.Trigger class={buttonVariants({ variant: "outline" })}>
+						<FileDown />
+					</AlertDialog.Trigger>
+					<AlertDialog.Content>
+						<AlertDialog.Header>
+							<AlertDialog.Title>New Folder</AlertDialog.Title>
+							<AlertDialog.Description>
+								<Input placeholder="Folder name" bind:value={nameInput} class="w-48" />
+							</AlertDialog.Description>
+						</AlertDialog.Header>
+						<AlertDialog.Footer>
+							<AlertDialog.Cancel>Cancel</AlertDialog.Cancel>
+							<AlertDialog.Action>Create</AlertDialog.Action>
+						</AlertDialog.Footer>
+					</AlertDialog.Content>
+				</AlertDialog.Root>
 			</div>
 		</div>
 
 		<ScrollArea class="min-h-0 min-w-0">
 			<div class="app-music-grid grid gap-2 pt-2">
 				{#each filteredPlaylists as p (p.uid)}
-					<div
-						class="relative transition-all"
+				<div
+						class="relative transition-all w-full"
 						class:ring-2={dragState.hoveredPlaylistUid === p.uid}
 						class:ring-primary={dragState.hoveredPlaylistUid === p.uid}
 						class:rounded-md={dragState.hoveredPlaylistUid === p.uid}
@@ -127,6 +142,7 @@
 						ondragleave={(e) => handleCardDragLeave(e, p.uid)}
 						ondrop={(e) => handleCardDrop(e, p.uid)}
 						role="region"
+						aria-label="Playlist drop target"
 					>
 						<AudioCard title={p.title} subTitle={p.owner} artworkUid={p.uid} type="playlist" />
 					</div>

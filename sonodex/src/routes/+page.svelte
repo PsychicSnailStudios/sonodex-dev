@@ -106,12 +106,17 @@
 			hoverTabTimeouts.delete(tabValue);
 		}
 	}
+
+	function handleWindowDragOver(e: DragEvent) {
+		if (dragState.active) e.preventDefault();
+	}
 </script>
 
 {#if setupChecked && needsSetup}
 	<ProfileSetup onComplete={onSetupComplete} />
 {/if}
 
+<svelte:window ondragover={handleWindowDragOver} />
 <div bind:clientWidth={containerWidth} class="h-full w-full overflow-hidden">
 <Resizable.PaneGroup direction="horizontal" class="app-wrapper grid gap-0.5 p-2 overflow-hidden">
 
