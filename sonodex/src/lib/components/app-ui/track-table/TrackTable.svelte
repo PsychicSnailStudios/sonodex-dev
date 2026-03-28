@@ -5,10 +5,13 @@
 	import type { SortState } from "$lib/ts/app/sortConfig.svelte"
 	import { Clock2, Star, ChevronUp, ChevronDown, ChevronsUpDown } from "lucide-svelte"
 	import { parseAlbum, parseTrackNumber } from "$lib/ts/util/helpers"
-	import { trackSelection, setTrackSelectionContext, clearTrackSelection, copySelectedToClipboard } from "$lib/ts/app/trackSelection.svelte"
+	import { trackSelection, setTrackSelectionContext, clearTrackSelection, copySelectedToClipboard, copySelectedNameToClipboard } from "$lib/ts/app/trackSelection.svelte"
 	import { dragState, endDrag } from "$lib/ts/app/dragState.svelte"
 	import { removeTracksFromPlaylist, reorderPlaylistTracks, addTracksToPlaylist } from "$lib/ts/audio/playlistManager.svelte"
 	import TrackRow from "$lib/components/app-ui/track-table/TrackRow.svelte"
+   import * as ContextMenu from "$lib/components/ui/context-menu/index.js";
+   import TrackPlaylistEditButton from "$lib/components/app-ui/TrackPlaylistEditButton.svelte";
+   import { addTrackToQueue } from "$lib/ts/audio/audioManager.svelte";
 
 	let {
 		tracks,
@@ -272,22 +275,38 @@
 					<div class="absolute top-0 left-0 right-0 h-0.5 bg-primary z-10 pointer-events-none"></div>
 				{/if}
 
-				<TrackRow
-					{track}
-					{orderedUids}
-					index={i}
-					{compact}
-					{gridTemplate}
-					showNumber={v.number}
-					showArtwork={v.artwork}
-					showTitle={v.title}
-					showAlbum={v.album}
-					showYear={v.year}
-					showRating={v.rating}
-					showDuration={v.duration}
-					showLabel={v.label}
-					{playlistUid}
-				/>
+				<ContextMenu.Root>
+					<ContextMenu.Trigger>
+						<TrackRow
+							{track}
+							{orderedUids}
+							index={i}
+							{compact}
+							{gridTemplate}
+							showNumber={v.number}
+							showArtwork={v.artwork}
+							showTitle={v.title}
+							showAlbum={v.album}
+							showYear={v.year}
+							showRating={v.rating}
+							showDuration={v.duration}
+							showLabel={v.label}
+							{playlistUid}
+						/>
+					</ContextMenu.Trigger>
+					<ContextMenu.Content>
+						<ContextMenu.Group>
+							<ContextMenu.Item onSelect={() => copySelectedNameToClipboard(track)}>Copy Track & Artist Name</ContextMenu.Item>
+							<ContextMenu.Item onSelect={() => addTrackToQueue(track)}>Add to Queue</ContextMenu.Item>
+						</ContextMenu.Group>
+						<ContextMenu.Separator />
+						<ContextMenu.Group>
+							<ContextMenu.Item>
+								<TrackPlaylistEditButton track={track} isButton={false} />
+							</ContextMenu.Item>
+						</ContextMenu.Group>
+					</ContextMenu.Content>
+				</ContextMenu.Root>
 
 				{#if dragOverIndex === i && dragOverPosition === "below"}
 					<div class="absolute bottom-0 left-0 right-0 h-0.5 bg-primary z-10 pointer-events-none"></div>
