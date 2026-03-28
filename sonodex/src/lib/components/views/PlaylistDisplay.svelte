@@ -21,10 +21,10 @@
 	import { invoke } from "@tauri-apps/api/core";
 	import { SortState } from "$lib/ts/app/sortConfig.svelte"
 	import NavButtons from "$lib/components/app/NavButtons.svelte";
-	import { dragState, endDrag } from "$lib/dragState.svelte";
+	import { dragState, endDrag } from "$lib/ts/app/dragState.svelte";
 
 	const cols = createColumnState("playlist");
-	const sort = new SortState("number", "asc");
+	const sort = new SortState();
 	const searchCols = createColumnState();
 	let search = $state("");
 	let compact = $state(false);

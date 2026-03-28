@@ -1,8 +1,8 @@
 <script lang="ts">
 	import type { Track } from "$lib/ts/util/types";
 	import { setSelection } from "$lib/session.svelte";
-	import { trackSelection, selectTrack } from "$lib/trackSelection.svelte";
-	import { startDrag, endDrag } from "$lib/dragState.svelte";
+	import { trackSelection, selectTrack } from "$lib/ts/app/trackSelection.svelte";
+	import { startDrag, endDrag } from "$lib/ts/app/dragState.svelte";
 	import { playTrackByUid } from "$lib/ts/audio/audioManager.svelte";
 	import { getAlbumUidFromName, getArtistUidFromName } from "$lib/library.svelte";
 	import { formatDuration, formatRating, parseAlbum, parseArtists, parseTrackNumber } from "$lib/ts/util/helpers";

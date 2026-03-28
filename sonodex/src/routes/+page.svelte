@@ -5,7 +5,7 @@
 	import { loadLibrary } from "$lib/library.svelte";
 	import { selection, scanState } from "$lib/session.svelte";
 	import { togglePlay, skipBack, skipNext } from "$lib/ts/audio/audioManager.svelte";
-	import { dragState } from "$lib/dragState.svelte";
+	import { dragState } from "$lib/ts/app/dragState.svelte";
 
 	import * as Resizable from "$lib/components/ui/resizable/index.js";
 	import { Button } from "$lib/components/ui/button/index.js";

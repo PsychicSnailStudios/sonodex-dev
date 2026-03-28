@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { library } from "$lib/library.svelte";
-	import { dragState, setHoveredPlaylist, endDrag } from "$lib/dragState.svelte";
+	import { dragState, setHoveredPlaylist, endDrag } from "$lib/ts/app/dragState.svelte";
 	import { addTracksToPlaylist, createPlaylist } from "$lib/playlistManager.svelte";
 	import { profileState } from "$lib/profiles.svelte";
 
