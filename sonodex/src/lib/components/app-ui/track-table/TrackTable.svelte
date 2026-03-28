@@ -66,7 +66,7 @@
 		if (v.rating)            parts.push("60px")
 		if (v.duration)          parts.push("80px")
 		if (v.label)             parts.push("100px")
-		parts.push("40px")
+		if (v.options)           parts.push("40px")
 		return parts.join(" ")
 	})
 
