@@ -395,7 +395,7 @@
 									<ContextMenu.SubTrigger>Move to folder</ContextMenu.SubTrigger>
 									<ContextMenu.SubContent>
 										<ContextMenu.Item onclick={() => movePlaylists([p.uid], null)}>
-											Root (no folder)
+											Home (no folder)
 										</ContextMenu.Item>
 										{#if allFolderPaths.length > 0}
 											<ContextMenu.Separator />
@@ -485,7 +485,7 @@
 											<ContextMenu.SubTrigger>Move to folder</ContextMenu.SubTrigger>
 											<ContextMenu.SubContent>
 												<ContextMenu.Item onclick={() => movePlaylists([p.uid], null)}>
-													Root (no folder)
+													Home (no folder)
 												</ContextMenu.Item>
 												{#if allFolderPaths.length > 0}
 													<ContextMenu.Separator />
@@ -522,7 +522,7 @@
 									<ContextMenu.SubTrigger>Move to folder</ContextMenu.SubTrigger>
 									<ContextMenu.SubContent>
 										<ContextMenu.Item onclick={() => movePlaylists([p.uid], null)}>
-											Root (no folder)
+											Home (no folder)
 										</ContextMenu.Item>
 										{#if allFolderPaths.length > 0}
 											<ContextMenu.Separator />
