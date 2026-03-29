@@ -57,16 +57,16 @@
 
 	const gridTemplate = $derived.by(() => {
 		const parts: string[] = []
-		if (v.number)            parts.push("40px")
-		if (v.artwork)           parts.push("40px")
-		if (v.title)             parts.push("1fr")
+		if (v.number)            	parts.push("40px")
+		if (v.artwork && !compact) parts.push("40px")
+		if (v.title)             	parts.push("1fr")
 		if (v.artist)				 parts.push("1fr")
 		if (v.album)             parts.push("1fr")
 		if (v.year)              parts.push("60px")
 		if (v.rating)            parts.push("60px")
 		if (v.duration)          parts.push("80px")
 		if (v.label)             parts.push("100px")
-		if (v.options)           parts.push("40px")
+		if (v.options)           parts.push("30px")
 		return parts.join(" ")
 	})
 
@@ -187,7 +187,7 @@
 				{/if}
 			</button>
 		{/if}
-		{#if v.artwork}<span></span>{/if}
+		{#if v.artwork && !compact}<span></span>{/if}
 		{#if v.title}
 			<button class="flex items-center gap-1 hover:text-foreground transition-colors" onclick={() => sort.cycle("title")}>
 				Title

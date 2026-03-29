@@ -8,6 +8,8 @@
 	import { formatDuration, formatRating, parseAlbum, parseArtists, parseTrackNumber } from "$lib/ts/util/helpers";
 	import ArtworkDisplay from "$lib/components/app-ui/ArtworkDisplay.svelte";
 	import TrackTableEditButton from "$lib/components/app-ui/track-table/TrackTableEditButton.svelte";
+	import Button from "$lib/components/ui/button/button.svelte";
+	import { Play } from "lucide-svelte";
 
 	let {
 		track,
@@ -89,8 +91,8 @@
 
 <div
 	role="row"
-	class="grid items-center px-3 border-b cursor-pointer select-none transition-colors {isSelected ? 'bg-primary/15 hover:bg-primary/20' : 'hover:bg-muted/50'}"
-	style="grid-template-columns: {gridTemplate}; height: {compact ? '25px' : '56px'};"
+	class="grid items-center content-center px-3 border-b cursor-pointer select-none transition-colors {isSelected ? 'bg-primary/15 hover:bg-primary/20' : 'hover:bg-muted/50'}"
+	style="grid-template-columns: {gridTemplate}; height: {compact ? '28px' : '56px'};"
 	onclick={handleRowClick}
 	ondblclick={handleRowDblClick}
 	onkeydown={(e) => { if (e.key === 'Enter') playTrackByUid(track.uid); }}
@@ -100,14 +102,33 @@
 	tabindex="0"
 	aria-disabled={track.path ? "false" : "true"}
 >
-	{#if showNumber}
+	{#if showNumber && showArtwork}
 		<span class="text-sm pointer-events-none">{getTrackNumber()}</span>
 	{/if}
 
+	{#if showNumber && !showArtwork}
+		<div class="relative w-full">
+			<span class="text-sm pointer-events-none">{getTrackNumber()}</span>
+			<div class="absolute flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+				<Button variant="ghost" size="icon" onclick={() => playTrackByUid(track.uid)}>
+					<Play />
+				</Button>
+			</div>
+		</div>
+	{/if}
+
 	{#if !compact && showArtwork}
-		<button onclick={() => playTrackByUid(track.uid)} class="flex items-center">
+		<!-- <button onclick={() => playTrackByUid(track.uid)} class="flex items-center">
 			<ArtworkDisplay uid={track.uid} size={30} />
-		</button>
+		</button> -->
+		<div class="relative w-full">
+			<ArtworkDisplay uid={track.uid} size={30} />
+			<div class="absolute flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+				<Button variant="ghost" size="icon" onclick={() => playTrackByUid(track.uid)}>
+					<Play />
+				</Button>
+			</div>
+		</div>
 	{/if}
 
 	{#if showTitle}

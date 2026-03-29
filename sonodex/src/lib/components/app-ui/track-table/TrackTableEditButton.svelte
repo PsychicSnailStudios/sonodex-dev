@@ -6,6 +6,7 @@
    import { addTrackToQueue } from "$lib/ts/audio/audioManager.svelte";
    import TrackPlaylistEditButton from "../TrackPlaylistEditButton.svelte";
    import { copySelectedNameToClipboard } from "$lib/ts/app/trackSelection.svelte";
+    import { Ellipsis } from "lucide-svelte";
 
 	let { track } = $props<{ track: Track; }>()
 	
@@ -14,7 +15,9 @@
 <DropdownMenu.Root>
 	<DropdownMenu.Trigger>
 		{#snippet child({ props })}
-			<Button {...props} variant="ghost" size="icon">...</Button>
+			<Button {...props} variant="ghost" size="icon-sm">
+				<Ellipsis class="w-4 h-4"/>
+			</Button>
 		{/snippet}
 	</DropdownMenu.Trigger>
 
