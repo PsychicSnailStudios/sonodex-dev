@@ -15,15 +15,22 @@
 		switchProfile,
 		createProfile,
 		deleteProfile,
+		updateProfile,
 		getProfileAvatar,
 	} from "$lib/ts/profiles.svelte";
 
-	import { User } from "lucide-svelte";
+	import { Pencil, User } from "lucide-svelte";
 
 	let addOpen = $state(false);
 	let swichOpen = $state(false);
+	let editOpen = $state(false);
 	let newName = $state("");
 	let creating = $state(false);
+	let saving = $state(false);
+
+	let editName = $state("");
+	let editAvatarBytes = $state<number[] | null>(null);
+	let editAvatarPreview = $state<string | null>(null);
 
 	let avatarUrls = $state<Record<string, string>>({});
 
@@ -64,17 +71,64 @@
 		await deleteProfile(uid);
 		await loadAvatars();
 	}
+
+	function openEditDialog() {
+		editName = profileState.active?.name ?? "";
+		editAvatarBytes = null;
+		editAvatarPreview = avatarUrls[profileState.active?.uid ?? ""] ?? null;
+		editOpen = true;
+	}
+
+	function handleAvatarFileChange(e: Event) {
+		const input = e.currentTarget as HTMLInputElement;
+		const file = input.files?.[0];
+		if (!file) return;
+
+		editAvatarPreview = URL.createObjectURL(file);
+
+		const reader = new FileReader();
+		reader.onload = () => {
+			const arrayBuffer = reader.result as ArrayBuffer;
+			editAvatarBytes = Array.from(new Uint8Array(arrayBuffer));
+		};
+		reader.readAsArrayBuffer(file);
+	}
+
+	async function handleSaveEdit() {
+		if (!profileState.active || !editName.trim()) return;
+		saving = true;
+		try {
+			await updateProfile(profileState.active.uid, editName.trim(), editAvatarBytes);
+			await loadProfiles();
+			await loadAvatars();
+			editOpen = false;
+		} finally {
+			saving = false;
+		}
+	}
 </script>
 
 <div class="flex flex-col gap-2 p-2 border-2 rounded-md h-full w-full overflow-hidden">
 
 	<div class="flex items-center justify-between">
-		<div class="flex gap-2">
+		<div class="flex gap-2 items-center">
+			<div class="w-8 h-8 rounded-full bg-muted overflow-hidden flex items-center justify-center flex-shrink-0">
+				{#if avatarUrls[profileState.active?.uid]}
+					<img src={avatarUrls[profileState.active?.uid]} alt="" class="w-full h-full object-cover" />
+				{:else}
+					<User class="w-5 h-5 text-muted-foreground" />
+				{/if}
+			</div>
 			<h1 class="h1 text-2xl text-primary">{profileState.active?.name}</h1>
 		</div>
-		<Button variant="outline" size="sm" onclick={() => swichOpen = true}>
-			Swich Profile
-		</Button>
+		<div class="flex items-center gap-2">
+			<Button variant="outline" size="sm" onclick={() => swichOpen = true}>
+				Swich Profile
+			</Button>
+			<Button variant="ghost" size="sm" onclick={openEditDialog}>
+				<Pencil />
+			</Button>
+		</div>
 	</div>
 
 	<Tabs.Root value="statistics" class="flex flex-col min-h-0 flex-1">
@@ -96,6 +150,56 @@
 	</Tabs.Root>
 
 </div>
+
+<Dialog.Root bind:open={editOpen}>
+	<Dialog.Content class="max-w-sm w-full">
+		<Dialog.Header>
+			<Dialog.Title>Edit Profile</Dialog.Title>
+		</Dialog.Header>
+
+		<div class="space-y-4 py-2">
+			<div class="flex flex-col items-center gap-3">
+				<div class="w-20 h-20 rounded-full bg-muted overflow-hidden flex items-center justify-center flex-shrink-0">
+					{#if editAvatarPreview}
+						<img src={editAvatarPreview} alt="" class="w-full h-full object-cover" />
+					{:else}
+						<User class="w-10 h-10 text-muted-foreground" />
+					{/if}
+				</div>
+				<Label
+					class="cursor-pointer text-sm text-muted-foreground hover:text-foreground transition-colors"
+					for="avatar-upload"
+				>
+					Change photo
+				</Label>
+				<input
+					id="avatar-upload"
+					type="file"
+					accept="image/*"
+					class="hidden"
+					onchange={handleAvatarFileChange}
+				/>
+			</div>
+
+			<div class="space-y-1.5">
+				<Label for="edit-profile-name">Name</Label>
+				<Input
+					id="edit-profile-name"
+					bind:value={editName}
+					placeholder="Enter a name"
+					onkeydown={(e) => { if (e.key === "Enter") handleSaveEdit(); }}
+				/>
+			</div>
+		</div>
+
+		<Dialog.Footer>
+			<Button variant="outline" onclick={() => editOpen = false}>Cancel</Button>
+			<Button onclick={handleSaveEdit} disabled={saving || !editName.trim()}>
+				{saving ? "Saving…" : "Save"}
+			</Button>
+		</Dialog.Footer>
+	</Dialog.Content>
+</Dialog.Root>
 
 <Dialog.Root bind:open={swichOpen}>
 	<Dialog.Content class="max-w-sm w-full">

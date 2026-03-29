@@ -3,7 +3,7 @@
 	import { invoke } from "@tauri-apps/api/core";
 	import { listen } from "@tauri-apps/api/event";
 	import { loadLibrary } from "$lib/ts/library.svelte";
-	import { selection, scanState } from "$lib/ts/session.svelte";
+	import { selection, scanState, loadSessionState, saveSessionState } from "$lib/ts/session.svelte";
 	import { togglePlay, skipBack, skipNext } from "$lib/ts/audio/audioManager.svelte";
 	import { dragState } from "$lib/ts/app/dragState.svelte";
 
@@ -22,6 +22,9 @@
 	import ProfileSetup from "$lib/components/modals/ProfileSetup.svelte";
 
 	import { House, Music, ListMusic, Search, Tags } from "lucide-svelte";
+
+	import { loadPlayerState, savePlayerState } from "$lib/ts/audio/audioManager.svelte";
+    import { save } from "@tauri-apps/plugin-dialog";
 
 	const VIEW_TABS = [
 		{ value: "home", label: "Profile", icon: House },
@@ -42,6 +45,17 @@
 	let defaultSidebarWidth = $derived(containerWidth ? (300 / containerWidth) * 100 : 40);
 
 	let hoverTabTimeouts = new Map<string, ReturnType<typeof setTimeout>>();
+
+	onMount(() => {
+		loadPlayerState();
+		loadSessionState();
+		window.addEventListener("beforeunload", savePlayerState);
+		window.addEventListener("beforeunload", saveSessionState);
+		return () => {
+			window.removeEventListener("beforeunload", savePlayerState);
+			window.removeEventListener("beforeunload", saveSessionState);
+		}
+	});
 
 	onMount(async () => {
 		needsSetup = await invoke<boolean>("needs_profile_setup");

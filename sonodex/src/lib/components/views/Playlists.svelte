@@ -10,32 +10,32 @@
 		onBreadcrumbDragExit,
 		dropOnPlaylist,
 		movePlaylists,
+        startDrag,
 	} from "$lib/ts/app/dragState.svelte";
 	import {
 		folderSelection,
 		navigateTo,
 		breadcrumbs,
-		registerFolder,
 	} from "$lib/ts/app/folderSelection.svelte";
-	import { addTracksToPlaylist, createPlaylist } from "$lib/ts/audio/playlistManager.svelte";
-	import { profileState } from "$lib/ts/profiles.svelte";
+	import { addTracksToPlaylist } from "$lib/ts/audio/playlistManager.svelte";
 	import type { Playlist } from "$lib/ts/util/types";
 
 	import { ScrollArea } from "$lib/components/ui/scroll-area/index.js";
 	import { Input } from "$lib/components/ui/input/index.js";
-	import * as AlertDialog from "$lib/components/ui/alert-dialog/index.js";
 	import * as ContextMenu from "$lib/components/ui/context-menu/index.js";
-	import { Button, buttonVariants } from "$lib/components/ui/button/index.js";
+	import { Button } from "$lib/components/ui/button/index.js";
 	import AudioCard from "$lib/components/app-ui/AudioCard.svelte";
 	import PlaylistRow from "$lib/components/app-ui/PlaylistRow.svelte";
-	import ArtworkDisplay from "$lib/components/app-ui/ArtworkDisplay.svelte";
 	import {
 		FolderPlus, ListPlus, FileDown,
-		LayoutGrid, List,
-		ChevronRight, ChevronDown,
-		Folder, FolderOpen,
-		House
+		LayoutGrid, List,	ChevronRight, ChevronDown,
+		Folder, FolderOpen, House,
 	} from "lucide-svelte";
+   import CreateNewPlaylist from "$lib/components/dialogs/CreateNewPlaylist.svelte";
+   import CreateNewFolder from "$lib/components/dialogs/CreateNewFolder.svelte";
+   import FolderContext from "$lib/components/app-ui/context-menus/FolderContext.svelte";
+   import PlaylistContext from "$lib/components/app-ui/context-menus/PlaylistContext.svelte";
+   import PlaylistFolderCard from "$lib/components/app-ui/PlaylistFolderCard.svelte";
 
 	type ViewMode = "tiled" | "compact";
 
@@ -138,23 +138,6 @@
 		])].sort()
 	);
 
-	async function handleCreatePlaylist() {
-		if (!nameInput.trim()) return;
-		await createPlaylist(nameInput.trim(), profileState.active?.name ?? null, createDialogFolder);
-		nameInput = "";
-		createDialogOpen = false;
-	}
-
-	async function handleCreateFolder() {
-		if (!folderNameInput.trim()) return;
-		const parent = folderDialogParent;
-		const newPath = parent ? `${parent}/${folderNameInput.trim()}` : folderNameInput.trim();
-		registerFolder(newPath);
-		folderNameInput = "";
-		folderDialogOpen = false;
-		navigateTo(newPath);
-	}
-
 	function openCreatePlaylistIn(folder: string | null) {
 		createDialogFolder = folder;
 		nameInput = "";
@@ -214,38 +197,12 @@
 			e.dataTransfer.setData("text/plain", playlistUid);
 			e.dataTransfer.effectAllowed = "move";
 		}
+		startDrag({ type: "tracks", uids: [playlistUid], sourcePlaylistUid: null });
 	}
 </script>
 
-<AlertDialog.Root bind:open={createDialogOpen}>
-	<AlertDialog.Content>
-		<AlertDialog.Header>
-			<AlertDialog.Title>New Playlist</AlertDialog.Title>
-			<AlertDialog.Description>
-				<Input placeholder="Playlist name" bind:value={nameInput} class="w-full mt-2" />
-			</AlertDialog.Description>
-		</AlertDialog.Header>
-		<AlertDialog.Footer>
-			<AlertDialog.Cancel>Cancel</AlertDialog.Cancel>
-			<AlertDialog.Action onclick={handleCreatePlaylist}>Create</AlertDialog.Action>
-		</AlertDialog.Footer>
-	</AlertDialog.Content>
-</AlertDialog.Root>
-
-<AlertDialog.Root bind:open={folderDialogOpen}>
-	<AlertDialog.Content>
-		<AlertDialog.Header>
-			<AlertDialog.Title>New Folder</AlertDialog.Title>
-			<AlertDialog.Description>
-				<Input placeholder="Folder name" bind:value={folderNameInput} class="w-full mt-2" />
-			</AlertDialog.Description>
-		</AlertDialog.Header>
-		<AlertDialog.Footer>
-			<AlertDialog.Cancel>Cancel</AlertDialog.Cancel>
-			<AlertDialog.Action onclick={handleCreateFolder}>Create</AlertDialog.Action>
-		</AlertDialog.Footer>
-	</AlertDialog.Content>
-</AlertDialog.Root>
+<CreateNewPlaylist bind:open={createDialogOpen} folder={createDialogFolder} />
+<CreateNewFolder bind:open={folderDialogOpen} parent={folderDialogParent} />
 
 <div class="flex flex-col gap-2 p-4 border-2 h-full w-full overflow-hidden rounded-md">
 
@@ -313,7 +270,7 @@
 					ondragleave={onBreadcrumbDragExit}
 					ondrop={handleRootDrop}
 				>
-					<House class="size-3" /> Drop here to move to root
+					<House class="size-3" /> Drag here to move to root
 				</button>
 			{/if}
 
@@ -335,39 +292,10 @@
 									ondragleave={() => onFolderDragExit(folderPath)}
 									ondrop={(e) => handleFolderDrop(e, folderPath)}
 								>
-									<div class="w-full aspect-square rounded-md bg-muted overflow-hidden">
-										{#if artUids.length >= 4}
-											<div class="grid grid-cols-2 w-full h-full gap-2 p-2">
-												{#each artUids.slice(0, 4) as uid}
-													<ArtworkDisplay {uid} type="playlist" />
-												{/each}
-											</div>
-										{:else if artUids.length > 0}
-											<div class="grid grid-cols-2 w-full h-full gap-2 p-2">
-												{#each artUids as uid}
-													<ArtworkDisplay {uid} type="playlist" />
-												{/each}
-											</div>
-										{:else}
-											<div class="w-full h-full flex items-center justify-center">
-												<Folder class="size-12 text-muted-foreground/40" />
-											</div>
-										{/if}
-									</div>
-									<div class="px-1">
-										<p class="text-sm font-medium truncate">{folderLabel(folderPath)}</p>
-										<p class="text-xs text-muted-foreground">Folder</p>
-									</div>
+									<PlaylistFolderCard folderPath={folderLabel(folderPath)} artUids={artUids} />
 								</button>
 							</ContextMenu.Trigger>
-							<ContextMenu.Content>
-								<ContextMenu.Item onclick={() => openCreatePlaylistIn(folderPath)}>
-									New playlist inside
-								</ContextMenu.Item>
-								<ContextMenu.Item onclick={() => openCreateFolderIn(folderPath)}>
-									New folder inside
-								</ContextMenu.Item>
-							</ContextMenu.Content>
+							<FolderContext path={folderPath} onCreatePlaylist={openCreatePlaylistIn} onCreateFolder={openCreateFolderIn} />
 						</ContextMenu.Root>
 					{/each}
 
@@ -383,6 +311,7 @@
 									ondragstart={(e) => startPlaylistDrag(e, p.uid)}
 									ondragover={(e) => handlePlaylistDragOver(e, p.uid)}
 									ondragleave={() => handlePlaylistDragLeave(p.uid)}
+									ondragend={endDrag}
 									ondrop={(e) => dropOnPlaylist(e, p.uid)}
 									role="region"
 									aria-label="Playlist"
@@ -390,24 +319,7 @@
 									<AudioCard title={p.title} subTitle={(p as any).owner ?? ""} artworkUid={p.uid} type="playlist" />
 								</div>
 							</ContextMenu.Trigger>
-							<ContextMenu.Content>
-								<ContextMenu.Sub>
-									<ContextMenu.SubTrigger>Move to folder</ContextMenu.SubTrigger>
-									<ContextMenu.SubContent>
-										<ContextMenu.Item onclick={() => movePlaylists([p.uid], null)}>
-											Home (no folder)
-										</ContextMenu.Item>
-										{#if allFolderPaths.length > 0}
-											<ContextMenu.Separator />
-											{#each allFolderPaths as fp}
-												<ContextMenu.Item onclick={() => movePlaylists([p.uid], fp)}>
-													{fp}
-												</ContextMenu.Item>
-											{/each}
-										{/if}
-									</ContextMenu.SubContent>
-								</ContextMenu.Sub>
-							</ContextMenu.Content>
+							<PlaylistContext folderPaths={allFolderPaths} uid={p.uid} />
 						</ContextMenu.Root>
 					{/each}
 
@@ -455,21 +367,14 @@
 									</button>
 								</div>
 							</ContextMenu.Trigger>
-							<ContextMenu.Content>
-								<ContextMenu.Item onclick={() => openCreatePlaylistIn(row.path)}>
-									New playlist inside
-								</ContextMenu.Item>
-								<ContextMenu.Item onclick={() => openCreateFolderIn(row.path)}>
-									New folder inside
-								</ContextMenu.Item>
-							</ContextMenu.Content>
+							<FolderContext path={row.path} onCreatePlaylist={openCreatePlaylistIn} onCreateFolder={openCreateFolderIn} />
 						</ContextMenu.Root>
 
 						{#if isExpanded}
 							{#each getDirectPlaylists(row.path) as p (p.uid)}
 								<ContextMenu.Root>
 									<ContextMenu.Trigger class="w-full">
-										<div draggable="true" ondragstart={(e) => startPlaylistDrag(e, p.uid)}>
+										<div draggable="true" ondragstart={(e) => startPlaylistDrag(e, p.uid)} ondragend={endDrag} role="region" aria-label="Playlist Row">
 											<PlaylistRow
 												playlist={p}
 												indent={(row.depth + 2) * 16}
@@ -480,24 +385,7 @@
 											/>
 										</div>
 									</ContextMenu.Trigger>
-									<ContextMenu.Content>
-										<ContextMenu.Sub>
-											<ContextMenu.SubTrigger>Move to folder</ContextMenu.SubTrigger>
-											<ContextMenu.SubContent>
-												<ContextMenu.Item onclick={() => movePlaylists([p.uid], null)}>
-													Home (no folder)
-												</ContextMenu.Item>
-												{#if allFolderPaths.length > 0}
-													<ContextMenu.Separator />
-													{#each allFolderPaths as fp}
-														<ContextMenu.Item onclick={() => movePlaylists([p.uid], fp)}>
-															{fp}
-														</ContextMenu.Item>
-													{/each}
-												{/if}
-											</ContextMenu.SubContent>
-										</ContextMenu.Sub>
-									</ContextMenu.Content>
+									<PlaylistContext folderPaths={allFolderPaths} uid={p.uid} />
 								</ContextMenu.Root>
 							{/each}
 						{/if}
@@ -506,7 +394,7 @@
 					{#each filteredDirect as p (p.uid)}
 						<ContextMenu.Root>
 							<ContextMenu.Trigger class="w-full">
-								<div draggable="true" ondragstart={(e) => startPlaylistDrag(e, p.uid)}>
+								<div draggable="true" ondragstart={(e) => startPlaylistDrag(e, p.uid)} ondragend={endDrag}>
 									<PlaylistRow
 										playlist={p}
 										indent={8}
@@ -517,24 +405,7 @@
 									/>
 								</div>
 							</ContextMenu.Trigger>
-							<ContextMenu.Content>
-								<ContextMenu.Sub>
-									<ContextMenu.SubTrigger>Move to folder</ContextMenu.SubTrigger>
-									<ContextMenu.SubContent>
-										<ContextMenu.Item onclick={() => movePlaylists([p.uid], null)}>
-											Home (no folder)
-										</ContextMenu.Item>
-										{#if allFolderPaths.length > 0}
-											<ContextMenu.Separator />
-											{#each allFolderPaths as fp}
-												<ContextMenu.Item onclick={() => movePlaylists([p.uid], fp)}>
-													{fp}
-												</ContextMenu.Item>
-											{/each}
-										{/if}
-									</ContextMenu.SubContent>
-								</ContextMenu.Sub>
-							</ContextMenu.Content>
+							<PlaylistContext folderPaths={allFolderPaths} uid={p.uid} />
 						</ContextMenu.Root>
 					{/each}
 

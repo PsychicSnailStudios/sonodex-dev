@@ -3,13 +3,13 @@
 	import { setSelection } from "$lib/ts/session.svelte";
 	import { trackSelection, selectTrack } from "$lib/ts/app/trackSelection.svelte";
 	import { startDrag, endDrag } from "$lib/ts/app/dragState.svelte";
-	import { playTrackByUid } from "$lib/ts/audio/audioManager.svelte";
+	import { player, playTrackByUid, togglePlay } from "$lib/ts/audio/audioManager.svelte";
 	import { getAlbumUidFromName, getArtistUidFromName } from "$lib/ts/library.svelte";
 	import { formatDuration, formatRating, parseAlbum, parseArtists, parseTrackNumber } from "$lib/ts/util/helpers";
 	import ArtworkDisplay from "$lib/components/app-ui/ArtworkDisplay.svelte";
 	import TrackTableEditButton from "$lib/components/app-ui/track-table/TrackTableEditButton.svelte";
 	import Button from "$lib/components/ui/button/button.svelte";
-	import { Play } from "lucide-svelte";
+	import { Pause, Play } from "lucide-svelte";
 
 	let {
 		track,
@@ -107,12 +107,22 @@
 	{/if}
 
 	{#if showNumber && !showArtwork}
-		<div class="relative w-full h-full flex items-center justify-start">
-			<span class="text-sm pointer-events-none">{getTrackNumber()}</span>
-			<div class="cursor-pointer absolute top-0 -left-4 w-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-				<Button variant="ghost" size="icon" onclick={() => playTrackByUid(track.uid)}>
-					<Play />
-				</Button>
+		<div class="group relative w-full h-full flex items-center justify-start">
+			<span class="text-sm pointer-events-none group-hover:opacity-0">{getTrackNumber()}</span>
+			<div class="cursor-pointer absolute top-0 -left-3 inset-0 w-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+				{#if player.isPlaying}
+					<Button variant="ghost" size="icon" onclick={() => togglePlay()}>
+						<Pause />
+					</Button>
+				{:else if player.track?.uid === track.uid}
+					<Button variant="ghost" size="icon" onclick={() => togglePlay()}>
+						<Play />
+					</Button>
+				{:else}
+					<Button variant="ghost" size="icon" onclick={() => playTrackByUid(track.uid)}>
+						<Play />
+					</Button>
+				{/if}
 			</div>
 		</div>
 	{/if}
@@ -121,12 +131,22 @@
 		<!-- <button onclick={() => playTrackByUid(track.uid)} class="flex items-center">
 			<ArtworkDisplay uid={track.uid} size={30} />
 		</button> -->
-		<div class="relative w-full">
+		<div class="group relative w-full">
 			<ArtworkDisplay uid={track.uid} size={30} />
-			<div class="cursor-pointer absolute top-0 -left-1 w-full h-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-				<Button variant="ghost" size="icon" onclick={() => playTrackByUid(track.uid)}>
-					<Play />
-				</Button>
+			<div class="cursor-pointer absolute top-0 inset-0 -left-1 w-full h-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+				{#if player.isPlaying}
+					<Button variant="ghost" size="icon" onclick={() => togglePlay()}>
+						<Pause />
+					</Button>
+				{:else if player.track?.uid === track.uid}
+					<Button variant="ghost" size="icon" onclick={() => togglePlay()}>
+						<Play />
+					</Button>
+				{:else}
+					<Button variant="ghost" size="icon" onclick={() => playTrackByUid(track.uid)}>
+						<Play />
+					</Button>
+				{/if}
 			</div>
 		</div>
 	{/if}

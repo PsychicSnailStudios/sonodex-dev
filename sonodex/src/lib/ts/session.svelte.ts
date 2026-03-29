@@ -1,5 +1,7 @@
-import { invoke } from "@tauri-apps/api/core";
-import { clamp } from "$lib/ts/util/helpers";
+import { SortState } from "$lib/ts/app/sortConfig.svelte";
+import { createColumnState } from "$lib/ts/app/columnConfig.svelte";
+import type { SortField, SortDirection } from "$lib/ts/app/sortConfig.svelte";
+import type { ColumnKey } from "$lib/ts/app/columnConfig.svelte";
 
 type Selection = {
 	uid: string;
@@ -21,6 +23,86 @@ export const scanState = $state({
 	enrichTotal: 0,
 	enrichErrors: 0,
 });
+
+const SESSION_STORAGE_KEY = "sonodex:session";
+
+export function loadSessionState() {
+	try {
+		const raw = localStorage.getItem(SESSION_STORAGE_KEY);
+		if (!raw) return;
+		const saved = JSON.parse(raw);
+		setSelection(saved.selection.uid, saved.selection.type);
+
+	} catch {}
+}
+
+export function saveSessionState() {
+	try {
+		localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify({
+			selection: selection,
+		}));
+	} catch {}
+}
+
+export function createPersistedViewState(
+	key: string,
+	defaults: {
+		sortField?: SortField | null;
+		sortDir?: SortDirection;
+		compact?: boolean;
+		colPreset?: string;
+	} = {}
+) {
+	const storageKey = `sonodex:view:${key}`;
+
+	let saved: any = null;
+	try {
+		const raw = localStorage.getItem(storageKey);
+		if (raw) saved = JSON.parse(raw);
+	} catch {}
+
+	const sort = new SortState(
+		saved?.sortField ?? defaults.sortField ?? null,
+		saved?.sortDir ?? defaults.sortDir ?? "asc"
+	);
+
+	const cols = createColumnState(saved?.colPreset ?? defaults.colPreset ?? "default");
+
+	if (saved?.cols) {
+		for (const col of Object.keys(saved.cols) as ColumnKey[]) {
+			cols.visible[col] = saved.cols[col];
+		}
+	}
+
+	let compact = $state(saved?.compact ?? defaults.compact ?? false);
+
+	$effect(() => {
+		JSON.stringify(cols.visible);
+		sort.field;
+		sort.direction;
+		compact;
+		save();
+	});
+
+	function save() {
+		try {
+			localStorage.setItem(storageKey, JSON.stringify({
+				sortField: sort.field,
+				sortDir: sort.direction,
+				cols: cols.visible,
+				compact,
+			}));
+		} catch {}
+	}
+
+	return {
+		sort,
+		cols,
+		get compact() { return compact; },
+		set compact(v: boolean) { compact = v; },
+		save,
+	};
+}
 
 export function setSelection(uid: string, type: "track" | "album" | "artist" | "playlist" | "none") {
 	selection.uid = uid;

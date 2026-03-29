@@ -14,12 +14,15 @@
 		onchange?: (path: string | null) => void;
 	}>();
 
+	let previewPath = $state<string | null>(null);
+
 	async function handleUpload() {
 		const selected = await open({
 			filters: [{ name: "Image", extensions: ["jpg", "jpeg", "png", "webp"] }],
 			multiple: false,
 		});
 		if (selected && typeof selected === "string") {
+			previewPath = selected;
 			onchange?.(selected);
 		}
 	}
@@ -43,12 +46,13 @@
 	}
 
 	function handleClear() {
+		previewPath = null;
 		onchange?.(null);
 	}
 </script>
 
 <div class="flex gap-4 items-start">
-	<ArtworkDisplay uid={entityUid} size={128} type={entityType} />
+	<ArtworkDisplay uid={entityUid} size={128} type={entityType} previewPath={previewPath} />
 
 	<div class="flex flex-col gap-2 justify-center pt-1">
 		<Button variant="outline" size="sm" onclick={handleUpload} class="justify-start gap-2">

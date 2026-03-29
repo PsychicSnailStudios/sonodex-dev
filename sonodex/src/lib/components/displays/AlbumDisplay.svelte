@@ -16,7 +16,6 @@
 
 	import ArtworkDisplay from "$lib/components/app-ui/ArtworkDisplay.svelte";
 	import TrackTable from "$lib/components/app-ui/track-table/TrackTable.svelte";
-	import SortDropdown from "$lib/components/app-ui/SortDropdown.svelte";
 	import { ScrollArea } from "$lib/components/ui/scroll-area/index.js";
 	import { getArtworkColor } from "$lib/ts/util/helpers"
 
@@ -25,9 +24,13 @@
 	import { SortState } from "$lib/ts/app/sortConfig.svelte";
    import NavButtons from "$lib/components/app-ui/NavButtons.svelte";
 
-	const sort = new SortState("number", "asc");
-	const cols = createColumnState("album");
-	let compact = $state(false)
+	import { createPersistedViewState } from "$lib/ts/session.svelte";
+
+	const view = createPersistedViewState("album", {
+		sortField: "number",
+		sortDir: "asc",
+		colPreset: "album",
+	});
 
 	let album: Album | null = $state(null);
 	let color = $state("rgb(30, 30, 30)");
@@ -97,10 +100,10 @@
 			<Button variant="default" onclick={() => queueTracksByObject(tracks, true)}>Play All</Button>
 			<Button variant="outline" onclick={() => queueTracksByObject(tracks, true, true)}>Shuffle</Button>
 			<Button variant="ghost" onclick={() => openEditModal({ type: "album", uid: album!.uid })}><Pencil /></Button>
-			<TrackTableSettings columns={cols} sort={sort} bind:compact />
+			<TrackTableSettings cols={view.cols} sort={view.sort} compact={view.compact} onCompactChange={(v) => view.compact = v} />
 		</div>
 
-		<TrackTable tracks={tracks} columns={cols} sort={sort} compact={compact} />
+		<TrackTable tracks={tracks} columns={view.cols} sort={view.sort} compact={view.compact} />
 
 		<div class="flex flex-col gap-2 w-full pt-4">
 			<h4>More by {album.album_artist}</h4>

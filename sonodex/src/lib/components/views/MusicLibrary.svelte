@@ -14,9 +14,9 @@
 	import ArtworkDisplay from "../app-ui/ArtworkDisplay.svelte";
 	import TrackTableSettings from "$lib/components/app-ui/track-table/TrackTableSettings.svelte";
 	import { SortState } from "$lib/ts/app/sortConfig.svelte"
-   import { ArrowDownAZ, ArrowUpAZ, ArrowUpDown, LayoutGrid, List } from "lucide-svelte";
-   import { parseArtists } from "$lib/ts/util/helpers";
-   import * as DropdownMenu from "$lib/components/ui/dropdown-menu/index.js";
+	import { ArrowDownAZ, ArrowUpAZ, ArrowUpDown, ChevronUp, ChevronDown, LayoutGrid, List } from "lucide-svelte";
+	import { parseArtists } from "$lib/ts/util/helpers";
+	import * as DropdownMenu from "$lib/components/ui/dropdown-menu/index.js";
 	import { Button } from "$lib/components/ui/button/index.js";
 	
 	let activeTab = $state("album");
@@ -25,8 +25,20 @@
 	const sort = new SortState("year", "desc");
 	const cols = createColumnState("library");
 	let compact = $state(false);
-	let artistAZ = $state(false);
-	let albumSort = $state("name");
+
+	let artistSortDir = $state<"asc" | "desc">("asc");
+
+	let albumSortField = $state<"name" | "artist" | "year">("name");
+	let albumSortDir = $state<"asc" | "desc">("asc");
+
+	function toggleAlbumSort(field: "name" | "artist" | "year") {
+		if (albumSortField === field) {
+			albumSortDir = albumSortDir === "asc" ? "desc" : "asc";
+		} else {
+			albumSortField = field;
+			albumSortDir = "asc";
+		}
+	}
 
 	const filteredTracks = $derived(
 		search.trim() === ""
@@ -41,20 +53,37 @@
 			  })
 	);
 
-	const filteredAlbums = $derived(
-		search.trim() === ""
+	const filteredArtists = $derived(() => {
+		const list = search.trim() === ""
+			? library.artists
+			: library.artists.filter((a) => a.name.toLowerCase().includes(search.toLowerCase()));
+
+		return [...list].sort((a, b) => {
+			const cmp = a.name.localeCompare(b.name);
+			return artistSortDir === "asc" ? cmp : -cmp;
+		});
+	});
+
+	const filteredAlbums = $derived(() => {
+		const list = search.trim() === ""
 			? library.albums
 			: library.albums.filter((a) => {
 				const q = search.toLowerCase();
 				return a.title.toLowerCase().includes(q) || (a.artists?.toLowerCase() ?? "").includes(q);
-			})
-	);
+			});
 
-	const filteredArtists = $derived(
-		search.trim() === ""
-			? library.artists
-			: library.artists.filter((a) => a.name.toLowerCase().includes(search.toLowerCase()))
-	);
+		return [...list].sort((a, b) => {
+			let cmp = 0;
+			if (albumSortField === "name") {
+				cmp = a.title.localeCompare(b.title);
+			} else if (albumSortField === "artist") {
+				cmp = (a.album_artist ?? "").localeCompare(b.album_artist ?? "");
+			} else if (albumSortField === "year") {
+				cmp = (a.release_date ?? "").localeCompare(b.release_date ?? "");
+			}
+			return albumSortDir === "asc" ? cmp : -cmp;
+		});
+	});
 </script>
 
 <div class="flex flex-col gap-2 p-4 border-2 h-full w-full overflow-hidden rounded-md">
@@ -88,15 +117,15 @@
 			<div class="flex flex-col h-full w-full overflow-hidden gap-3">
 				<div class="flex justify-between">
 					<span>{library.artists.length} {library.artists.length === 1 ? "artist" : "artists"}</span>
-					<div>
-						<Toggle onPressedChange={(v) => {artistAZ = !artistAZ}} >
-							{#if artistAZ}
-								<ArrowUpAZ />
-							{:else}
+					<div class="flex items-center gap-1">
+						<Button variant="ghost" size="icon" onclick={() => artistSortDir = artistSortDir === "asc" ? "desc" : "asc"}>
+							{#if artistSortDir === "asc"}
 								<ArrowDownAZ />
+							{:else}
+								<ArrowUpAZ />
 							{/if}
-						</Toggle>
-						<Toggle onPressedChange={(v) => {compact = !compact}} >
+						</Button>
+						<Toggle onPressedChange={() => compact = !compact}>
 							{#if compact}
 								<LayoutGrid />
 								Table
@@ -110,7 +139,7 @@
 
 				<ScrollArea class="min-h-0 min-w-0 pr-4">
 				{#if compact}
-					{#each filteredArtists as artist}
+					{#each filteredArtists() as artist}
 					<div
 						class="grid items-center px-3 border-b hover:bg-muted/50"
 						style="grid-template-columns: 40px 1fr; height: 56px;"
@@ -123,9 +152,7 @@
 					{/each}
 				{:else}
 					<div class="app-music-grid grid gap-2">
-
-						{#each filteredArtists as artist}
-
+						{#each filteredArtists() as artist}
 							<button onclick={() => setSelection(artist.uid, "artist")} class="flex flex-col items-center gap-2 p-2 rounded-md bg-background border hover:border-primary transition-colors cursor-default">
 								<div class="w-full aspect-square rounded-full bg-muted flex items-center justify-center overflow-hidden">
 									<ArtworkDisplay uid={artist.uid} type="artist" />
@@ -134,9 +161,7 @@
 									<p class="text-sm font-medium">{artist.name}</p>
 								</div>
 							</button>
-
 						{/each}
-
 					</div>
 				{/if}
 				</ScrollArea>
@@ -145,23 +170,39 @@
 			<div class="flex flex-col h-full w-full overflow-hidden gap-3">
 				<div class="flex justify-between">
 					<span>{library.albums.length} {library.albums.length === 1 ? "album" : "albums"}</span>
-					<div>
+					<div class="flex items-center gap-1">
 						<DropdownMenu.Root>
 							<DropdownMenu.Trigger>
-								<Button variant="ghost" size="icon"><ArrowUpDown /></Button>
+								<Button variant="outline" size="sm" class="gap-2">
+									<ArrowUpDown size={14} />
+									{{ name: "Name", artist: "Artist", year: "Year" }[albumSortField]}
+								</Button>
 							</DropdownMenu.Trigger>
 							<DropdownMenu.Content>
-								<DropdownMenu.Group>
-
-									<DropdownMenu.Item onSelect={() => albumSort = "name"}>Name</DropdownMenu.Item>
-									<DropdownMenu.Item onSelect={() => albumSort = "artist"}>Artist</DropdownMenu.Item>
-									<DropdownMenu.Item onSelect={() => albumSort = "year"}>Year</DropdownMenu.Item>
-
-								</DropdownMenu.Group>
+								<DropdownMenu.Item
+									class={albumSortField === "name" ? "bg-accent" : ""}
+									onSelect={() => toggleAlbumSort("name")}
+								>Name</DropdownMenu.Item>
+								<DropdownMenu.Item
+									class={albumSortField === "artist" ? "bg-accent" : ""}
+									onSelect={() => toggleAlbumSort("artist")}
+								>Artist</DropdownMenu.Item>
+								<DropdownMenu.Item
+									class={albumSortField === "year" ? "bg-accent" : ""}
+									onSelect={() => toggleAlbumSort("year")}
+								>Year</DropdownMenu.Item>
 							</DropdownMenu.Content>
 						</DropdownMenu.Root>
 
-						<Toggle onPressedChange={(v) => {compact = !compact}} >
+						<Button variant="outline" size="sm" onclick={() => albumSortDir = albumSortDir === "asc" ? "desc" : "asc"} class="px-2">
+							{#if albumSortDir === "asc"}
+								<ChevronUp size={14} />
+							{:else}
+								<ChevronDown size={14} />
+							{/if}
+						</Button>
+
+						<Toggle onPressedChange={() => compact = !compact}>
 							{#if compact}
 								<LayoutGrid />
 								Table
@@ -175,21 +216,22 @@
 
 				<ScrollArea class="min-h-0 min-w-0 pr-4">
 				{#if compact}
-					{#each filteredAlbums as album}
+					{#each filteredAlbums() as album}
 					<div
 						class="grid items-center px-3 border-b hover:bg-muted/50"
-						style="grid-template-columns: 40px 1fr 1fr; height: 56px;"
+						style="grid-template-columns: 40px 1fr 1fr 40px; height: 56px;"
 					>
 						<ArtworkDisplay uid={album.uid} type="album" size={40} />
 						<button onclick={() => setSelection(album.uid, "album")} class="pl-2 text-sm truncate text-left">
 							<p class="text-sm font-medium">{album.title}</p>
 						</button>
 						<p class="text-sm">{parseArtists(album.artists)}</p>
+						<p class="text-sm">{album.release_date}</p>
 					</div>
 					{/each}
 				{:else}
 					<div class="app-music-grid grid gap-2">
-						{#each filteredAlbums as album}
+						{#each filteredAlbums() as album}
 							<AudioCard title={album.title} subTitle={album.album_artist} artworkUid={album.uid} type="album" />
 						{/each}
 					</div>

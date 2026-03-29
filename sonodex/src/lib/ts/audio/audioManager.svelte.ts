@@ -28,6 +28,54 @@ export const player = $state({
 	muted: false,
 });
 
+const PLAYER_STORAGE_KEY = "sonodex:player";
+const QUEUE_STORAGE_KEY = "sonodex:queue";
+
+export function loadPlayerState() {
+	try {
+		const raw = localStorage.getItem(PLAYER_STORAGE_KEY);
+		if (!raw) return;
+		const saved = JSON.parse(raw);
+		player.volume = saved.volume ?? 1;
+		player.muted = saved.muted ?? false;
+		player.loopType = saved.loopType ?? 0;
+		player.shuffleType = saved.shuffleType ?? 0;
+		player.currentTime = saved.currentTime ?? 0;
+		if (saved.track) player.track = saved.track;
+		
+		startAudio(saved.track, false);
+		player.duration = saved.duration ?? 0;
+		player.isPlaying = false;
+
+	} catch {}
+	try {
+		const raw = localStorage.getItem(QUEUE_STORAGE_KEY);
+		if (!raw) return;
+		const saved = JSON.parse(raw);
+		queuedTracks = saved.tracks ?? [];
+	} catch {}
+}
+
+export function savePlayerState() {
+	try {
+		localStorage.setItem(PLAYER_STORAGE_KEY, JSON.stringify({
+			track: player.track,
+			isPlaying: false,
+			loopType: player.loopType,
+			shuffleType: player.shuffleType,
+			currentTime: player.currentTime,
+			duration: player.duration,
+			volume: player.volume,
+			muted: player.muted,
+		}));
+	} catch {}
+	try {
+		localStorage.setItem(QUEUE_STORAGE_KEY, JSON.stringify({
+			tracks: queuedTracks,
+		}));
+	} catch {}
+}
+
 function bindEvents(el: HTMLAudioElement) {
 	el.addEventListener("timeupdate", () => {
 		player.currentTime = el.currentTime;
@@ -46,7 +94,7 @@ function bindEvents(el: HTMLAudioElement) {
 	});
 }
 
-function startAudio(track: Track) {
+function startAudio(track: Track, play: boolean = true) {
 	if (audio) {
 		audio.pause();
 		audio = null;
@@ -60,6 +108,8 @@ function startAudio(track: Track) {
 	el.volume = player.volume;
 	bindEvents(el);
 	audio = el;
+
+	if (!play) return;
 	el.play();
 }
 

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { List, TextAlignJustify } from "lucide-svelte";
+	import { EllipsisIcon, List, TextAlignJustify } from "lucide-svelte";
 	import * as DropdownMenu from "$lib/components/ui/dropdown-menu/index.js";
 	import Button from "../../ui/button/button.svelte";
 	import ScrollArea from "../../ui/scroll-area/scroll-area.svelte";
@@ -7,24 +7,24 @@
 
 	import type { ColumnState, ColumnKey } from "$lib/ts/app/columnConfig.svelte"
 	import { ALL_COLUMNS, COLUMN_LABELS } from "$lib/ts/app/columnConfig.svelte"
-	import SortDropdown from "$lib/components/app-ui/SortDropdown.svelte";
+	import SortDropdown from "$lib/components/app-ui/track-table/SortDropdown.svelte";
 
 	import { SortState } from "$lib/ts/app/sortConfig.svelte";
 
-	let { columns, sort, compact = $bindable(false) } = $props<{ columns: ColumnState; sort: SortState, compact?: boolean }>()
+	let { sort, cols, compact, onCompactChange } = $props<{ sort: SortState, cols: ColumnState, compact: boolean, onCompactChange: (v: boolean) => void }>();
 </script>
 
 <DropdownMenu.Root>
 	<DropdownMenu.Trigger>
 		{#snippet child({ props })}
-			<Button {...props} variant="ghost" size="icon">...</Button>
+			<Button {...props} variant="ghost" size="icon"><EllipsisIcon/></Button>
 		{/snippet}
 	</DropdownMenu.Trigger>
 
 	<DropdownMenu.Content>
 		<DropdownMenu.Group>
 			<DropdownMenu.Label>View As</DropdownMenu.Label>
-			<Toggle onPressedChange={(v) => {compact = !compact}} >
+			<Toggle onPressedChange={() => onCompactChange(!compact)} >
 				{#if compact}
 					<List />
 					List
@@ -50,8 +50,8 @@
 				<p class="text-xs text-muted-foreground">Display Columns</p>
 				{#each ALL_COLUMNS as col (col)}
 					<Toggle
-						pressed={columns.visible[col as ColumnKey]}
-						onPressedChange={(v) => (columns.visible[col as ColumnKey] = v)}
+						pressed={cols.visible[col as ColumnKey]}
+						onPressedChange={(v) => (cols.visible[col as ColumnKey] = v)}
 						size="sm"
 						variant="outline"
 						class="text-sm justify-start"

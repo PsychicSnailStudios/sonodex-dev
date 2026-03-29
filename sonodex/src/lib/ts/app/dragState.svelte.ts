@@ -109,9 +109,11 @@ export async function dropOnPlaylist(e: DragEvent, playlistUid: string) {
 	const raw = e.dataTransfer?.getData("text/plain");
 	if (!raw) return;
 	const uids = raw.split(",").map((u) => u.trim()).filter(Boolean);
-	if (!uids.every((u) => u.startsWith("p-"))) {
-		await addTracksToPlaylist(playlistUid, uids);
+	if (uids.every((u) => u.startsWith("p-"))) {
+		endDrag();
+		return;
 	}
+	await addTracksToPlaylist(playlistUid, uids);
 	endDrag();
 }
 

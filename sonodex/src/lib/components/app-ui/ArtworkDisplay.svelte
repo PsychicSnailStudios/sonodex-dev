@@ -6,7 +6,7 @@
 	import { library } from "$lib/ts/library.svelte";
 	import { untrack } from "svelte";
 
-	let { uid, size = null, type = "track" }: { uid: string; size?: number | null; type?: AudioCatagories } = $props();
+	let { uid, size = null, type = "track", previewPath = null }: { uid: string; size?: number | null; type?: AudioCatagories; previewPath?: string | null } = $props();
 
 	let artworkUrl: string | null = $state(null);
 	let loaded = $state(false);
@@ -28,6 +28,13 @@
 	};
 
 	$effect(() => {
+		if (previewPath) {
+			artworkUrl = convertFileSrc(previewPath);
+			fetchedKey = null;
+			loaded = false;
+			return;
+		}
+
 		const currentUid = uid;
 		const currentType = type;
 		const currentKey = `${currentType}:${currentUid}`;

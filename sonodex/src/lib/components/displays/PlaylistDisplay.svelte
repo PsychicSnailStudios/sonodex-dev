@@ -23,10 +23,15 @@
 	import NavButtons from "$lib/components/app-ui/NavButtons.svelte";
 	import { dragState, endDrag } from "$lib/ts/app/dragState.svelte";
 
-	const cols = createColumnState("playlist");
-	const sort = new SortState();
 	let search = $state("");
-	let compact = $state(false);
+	
+	import { createPersistedViewState } from "$lib/ts/session.svelte";
+
+	const view = createPersistedViewState("playlist", {
+		sortField: null,
+		sortDir: "asc",
+		colPreset: "playlist",
+	});
 
 	let playlist = $derived(library.playlists.find(p => p.uid === selection.uid) ?? null);
 
@@ -113,16 +118,16 @@
 						<Button variant="default" onclick={() => queueTracksByObject(tracks, true)}>Play All</Button>
 						<Button variant="outline" onclick={() => queueTracksByObject(tracks, true, true)}>Shuffle</Button>
 						<Button variant="ghost" size="icon" onclick={() => openEditModal({ type: "playlist", uid: playlist!.uid })}><Pencil /></Button>
-						<TrackTableSettings columns={cols} sort={sort} bind:compact />
+						<TrackTableSettings cols={view.cols} sort={view.sort} compact={view.compact} onCompactChange={(v) => view.compact = v} />
 					</div>
 				</div>
 			</div>
 
 			<TrackTable
 				tracks={tracks}
-				columns={cols}
-				sort={sort}
-				compact={compact}
+				columns={view.cols}
+				sort={view.sort}
+				compact={view.compact}
 				playlistUid={playlist.uid}
 			/>
 			
