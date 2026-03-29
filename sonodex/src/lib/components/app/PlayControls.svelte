@@ -77,7 +77,7 @@
 		<div class="flex justify-center items-center">
 			<Button variant="ghost" size="icon" onclick={toggleMute}>
 				{#if player.volume === 0 || player.muted}
-					<VolumeOff />
+					<VolumeOff class="text-muted-foreground" />
 				{:else if player.volume < 0.5}
 					<Volume1 />
 				{:else if player.volume < 0.75}

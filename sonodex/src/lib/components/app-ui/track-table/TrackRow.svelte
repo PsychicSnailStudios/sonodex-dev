@@ -103,13 +103,13 @@
 	aria-disabled={track.path ? "false" : "true"}
 >
 	{#if showNumber && showArtwork}
-		<span class="text-sm pointer-events-none">{getTrackNumber()}</span>
+		<span class=" cursor-auto text-sm pointer-events-none">{getTrackNumber()}</span>
 	{/if}
 
 	{#if showNumber && !showArtwork}
-		<div class="relative w-full">
+		<div class="relative w-full h-full flex items-center justify-start">
 			<span class="text-sm pointer-events-none">{getTrackNumber()}</span>
-			<div class="absolute flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+			<div class="cursor-pointer absolute top-0 -left-4 w-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
 				<Button variant="ghost" size="icon" onclick={() => playTrackByUid(track.uid)}>
 					<Play />
 				</Button>
@@ -123,7 +123,7 @@
 		</button> -->
 		<div class="relative w-full">
 			<ArtworkDisplay uid={track.uid} size={30} />
-			<div class="absolute flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+			<div class="cursor-pointer absolute top-0 -left-1 w-full h-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
 				<Button variant="ghost" size="icon" onclick={() => playTrackByUid(track.uid)}>
 					<Play />
 				</Button>

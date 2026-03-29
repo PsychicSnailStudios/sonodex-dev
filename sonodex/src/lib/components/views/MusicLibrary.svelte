@@ -14,8 +14,10 @@
 	import ArtworkDisplay from "../app-ui/ArtworkDisplay.svelte";
 	import TrackTableSettings from "$lib/components/app-ui/track-table/TrackTableSettings.svelte";
 	import { SortState } from "$lib/ts/app/sortConfig.svelte"
-   import { LayoutGrid, List } from "lucide-svelte";
+   import { ArrowDownAZ, ArrowUpAZ, ArrowUpDown, LayoutGrid, List } from "lucide-svelte";
    import { parseArtists } from "$lib/ts/util/helpers";
+   import * as DropdownMenu from "$lib/components/ui/dropdown-menu/index.js";
+	import { Button } from "$lib/components/ui/button/index.js";
 	
 	let activeTab = $state("album");
 	let search = $state("");
@@ -23,6 +25,8 @@
 	const sort = new SortState("year", "desc");
 	const cols = createColumnState("library");
 	let compact = $state(false);
+	let artistAZ = $state(false);
+	let albumSort = $state("name");
 
 	const filteredTracks = $derived(
 		search.trim() === ""
@@ -84,15 +88,24 @@
 			<div class="flex flex-col h-full w-full overflow-hidden gap-3">
 				<div class="flex justify-between">
 					<span>{library.artists.length} {library.artists.length === 1 ? "artist" : "artists"}</span>
-					<Toggle onPressedChange={(v) => {compact = !compact}} >
-						{#if compact}
-							<LayoutGrid />
-							Table
-						{:else}
-							<List />
-							List
-						{/if}
-					</Toggle>
+					<div>
+						<Toggle onPressedChange={(v) => {artistAZ = !artistAZ}} >
+							{#if artistAZ}
+								<ArrowUpAZ />
+							{:else}
+								<ArrowDownAZ />
+							{/if}
+						</Toggle>
+						<Toggle onPressedChange={(v) => {compact = !compact}} >
+							{#if compact}
+								<LayoutGrid />
+								Table
+							{:else}
+								<List />
+								List
+							{/if}
+						</Toggle>
+					</div>
 				</div>
 
 				<ScrollArea class="min-h-0 min-w-0 pr-4">
@@ -132,15 +145,32 @@
 			<div class="flex flex-col h-full w-full overflow-hidden gap-3">
 				<div class="flex justify-between">
 					<span>{library.albums.length} {library.albums.length === 1 ? "album" : "albums"}</span>
-					<Toggle onPressedChange={(v) => {compact = !compact}} >
-						{#if compact}
-							<LayoutGrid />
-							Table
-						{:else}
-							<List />
-							List
-						{/if}
-					</Toggle>
+					<div>
+						<DropdownMenu.Root>
+							<DropdownMenu.Trigger>
+								<Button variant="ghost" size="icon"><ArrowUpDown /></Button>
+							</DropdownMenu.Trigger>
+							<DropdownMenu.Content>
+								<DropdownMenu.Group>
+
+									<DropdownMenu.Item onSelect={() => albumSort = "name"}>Name</DropdownMenu.Item>
+									<DropdownMenu.Item onSelect={() => albumSort = "artist"}>Artist</DropdownMenu.Item>
+									<DropdownMenu.Item onSelect={() => albumSort = "year"}>Year</DropdownMenu.Item>
+
+								</DropdownMenu.Group>
+							</DropdownMenu.Content>
+						</DropdownMenu.Root>
+
+						<Toggle onPressedChange={(v) => {compact = !compact}} >
+							{#if compact}
+								<LayoutGrid />
+								Table
+							{:else}
+								<List />
+								List
+							{/if}
+						</Toggle>
+					</div>
 				</div>
 
 				<ScrollArea class="min-h-0 min-w-0 pr-4">

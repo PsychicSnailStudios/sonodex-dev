@@ -126,7 +126,7 @@
 				playlistUid={playlist.uid}
 			/>
 			
-			<div class="flex flex-col gap-1 p-3 mt-8 m-4 rounded-md bg-accent">
+			<div class="flex flex-col gap-1 p-3 mt-8 m-4 rounded-md bg-muted">
 				<div class="flex items-center justify-between p-2">
 					<h3>Find More</h3>
 					<Input
