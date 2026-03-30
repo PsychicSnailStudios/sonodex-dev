@@ -14,15 +14,15 @@ A desktop app built with SvelteKit + shadcn-svelte + Tauri 2.
 
 Install dependencies:
 
-bun install
+``bun install``
 
 Run in dev mode (opens native window):
 
-bun tauri dev
+``bun tauri dev``
 
 Build for production:
 
-bun tauri build
+``bun tauri build``
 
 ## Adding Components
 
