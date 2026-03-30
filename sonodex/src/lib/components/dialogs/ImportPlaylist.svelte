@@ -290,7 +290,7 @@
 					await invoke("add_track", {
 						track: {
 							uid,
-							path: "",
+							path: uid,
 							last_modified: 0,
 							title: parsed.title,
 							artists: JSON.stringify([parsed.artist]),
@@ -318,7 +318,7 @@
 
 			await invoke("create_playlist_entry", {
 				playlist: {
-					uid: "",
+					uid: `p-${crypto.randomUUID()}`,
 					title: playlistName.trim(),
 					description: null,
 					owner: null,
@@ -329,7 +329,7 @@
 				},
 			});
 
-			await library.loadLibrary();
+			await library.loadLibrary?.();
 
 			state = "done";
 		} catch (e: any) {
