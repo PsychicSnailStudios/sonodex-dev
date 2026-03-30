@@ -44,6 +44,8 @@
 		Folder, FolderOpen,
 		House,
 	} from "lucide-svelte";
+	import { invoke } from "@tauri-apps/api/core";
+    import ImportPlaylist from "../dialogs/ImportPlaylist.svelte";
 
 	type ViewMode = "tiled" | "compact";
 
@@ -56,6 +58,7 @@
 	let viewMode        = $state<ViewMode>("tiled");
 	let expandedFolders = $state<Set<string>>(new Set());
 
+	let importDialogOpen   = $state(false);
 	let createDialogOpen   = $state(false);
 	let createDialogFolder = $state<string | null>(null);
 	let folderDialogOpen   = $state(false);
@@ -245,6 +248,7 @@
 	function startFolderDrag(e: DragEvent, path: string) {
 		if (e.dataTransfer) {
 			e.dataTransfer.setData("text/plain", path);
+			e.dataTransfer.setData("application/x-sonodex-folder", path);
 			e.dataTransfer.effectAllowed = "move";
 		}
 		draggingFolderPath = path;
@@ -344,6 +348,7 @@
 
 <CreateNewPlaylist bind:open={createDialogOpen} folder={createDialogFolder} />
 <CreateNewFolder bind:open={folderDialogOpen} parent={folderDialogParent} />
+<ImportPlaylist bind:open={importDialogOpen} />
 
 <div class="flex flex-col gap-2 p-4 border-2 h-full w-full overflow-hidden rounded-md">
 
@@ -394,7 +399,7 @@
 			<Button variant="outline" size="icon" onclick={() => openCreateFolderIn(currentPath)}>
 				<FolderPlus class="size-4" />
 			</Button>
-			<Button variant="outline" size="icon">
+			<Button variant="outline" size="icon" onclick={() => importDialogOpen = true}>
 				<FileDown class="size-4" />
 			</Button>
 		</div>
