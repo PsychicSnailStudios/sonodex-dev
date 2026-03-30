@@ -4,6 +4,7 @@
 	import { Label } from "$lib/components/ui/label/index.js";
 	import { invoke } from "@tauri-apps/api/core";
 	import { library } from "$lib/ts/library.svelte";
+	import { createStubTrack } from "$lib/ts/dbManager";
 	import type { Track } from "$lib/ts/util/types";
 
 	let { open = $bindable(false), folder = null } = $props<{ open: boolean; folder?: string | null }>();
@@ -281,35 +282,14 @@
 					uid = existing.uid;
 					matchedCount++;
 				} else {
-					uid = `t-${crypto.randomUUID()}`;
-
-					const albumEntry = parsed.album
-						? JSON.stringify([{ uid: "", name: parsed.album, track_number: parsed.track_number ?? null }])
-						: null;
-
-					await invoke("add_track", {
-						track: {
-							uid,
-							path: uid,
-							last_modified: 0,
-							title: parsed.title,
-							artists: JSON.stringify([parsed.artist]),
-							album_artist: parsed.artist,
-							albums: albumEntry,
-							genres: null,
-							year: parsed.year,
-							rating: null,
-							tags: "[]",
-							duration_ms: parsed.duration_ms,
-							bpm: null,
-							key: null,
-							credits: null,
-							label: null,
-							artwork_blob: null,
-							artwork_path: null,
-						},
-					});
-
+					uid = await createStubTrack(
+						parsed.title,
+						parsed.artist,
+						parsed.album,
+						parsed.track_number,
+						parsed.duration_ms,
+						parsed.year
+					);
 					createdCount++;
 				}
 

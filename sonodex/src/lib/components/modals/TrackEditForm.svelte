@@ -10,15 +10,11 @@
 	import * as Tabs from "$lib/components/ui/tabs";
 	import { editModal, closeEditModal } from "$lib/ts/app/editModal.svelte";
 	import { loadLibrary } from "$lib/ts/library.svelte";
+	import { syncAlbums, removeTrackFromOldAlbums, syncArtists } from "$lib/ts/dbManager";
+	import type { AlbumEntry } from "$lib/ts/dbManager";
 	import { X, Plus, ChevronUp, ChevronDown } from "lucide-svelte";
 
 	let { uid } = $props<{ uid: string }>();
-
-	type AlbumEntry = {
-		uid: string;
-		name: string;
-		track_number: number | null;
-	};
 
 	let title = $state("");
 	let artists = $state("");
@@ -98,101 +94,6 @@
 		albums = next;
 	}
 
-	async function syncAlbums(cleanedAlbums: AlbumEntry[], trackTitle: string, trackAlbumArtist: string): Promise<AlbumEntry[]> {
-		const allAlbums = await invoke<any[]>("get_albums");
-		const finalAlbumEntries: AlbumEntry[] = [];
-
-		for (const entry of cleanedAlbums) {
-			const nameLower = entry.name.toLowerCase();
-			const artistLower = trackAlbumArtist.toLowerCase();
-
-			const match = allAlbums.find((a) => {
-				const titleMatch = (a.title ?? "").toLowerCase() === nameLower;
-				const artistMatch = (a.album_artist ?? "").toLowerCase() === artistLower;
-				return titleMatch && artistMatch;
-			});
-
-			if (match) {
-				let existingTracks: any[] = [];
-				try {
-					existingTracks = match.tracks ? JSON.parse(match.tracks) : [];
-				} catch { existingTracks = []; }
-
-				const alreadyIn = existingTracks.some((t: any) => t.uid === uid);
-				if (alreadyIn) {
-					const updated = existingTracks.map((t: any) =>
-						t.uid === uid ? { ...t, track_number: entry.track_number ?? null } : t
-					);
-					await invoke("update_album_entry", {
-						uid: match.uid,
-						update: { tracks: JSON.stringify(updated) },
-					});
-				} else {
-					existingTracks.push({ uid, name: trackTitle, track_number: entry.track_number ?? null });
-					await invoke("update_album_entry", {
-						uid: match.uid,
-						update: { tracks: JSON.stringify(existingTracks) },
-					});
-				}
-
-				finalAlbumEntries.push({ uid: match.uid, name: entry.name, track_number: entry.track_number });
-			} else {
-				const newAlbum = {
-					uid: "",
-					title: entry.name,
-					album_artist: trackAlbumArtist || null,
-					tracks: JSON.stringify([{ uid, name: trackTitle, track_number: entry.track_number ?? null }]),
-					artists: null,
-					format: null,
-					rating: null,
-					release_date: null,
-					tags: JSON.stringify([]),
-					genres: JSON.stringify([]),
-					credits: null,
-					label: null,
-					artwork_blob: null,
-					artwork_path: null,
-				};
-
-				await invoke("create_album_entry", { album: newAlbum });
-
-				const refreshed = await invoke<any[]>("get_albums");
-				const created = refreshed.find((a) => {
-					const titleMatch = (a.title ?? "").toLowerCase() === entry.name.toLowerCase();
-					const artistMatch = (a.album_artist ?? "").toLowerCase() === trackAlbumArtist.toLowerCase();
-					return titleMatch && artistMatch;
-				});
-
-				finalAlbumEntries.push({
-					uid: created?.uid ?? "",
-					name: entry.name,
-					track_number: entry.track_number,
-				});
-			}
-		}
-
-		const currentUids = new Set(finalAlbumEntries.map((e) => e.uid).filter(Boolean));
-		const removedUids = originalAlbumUids.filter((u) => !currentUids.has(u));
-
-		for (const removedUid of removedUids) {
-			const albumRecord = allAlbums.find((a) => a.uid === removedUid);
-			if (!albumRecord) continue;
-
-			let existingTracks: any[] = [];
-			try {
-				existingTracks = albumRecord.tracks ? JSON.parse(albumRecord.tracks) : [];
-			} catch { existingTracks = []; }
-
-			const filtered = existingTracks.filter((t: any) => t.uid !== uid);
-			await invoke("update_album_entry", {
-				uid: removedUid,
-				update: { tracks: JSON.stringify(filtered) },
-			});
-		}
-
-		return finalAlbumEntries;
-	}
-
 	async function save() {
 		saving = true;
 		try {
@@ -208,7 +109,13 @@
 					track_number: a.track_number != null && !isNaN(Number(a.track_number)) ? Number(a.track_number) : null,
 				}));
 
-			const finalAlbumEntries = await syncAlbums(cleanedAlbums, title, albumArtist);
+			const finalAlbumEntries = await syncAlbums(cleanedAlbums, uid, title, albumArtist);
+
+			const currentUids = new Set(finalAlbumEntries.map((e) => e.uid).filter(Boolean));
+			const removedUids = originalAlbumUids.filter((u) => !currentUids.has(u));
+			await removeTrackFromOldAlbums(uid, removedUids);
+
+			await syncArtists(artistArr);
 
 			const update: Record<string, any> = {
 				title: title || null,
