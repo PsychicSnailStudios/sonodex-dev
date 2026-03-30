@@ -10,7 +10,7 @@ use db::{
 	delete_artist_by_uid, delete_lyrics, delete_playlist_by_uid, get_album_by_uid, get_all_albums,
 	get_all_artists, get_all_playlists, get_all_tracks, get_artist_by_uid, get_library_paths,
 	get_lyrics, get_playlist_by_uid, init_lib_db, init_settings_db, remove_library_path,
-	update_album_by_uid, update_artist_by_uid, update_playlist_by_uid, upsert_lyrics, Album,
+	update_album_by_uid, update_artist_by_uid, update_playlist_by_uid, upsert_track, upsert_lyrics, Album,
 	AlbumUpdate, Artist, ArtistUpdate, LibraryPath, Lyrics, Playlist, PlaylistUpdate, Track,
 };
 use profiles::{
@@ -233,6 +233,13 @@ fn rescan(app: AppHandle, state: State<AppState>) -> Result<(), String> {
 // ─────────────────────────────────────────────
 // TRACKS
 // ─────────────────────────────────────────────
+
+#[tauri::command]
+fn add_track(state: State<AppState>, track: Track) -> Result<(), String> {
+    let uid = state.get_uid();
+    let conn = open_lib_conn(&uid);
+    upsert_track(&conn, &track).map_err(|e| e.to_string())
+}
 
 #[tauri::command]
 fn get_tracks(state: State<AppState>) -> Result<Vec<Track>, String> {
@@ -881,6 +888,7 @@ pub fn run() {
 			remove_path,
 			get_paths,
 			rescan,
+			add_track,
 			get_tracks,
 			get_track_artwork,
 			get_duplicates,
