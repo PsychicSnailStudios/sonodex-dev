@@ -10,15 +10,21 @@
 	import * as Tabs from "$lib/components/ui/tabs";
 	import { editModal, closeEditModal } from "$lib/ts/app/editModal.svelte";
 	import { loadLibrary } from "$lib/ts/library.svelte";
+	import { X, Plus, ChevronUp, ChevronDown } from "lucide-svelte";
 
 	let { uid } = $props<{ uid: string }>();
+
+	type AlbumEntry = {
+		uid: string;
+		name: string;
+		track_number: number | null;
+	};
 
 	let title = $state("");
 	let artists = $state("");
 	let albumArtist = $state("");
-	let album = $state("");
-	// let albums = $state([{uid: string; name: string; track_number: number | null;}]);
-	let trackNumber = $state<string>("");
+	let albums = $state<AlbumEntry[]>([]);
+	let originalAlbumUids = $state<string[]>([]);
 	let year = $state("");
 	let genres = $state("");
 	let bpm = $state<string>("");
@@ -54,12 +60,10 @@
 		} catch { artists = ""; }
 
 		try {
-			const albumArr = track.albums ? JSON.parse(track.albums) : [];
-			if (albumArr.length > 0) {
-				album = albumArr[0].name ?? "";
-				trackNumber = albumArr[0].track_number != null ? String(albumArr[0].track_number) : "";
-			}
-		} catch { album = ""; }
+			const parsed = track.albums ? JSON.parse(track.albums) : [];
+			albums = parsed;
+			originalAlbumUids = parsed.map((a: AlbumEntry) => a.uid).filter(Boolean);
+		} catch { albums = []; }
 
 		try {
 			const genreArr = track.genres ? JSON.parse(track.genres) : [];
@@ -72,19 +76,145 @@
 		} catch { tags = ""; }
 	});
 
+	function addAlbum() {
+		albums = [...albums, { uid: "", name: "", track_number: null }];
+	}
+
+	function removeAlbum(index: number) {
+		albums = albums.filter((_, i) => i !== index);
+	}
+
+	function moveUp(index: number) {
+		if (index === 0) return;
+		const next = [...albums];
+		[next[index - 1], next[index]] = [next[index], next[index - 1]];
+		albums = next;
+	}
+
+	function moveDown(index: number) {
+		if (index === albums.length - 1) return;
+		const next = [...albums];
+		[next[index], next[index + 1]] = [next[index + 1], next[index]];
+		albums = next;
+	}
+
+	async function syncAlbums(cleanedAlbums: AlbumEntry[], trackTitle: string, trackAlbumArtist: string): Promise<AlbumEntry[]> {
+		const allAlbums = await invoke<any[]>("get_albums");
+		const finalAlbumEntries: AlbumEntry[] = [];
+
+		for (const entry of cleanedAlbums) {
+			const nameLower = entry.name.toLowerCase();
+			const artistLower = trackAlbumArtist.toLowerCase();
+
+			const match = allAlbums.find((a) => {
+				const titleMatch = (a.title ?? "").toLowerCase() === nameLower;
+				const artistMatch = (a.album_artist ?? "").toLowerCase() === artistLower;
+				return titleMatch && artistMatch;
+			});
+
+			if (match) {
+				let existingTracks: any[] = [];
+				try {
+					existingTracks = match.tracks ? JSON.parse(match.tracks) : [];
+				} catch { existingTracks = []; }
+
+				const alreadyIn = existingTracks.some((t: any) => t.uid === uid);
+				if (alreadyIn) {
+					const updated = existingTracks.map((t: any) =>
+						t.uid === uid ? { ...t, track_number: entry.track_number ?? null } : t
+					);
+					await invoke("update_album_entry", {
+						uid: match.uid,
+						update: { tracks: JSON.stringify(updated) },
+					});
+				} else {
+					existingTracks.push({ uid, name: trackTitle, track_number: entry.track_number ?? null });
+					await invoke("update_album_entry", {
+						uid: match.uid,
+						update: { tracks: JSON.stringify(existingTracks) },
+					});
+				}
+
+				finalAlbumEntries.push({ uid: match.uid, name: entry.name, track_number: entry.track_number });
+			} else {
+				const newAlbum = {
+					uid: "",
+					title: entry.name,
+					album_artist: trackAlbumArtist || null,
+					tracks: JSON.stringify([{ uid, name: trackTitle, track_number: entry.track_number ?? null }]),
+					artists: null,
+					format: null,
+					rating: null,
+					release_date: null,
+					tags: JSON.stringify([]),
+					genres: JSON.stringify([]),
+					credits: null,
+					label: null,
+					artwork_blob: null,
+					artwork_path: null,
+				};
+
+				await invoke("create_album_entry", { album: newAlbum });
+
+				const refreshed = await invoke<any[]>("get_albums");
+				const created = refreshed.find((a) => {
+					const titleMatch = (a.title ?? "").toLowerCase() === entry.name.toLowerCase();
+					const artistMatch = (a.album_artist ?? "").toLowerCase() === trackAlbumArtist.toLowerCase();
+					return titleMatch && artistMatch;
+				});
+
+				finalAlbumEntries.push({
+					uid: created?.uid ?? "",
+					name: entry.name,
+					track_number: entry.track_number,
+				});
+			}
+		}
+
+		const currentUids = new Set(finalAlbumEntries.map((e) => e.uid).filter(Boolean));
+		const removedUids = originalAlbumUids.filter((u) => !currentUids.has(u));
+
+		for (const removedUid of removedUids) {
+			const albumRecord = allAlbums.find((a) => a.uid === removedUid);
+			if (!albumRecord) continue;
+
+			let existingTracks: any[] = [];
+			try {
+				existingTracks = albumRecord.tracks ? JSON.parse(albumRecord.tracks) : [];
+			} catch { existingTracks = []; }
+
+			const filtered = existingTracks.filter((t: any) => t.uid !== uid);
+			await invoke("update_album_entry", {
+				uid: removedUid,
+				update: { tracks: JSON.stringify(filtered) },
+			});
+		}
+
+		return finalAlbumEntries;
+	}
+
 	async function save() {
 		saving = true;
 		try {
 			const artistArr = artists.split(",").map((s) => s.trim()).filter(Boolean);
 			const genreArr = genres.split(",").map((s) => s.trim()).filter(Boolean);
 			const tagArr = tags.split(",").map((s) => s.trim()).filter(Boolean);
-			const albumArr = album ? [{ name: album, track_number: trackNumber ? Number(trackNumber) : null }] : [];
+
+			const cleanedAlbums = albums
+				.filter((a) => a.name.trim())
+				.map((a) => ({
+					uid: a.uid ?? "",
+					name: a.name.trim(),
+					track_number: a.track_number != null && !isNaN(Number(a.track_number)) ? Number(a.track_number) : null,
+				}));
+
+			const finalAlbumEntries = await syncAlbums(cleanedAlbums, title, albumArtist);
 
 			const update: Record<string, any> = {
 				title: title || null,
 				artists: artistArr.length ? JSON.stringify(artistArr) : null,
 				album_artist: albumArtist || null,
-				albums: albumArr.length ? JSON.stringify(albumArr) : null,
+				albums: finalAlbumEntries.length ? JSON.stringify(finalAlbumEntries) : null,
 				year: year || null,
 				genres: genreArr.length ? JSON.stringify(genreArr) : null,
 				bpm: bpm ? Number(bpm) : null,
@@ -102,11 +232,17 @@
 				await invoke("update_track_metadata", { uid, update });
 			}
 
+			await invoke("enrich_track", { uid });
+
 			await loadLibrary();
 			closeEditModal();
 		} finally {
 			saving = false;
 		}
+	}
+
+	async function enrichTrack() {
+		await invoke("enrich_track", { uid });
 	}
 </script>
 
@@ -130,16 +266,65 @@
 			<Label for="track-album-artist">Album Artist</Label>
 			<Input id="track-album-artist" bind:value={albumArtist} />
 		</div>
-		<div class="grid grid-cols-2 gap-3">
-			<div class="space-y-1.5">
-				<Label for="track-album">Album</Label>
-				<Input id="track-album" bind:value={album} />
+
+		<div class="space-y-1.5">
+			<div class="flex items-center justify-between">
+				<Label>Albums</Label>
+				<Button variant="ghost" size="sm" onclick={addAlbum} class="h-7 px-2 text-xs gap-1">
+					<Plus class="size-3" />
+					Add
+				</Button>
 			</div>
-			<div class="space-y-1.5">
-				<Label for="track-number">Track #</Label>
-				<Input id="track-number" type="number" bind:value={trackNumber} />
+			<div class="space-y-2">
+				{#each albums as album, i}
+					<div class="flex gap-1 items-center">
+						<div class="flex flex-col">
+							<Button
+								variant="ghost"
+								size="icon"
+								onclick={() => moveUp(i)}
+								disabled={i === 0}
+								class="size-6 text-muted-foreground"
+							>
+								<ChevronUp class="size-3" />
+							</Button>
+							<Button
+								variant="ghost"
+								size="icon"
+								onclick={() => moveDown(i)}
+								disabled={i === albums.length - 1}
+								class="size-6 text-muted-foreground"
+							>
+								<ChevronDown class="size-3" />
+							</Button>
+						</div>
+						<Input
+							placeholder="Album name"
+							bind:value={album.name}
+							class="flex-1"
+						/>
+						<Input
+							placeholder="Track #"
+							type="number"
+							bind:value={album.track_number}
+							class="w-24"
+						/>
+						<Button
+							variant="ghost"
+							size="icon"
+							onclick={() => removeAlbum(i)}
+							class="size-8 shrink-0 text-muted-foreground hover:text-destructive"
+						>
+							<X class="size-4" />
+						</Button>
+					</div>
+				{/each}
+				{#if albums.length === 0}
+					<p class="text-xs text-muted-foreground">No albums — click Add to link one.</p>
+				{/if}
 			</div>
 		</div>
+
 		<div class="grid grid-cols-2 gap-3">
 			<div class="space-y-1.5">
 				<Label for="track-year">Year</Label>
@@ -198,6 +383,7 @@
 		Write tags to file
 	</label>
 	<div class="flex gap-2">
+		<Button variant="outline" onclick={enrichTrack}>Enrich</Button>
 		<Button variant="outline" onclick={closeEditModal}>Cancel</Button>
 		<Button onclick={save} disabled={saving}>
 			{saving ? "Saving…" : "Save"}

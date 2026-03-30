@@ -10,6 +10,7 @@
 	import TrackTableEditButton from "$lib/components/app-ui/track-table/TrackTableEditButton.svelte";
 	import Button from "$lib/components/ui/button/button.svelte";
 	import { Pause, Play } from "lucide-svelte";
+   import TrackRating from "$lib/components/app-ui/TrackRating.svelte";
 
 	let {
 		track,
@@ -100,7 +101,6 @@
 	ondragstart={handleDragStart}
 	ondragend={handleDragEnd}
 	tabindex="0"
-	aria-disabled={track.path ? "false" : "true"}
 >
 	{#if showNumber && showArtwork}
 		<span class=" cursor-auto text-sm pointer-events-none">{getTrackNumber()}</span>
@@ -198,11 +198,11 @@
 	{/if}
 
 	{#if showRating}
-		<span class="text-sm font-mono pointer-events-none">{formatRating(track.rating)}</span>
+		<TrackRating uid={track.uid} rating={track.rating} />
 	{/if}
 
 	{#if showDuration}
-		<span class="text-sm font-mono pointer-events-none">{formatDuration(track.duration_ms)}</span>
+		<span class="text-sm font-mono pointer-events-none"></span>
 	{/if}
 
 	{#if showLabel}
