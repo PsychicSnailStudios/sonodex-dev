@@ -48,6 +48,8 @@
 		playlistUid?: string | null;
 	}>();
 
+	const isGhosted = $derived(/^[a-z]+-[0-9a-f-]{36}$/.test(track.path));
+
 	let isSelected = $derived(trackSelection.isSelected(track.uid));
 
 	function handleRowClick(e: MouseEvent) {
@@ -92,7 +94,7 @@
 
 <div
 	role="row"
-	class="grid items-center content-center px-3 border-b cursor-pointer select-none transition-colors {isSelected ? 'bg-primary/15 hover:bg-primary/20' : 'hover:bg-muted/50'}"
+	class="grid items-center content-center px-3 border-b cursor-pointer select-none transition-colors {isSelected ? 'bg-primary/15 hover:bg-primary/20' : 'hover:bg-muted/50'} {isGhosted ? 'opacity-50 pointer-events-none cursor-not-allowed' : ''}"
 	style="grid-template-columns: {gridTemplate}; height: {compact ? '28px' : '56px'};"
 	onclick={handleRowClick}
 	ondblclick={handleRowDblClick}
