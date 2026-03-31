@@ -6,6 +6,7 @@
 	import { library } from "$lib/ts/library.svelte";
 	import { createStubTrack } from "$lib/ts/dbManager";
 	import type { Track } from "$lib/ts/util/types";
+	import { profileState } from "$lib/ts/profiles.svelte";
 
 	let { open = $bindable(false), folder = null } = $props<{ open: boolean; folder?: string | null }>();
 
@@ -301,7 +302,7 @@
 					uid: `p-${crypto.randomUUID()}`,
 					title: playlistName.trim(),
 					description: null,
-					owner: null,
+					owner: profileState.active?.name ?? null,
 					tracks: JSON.stringify(playlistTrackEntries),
 					artwork_blob: null,
 					artwork_path: null,
