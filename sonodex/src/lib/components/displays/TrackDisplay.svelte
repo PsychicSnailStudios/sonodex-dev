@@ -7,7 +7,7 @@
 	import { selection, setSelection } from "$lib/ts/session.svelte";
 	import { openEditModal } from "$lib/ts/app/editModal.svelte";
 
-	import { formatDuration, formatRating, parseAlbum, parseArtists } from '$lib/ts/util/helpers';
+	import { formatDuration, formatRating, parseAlbum, parseAlbumEntries, parseArtists } from '$lib/ts/util/helpers';
 
 	import * as Tabs from "$lib/components/ui/tabs/index.js";
 	import { Button } from "$lib/components/ui/button/index.js";
@@ -16,7 +16,7 @@
    import { Pencil } from "lucide-svelte";
    import { playTrackByObject } from "$lib/ts/audio/audioManager.svelte";
    import TrackPlaylistEditButton from "$lib/components/app-ui/TrackPlaylistEditButton.svelte";
-    import { get } from "svelte/store";
+   import TrackRating from "$lib/components/app-ui/TrackRating.svelte";
 
 	let track = $derived(library.tracks.find(t => t.uid === selection.uid) ?? null);
 	let lyrics: Lyrics | null = $state(null);
@@ -37,19 +37,26 @@
 			<div class="flex flex-col gap-1">
 				<h2 class="text-2xl font-bold">{track.title ?? "Unknown Title"}</h2>
 				<div class="flex gap-2 text-sm text-muted-foreground flex-wrap">
-					<span role="button" tabindex="0" onclick={() => setSelection(getArtistUidFromName(track.album_artist), "artist")} onkeydown={(e) => { if (e.key === 'Enter') setSelection(getArtistUidFromName(track.album_artist), "artist"); }} class="text-sm truncate cursor-pointer hover:underline">
+					<button onclick={() => setSelection(getArtistUidFromName(track.album_artist), "artist")} class="text-sm truncate cursor-pointer hover:underline">
 						{parseArtists(track.artists)}
-					</span>
+					</button>
 					<span>|</span>
-					<span role="button" tabindex="0" onclick={() => setSelection(track.albums![0].uid, "album")} onkeydown={(e) => { if (e.key === 'Enter') setSelection(track.albums![0].uid, "album"); }} class="text-sm truncate cursor-pointer hover:underline">
-						{parseAlbum(track.albums)}
-					</span>
+					<div>
+						{#each parseAlbumEntries(track.albums) as album, i}
+							<button onclick={() => setSelection(album.uid, "album")} class="text-sm truncate cursor-pointer hover:underline">
+								{album.name}
+								{#if i < parseAlbumEntries(track.albums).length - 1}<span>,</span>{/if}
+							</button>
+						{/each}
+					</div>
 					<span>|</span>
 					<span>{track.year ?? "—"}</span>
 					<span>|</span>
 					<span>{formatDuration(track.duration_ms)}</span>
 				</div>
-				<div class="text-sm">{formatRating(track.rating)}</div>
+				<div>
+					<TrackRating uid={track.uid} rating={track.rating} />
+				</div>
 				<div class="flex gap-1 flex-wrap">
 					<Button variant="default" onclick={() => playTrackByObject(track)}>Play</Button>
 					<TrackPlaylistEditButton track={track} />
