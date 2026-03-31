@@ -25,6 +25,13 @@ fn open_settings_conn(uid: &str) -> Connection {
 	Connection::open(get_settings_db_path(uid)).expect("Failed to open settings database")
 }
 
+fn open_analytics_conn(uid: &str) -> Result<Connection, rusqlite::Error> {
+	let path = crate::profiles::get_profile_dir(uid).join("analytics.db");
+	let conn = Connection::open(path)?;
+	db::analytics_manager::init_analytics_db(&conn)?;
+	Ok(conn)
+}
+
 fn open_lib_conn(uid: &str) -> Connection {
 	let conn = Connection::open(get_lib_db_path(uid)).expect("Failed to open lib database");
 	let settings_path = get_settings_db_path(uid);
@@ -832,6 +839,73 @@ async fn enrich_all(app: AppHandle, state: State<'_, AppState>) -> Result<(), St
 }
 
 // ─────────────────────────────────────────────
+// ANALYTICS
+// ─────────────────────────────────────────────
+
+#[tauri::command]
+fn log_scrobble(
+	state: State<AppState>,
+	track_uid: String,
+	artist_uid: String,
+) -> Result<String, String> {
+	let uid = state.get_uid();
+	let conn = open_analytics_conn(&uid).map_err(|e| e.to_string())?;
+	let scrobble_uid = db::analytics_manager::new_scrobble_uid();
+	let scrobble = db::analytics_manager::Scrobble {
+		uid: scrobble_uid.clone(),
+		timestamp: std::time::SystemTime::now()
+			.duration_since(std::time::UNIX_EPOCH)
+			.unwrap_or_default()
+			.as_secs() as i64,
+		track_uid,
+		artist_uid,
+		duration_played: 0,
+		did_seek: false,
+		did_pause: false,
+	};
+	db::analytics_manager::log_scrobble(&conn, &scrobble).map_err(|e| e.to_string())?;
+	Ok(scrobble_uid)
+}
+
+#[tauri::command]
+fn update_scrobble(
+	state: State<AppState>,
+	uid: String,
+	duration_played: i64,
+	did_seek: bool,
+	did_pause: bool,
+) -> Result<(), String> {
+	let profile_uid = state.get_uid();
+	let conn = open_analytics_conn(&profile_uid).map_err(|e| e.to_string())?;
+	let update = db::analytics_manager::ScrobbleUpdate { duration_played, did_seek, did_pause };
+	db::analytics_manager::update_scrobble(&conn, &uid, &update).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn get_scrobbles(state: State<AppState>) -> Result<Vec<db::analytics_manager::Scrobble>, String> {
+	let uid = state.get_uid();
+	let conn = open_analytics_conn(&uid).map_err(|e| e.to_string())?;
+	db::analytics_manager::get_all_scrobbles(&conn).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn get_scrobbles_for_track(
+	state: State<AppState>,
+	track_uid: String,
+) -> Result<Vec<db::analytics_manager::Scrobble>, String> {
+	let uid = state.get_uid();
+	let conn = open_analytics_conn(&uid).map_err(|e| e.to_string())?;
+	db::analytics_manager::get_scrobbles_for_track(&conn, &track_uid).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn delete_scrobble(state: State<AppState>, uid: String) -> Result<(), String> {
+	let profile_uid = state.get_uid();
+	let conn = open_analytics_conn(&profile_uid).map_err(|e| e.to_string())?;
+	db::analytics_manager::delete_scrobble(&conn, &uid).map_err(|e| e.to_string())
+}
+
+// ─────────────────────────────────────────────
 // ENTRY POINT
 // ─────────────────────────────────────────────
 
@@ -878,6 +952,11 @@ pub fn run() {
 		.invoke_handler(tauri::generate_handler![
 			needs_profile_setup,
 			get_profiles,
+			log_scrobble,
+			update_scrobble,
+			get_scrobbles,
+			get_scrobbles_for_track,
+			delete_scrobble,
 			get_active_profile,
 			get_profile_avatar,
 			create_profile_cmd,

@@ -4,6 +4,7 @@ import { library } from "$lib/ts/library.svelte";
 import type { Track, AudioCatagories } from "$lib/ts/util/types";
 import { parseTrackNumber, parseUidType } from "../util/helpers";
 import { eq, EQ_BANDS } from "$lib/ts/app/eqStore.svelte";
+import { scrobbleStart, scrobbleEnd, scrobbleMarkPaused, scrobbleMarkSeeked } from "$lib/ts/audio/scrobbler.svelte";
 
 let audio: HTMLAudioElement | null = null;
 
@@ -113,6 +114,8 @@ export function loadPlayerState() {
 }
 
 export function savePlayerState() {
+	scrobbleEnd(audio!.currentTime);
+
 	try {
 		localStorage.setItem(PLAYER_STORAGE_KEY, JSON.stringify({
 			track: player.track,
@@ -189,6 +192,7 @@ function playTrack(track: Track) {
 	if (currentlyPlaying.track) {
 		playedTracks.unshift(currentlyPlaying.track);
 	}
+	scrobbleStart(track);
 	startAudio(track);
 }
 
@@ -295,6 +299,7 @@ function startPlayingQueue() {
 }
 
 export function seek(seconds: number) {
+	scrobbleMarkSeeked();
 	if (!audio || !isFinite(seconds)) return;
 	audio.currentTime = seconds;
 }
@@ -310,6 +315,7 @@ export function toggleMute() {
 }
 
 export function skipBack() {
+	scrobbleEnd(audio!.currentTime)
 	const el = audio;
 	if (!el) return;
 
@@ -325,6 +331,7 @@ export function skipBack() {
 }
 
 export function skipNext() {
+	scrobbleEnd(audio!.currentTime)
 	let nextIndex = queueIndex + 1;
 	if (nextIndex >= queuedTracks.length) {
 		if (player.loopType === 2) {
@@ -352,6 +359,7 @@ export function togglePlay() {
 		audioCtx.resume();
 	}
 	if (player.isPlaying) {
+		scrobbleMarkPaused();
 		audio.pause();
 	} else {
 		audio.play();
@@ -359,8 +367,11 @@ export function togglePlay() {
 }
 
 function onTrackEnd() {
+	scrobbleEnd(audio!.currentTime)
+
 	if (player.loopType === 1) {
 		if (audio) {
+			scrobbleStart(player.track!);
 			audio.currentTime = 0;
 			audio.play();
 		}
