@@ -3,8 +3,14 @@ import { flushSync } from "svelte";
 import { library } from "$lib/ts/library.svelte";
 import type { Track, AudioCatagories } from "$lib/ts/util/types";
 import { parseTrackNumber, parseUidType } from "../util/helpers";
+import { eq, EQ_BANDS } from "$lib/ts/app/eqStore.svelte";
 
 let audio: HTMLAudioElement | null = null;
+
+let audioCtx: AudioContext | null = null;
+let sourceNode: MediaElementAudioSourceNode | null = null;
+let filterNodes: BiquadFilterNode[] = [];
+let gainNode: GainNode | null = null;
 
 let queuedTracks = $state<Track[]>([]);
 let queueIndex = $state(-1);
@@ -31,6 +37,47 @@ export const player = $state({
 const PLAYER_STORAGE_KEY = "sonodex:player";
 const QUEUE_STORAGE_KEY = "sonodex:queue";
 
+function buildAudioGraph(el: HTMLAudioElement) {
+	if (!audioCtx) {
+		audioCtx = new AudioContext();
+	}
+
+	if (sourceNode) {
+		sourceNode.disconnect();
+		sourceNode = null;
+	}
+	filterNodes = [];
+
+	sourceNode = audioCtx.createMediaElementSource(el);
+
+	const filters = EQ_BANDS.map((freq, i) => {
+		const filter = audioCtx!.createBiquadFilter();
+		filter.type = i === 0 ? "lowshelf" : i === EQ_BANDS.length - 1 ? "highshelf" : "peaking";
+		filter.frequency.value = freq;
+		filter.gain.value = eq.enabled ? eq.gains[i] : 0;
+		filter.Q.value = 1.0;
+		return filter;
+	});
+
+	gainNode = audioCtx.createGain();
+	gainNode.gain.value = 1;
+
+	sourceNode.connect(filters[0]);
+	for (let i = 0; i < filters.length - 1; i++) {
+		filters[i].connect(filters[i + 1]);
+	}
+	filters[filters.length - 1].connect(gainNode);
+	gainNode.connect(audioCtx.destination);
+
+	filterNodes = filters;
+}
+
+export function applyEqToGraph() {
+	filterNodes.forEach((filter, i) => {
+		filter.gain.value = eq.enabled ? eq.gains[i] : 0;
+	});
+}
+
 export function loadPlayerState() {
 	try {
 		const raw = localStorage.getItem(PLAYER_STORAGE_KEY);
@@ -40,13 +87,22 @@ export function loadPlayerState() {
 		player.muted = saved.muted ?? false;
 		player.loopType = saved.loopType ?? 0;
 		player.shuffleType = saved.shuffleType ?? 0;
-		player.currentTime = saved.currentTime ?? 0;
-		if (saved.track) player.track = saved.track;
-		
-		startAudio(saved.track, false);
 		player.duration = saved.duration ?? 0;
 		player.isPlaying = false;
 
+		if (saved.track) {
+			player.track = saved.track;
+			startAudio(saved.track, false);
+
+			if (audio && saved.currentTime) {
+				const seek = () => {
+					audio!.currentTime = saved.currentTime;
+					player.currentTime = saved.currentTime;
+					audio!.removeEventListener("canplay", seek);
+				};
+				audio.addEventListener("canplay", seek);
+			}
+		}
 	} catch {}
 	try {
 		const raw = localStorage.getItem(QUEUE_STORAGE_KEY);
@@ -88,6 +144,9 @@ function bindEvents(el: HTMLAudioElement) {
 	});
 	el.addEventListener("play", () => {
 		player.isPlaying = true;
+		if (audioCtx && audioCtx.state === "suspended") {
+			audioCtx.resume();
+		}
 	});
 	el.addEventListener("pause", () => {
 		player.isPlaying = false;
@@ -98,18 +157,31 @@ function startAudio(track: Track, play: boolean = true) {
 	if (audio) {
 		audio.pause();
 		audio = null;
+		sourceNode = null;
+		filterNodes = [];
+		gainNode = null;
 	}
 
 	player.track = track;
 	currentlyPlaying.uid = track.uid;
 	currentlyPlaying.track = track;
 
-	const el = new Audio(convertFileSrc(track.path));
+	//const el = new Audio(convertFileSrc(track.path));
+	const el = new Audio();
+	el.crossOrigin = "anonymous";
+	el.src = convertFileSrc(track.path);
 	el.volume = player.volume;
+	el.muted = player.muted;
 	bindEvents(el);
 	audio = el;
 
+	buildAudioGraph(el);
+
 	if (!play) return;
+
+	if (audioCtx && audioCtx.state === "suspended") {
+		audioCtx.resume();
+	}
 	el.play();
 }
 
@@ -231,6 +303,7 @@ export function setVolume(vol: number) {
 	player.volume = vol;
 	if (audio) audio.volume = vol;
 }
+
 export function toggleMute() {
 	player.muted = !player.muted;
 	if (audio) audio.muted = player.muted;
@@ -246,9 +319,8 @@ export function skipBack() {
 	}
 
 	if (queueIndex < 1) return;
-		
-	queueIndex--;
 
+	queueIndex--;
 	playTrack(queuedTracks[queueIndex]);
 }
 
@@ -257,11 +329,10 @@ export function skipNext() {
 	if (nextIndex >= queuedTracks.length) {
 		if (player.loopType === 2) {
 			nextIndex = 0;
-		}
-		else {
+		} else {
 			return;
 		}
-	};
+	}
 
 	queueIndex = nextIndex;
 	playTrack(queuedTracks[queueIndex]);
@@ -277,6 +348,9 @@ export function toggleShuffle() {
 
 export function togglePlay() {
 	if (!audio) return;
+	if (audioCtx && audioCtx.state === "suspended") {
+		audioCtx.resume();
+	}
 	if (player.isPlaying) {
 		audio.pause();
 	} else {
