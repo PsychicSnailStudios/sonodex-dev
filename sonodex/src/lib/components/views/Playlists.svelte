@@ -422,7 +422,7 @@
 			{/if}
 
 			{#if viewMode === "tiled"}
-				<div class="app-music-grid grid gap-2">
+				<div class="app-music-grid grid gap-4">
 
 					{#each visibleChildFolders as folderPath, fi (folderPath)}
 						{@const artUids = getFolderArtworkUids(folderPath)}
@@ -439,7 +439,7 @@
 									class:ring-primary={isDropTarget}
 								>
 									{#if isDropTarget && !isDraggingThis}
-										<div class="absolute -left-1 top-0 bottom-0 w-0.5 bg-primary rounded-full z-10"></div>
+										<div class="absolute -left-2 top-0 bottom-0 w-0.5 bg-primary rounded-full z-10"></div>
 									{/if}
 									<button
 										class="flex flex-col gap-1 w-full text-left cursor-grab rounded-md"
