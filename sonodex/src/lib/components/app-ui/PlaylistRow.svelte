@@ -1,10 +1,11 @@
 <script lang="ts">
 	import ArtworkDisplay from "./ArtworkDisplay.svelte";
 	import { setSelection } from "$lib/ts/session.svelte";
-	import { playTrackByUid, queueTracksFromUid } from "$lib/ts/audio/audioManager.svelte";
+	import { playTrackByUid, queueTracksByObject, queueTracksFromUid } from "$lib/ts/audio/audioManager.svelte";
 	import { Play } from "lucide-svelte";
 	import Button from "../ui/button/button.svelte";
 	import type { Playlist } from "$lib/ts/util/types";
+    import { getPlaylistTracks } from "$lib/ts/library.svelte";
 
 	let {
 		playlist,
@@ -24,7 +25,7 @@
 
 	function play(e: MouseEvent) {
 		e.stopPropagation();
-		queueTracksFromUid(playlist.uid, true);
+		queueTracksByObject(getPlaylistTracks(playlist.uid), true);
 	}
 </script>
 

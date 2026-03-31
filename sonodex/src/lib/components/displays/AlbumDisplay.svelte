@@ -4,7 +4,7 @@
 	import Button from "../ui/button/button.svelte";
 
 	import { selection, setSelection } from "$lib/ts/session.svelte";
-	import { getArtistUidFromName, library } from "$lib/ts/library.svelte";
+	import { getArtistUidFromName, library, getAlbumTracks } from "$lib/ts/library.svelte";
 	import type { Album, Track } from "$lib/ts/util/types";
 	import { queueTracksByObject } from "$lib/ts/audio/audioManager.svelte";
 	import { openEditModal } from "$lib/ts/app/editModal.svelte";
@@ -37,8 +37,7 @@
 
 	let tracks: Track[] = $derived.by(() => {
 		if (!album) return [];
-		const albumTrackUids: string[] = JSON.parse(album.tracks ?? "[]").map((t: { uid: string }) => t.uid);
-		return library.tracks.filter(t => albumTrackUids.includes(t.uid));
+		return getAlbumTracks(album.uid, view.sort);
 	});
 
 	let artistAlbums: Album[] = $derived.by(() => {

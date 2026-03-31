@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { selection } from "$lib/ts/session.svelte";
-	import { library } from "$lib/ts/library.svelte";
+	import { getPlaylistTracks, library } from "$lib/ts/library.svelte";
 	import type { Playlist, Track } from "$lib/ts/util/types";
 	import { openEditModal } from "$lib/ts/app/editModal.svelte";
 
@@ -37,10 +37,7 @@
 
 	let tracks: Track[] = $derived.by(() => {
 		if (!playlist) return [];
-		const sorted = [...parseTracks(playlist.tracks)].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
-		return sorted
-			.map((e) => library.tracks.find((t) => t.uid === e.uid))
-			.filter(Boolean) as Track[];
+		return getPlaylistTracks(playlist.uid, view.sort);
 	});
 
 	const filteredTracks = $derived(

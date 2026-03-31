@@ -4,9 +4,10 @@
 	import Button from "../ui/button/button.svelte";
 	import type { AudioCatagories } from "$lib/ts/util/types";
 
-	import { playTrackByUid, queueTracksFromUid } from "$lib/ts/audio/audioManager.svelte";
+	import { playTrackByUid, queueTracksByObject } from "$lib/ts/audio/audioManager.svelte";
 
 	import { Play } from "lucide-svelte";
+    import { getAlbumTracks, getPlaylistTracks } from "$lib/ts/library.svelte";
 
 	let { title, subTitle, artworkUid, type } = $props<{ title: string; subTitle: string | null; artworkUid: string; type: AudioCatagories }>();
 
@@ -14,8 +15,11 @@
 		e.stopPropagation();
 		if (type === "track") {
 			playTrackByUid(artworkUid);
-		} else {
-			queueTracksFromUid(artworkUid, true);
+		} else if (type === "playlist") {
+			queueTracksByObject(getPlaylistTracks(artworkUid), true);
+		}
+		else {
+			queueTracksByObject(getAlbumTracks(artworkUid), true);
 		}
 	}
 </script>
