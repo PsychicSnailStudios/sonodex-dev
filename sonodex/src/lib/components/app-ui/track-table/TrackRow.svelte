@@ -130,17 +130,14 @@
 	{/if}
 
 	{#if !compact && showArtwork}
-		<!-- <button onclick={() => playTrackByUid(track.uid)} class="flex items-center">
-			<ArtworkDisplay uid={track.uid} size={30} />
-		</button> -->
 		<div class="group relative w-full">
 			<ArtworkDisplay uid={track.uid} size={30} />
 			<div class="cursor-pointer absolute top-0 inset-0 -left-1 w-full h-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-				{#if player.isPlaying}
+				{#if player.isPlaying && player.track?.uid === track.uid}
 					<Button variant="ghost" size="icon" onclick={() => togglePlay()}>
 						<Pause />
 					</Button>
-				{:else if player.track?.uid === track.uid}
+				{:else if !player.isPlaying && player.track?.uid === track.uid}
 					<Button variant="ghost" size="icon" onclick={() => togglePlay()}>
 						<Play />
 					</Button>
@@ -160,11 +157,6 @@
 					{track.title ?? "Unknown Title"}
 				</span>
 			</div>
-			<!-- <div class="min-w-0 flex items-center">
-				<span role="button" tabindex="0" onclick={() => setSelection(getArtistUidFromName(track.album_artist ?? ""), "artist")} onkeydown={(e) => { if (e.key === 'Enter') setSelection(getArtistUidFromName(track.album_artist ?? ""), "artist"); }} class="text-xs text-muted-foreground truncate cursor-pointer hover:underline">
-					{parseArtists(track.artists)}
-				</span>
-			</div> -->
 		{:else}
 			<div class="flex flex-col min-w-0">
 				<div class="min-w-0 flex items-center">
@@ -212,6 +204,6 @@
 	{/if}
 
 	{#if showOptions}
-		<TrackTableEditButton {track} />
+			<TrackTableEditButton {track} />
 	{/if}
 </div>
