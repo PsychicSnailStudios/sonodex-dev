@@ -3,6 +3,8 @@
 	import { readText } from "@tauri-apps/plugin-clipboard-manager";
 	import type { ColumnState } from "$lib/ts/app/columnConfig.svelte"
 	import type { SortState } from "$lib/ts/app/sortConfig.svelte"
+	import { openEditModal } from "$lib/ts/app/editModal.svelte";
+	import Button from "$lib/components/ui/button/button.svelte";
 	import { Clock2, Star, ChevronUp, ChevronDown, ChevronsUpDown } from "lucide-svelte"
 	import { parseAlbum, parseTrackNumber } from "$lib/ts/util/helpers"
 	import { trackSelection, setTrackSelectionContext, clearTrackSelection, copySelectedToClipboard, copySelectedNameToClipboard } from "$lib/ts/app/trackSelection.svelte"
@@ -12,6 +14,7 @@
    import * as ContextMenu from "$lib/components/ui/context-menu/index.js";
    import TrackPlaylistEditButton from "$lib/components/app-ui/TrackPlaylistEditButton.svelte";
    import { addTrackToQueue } from "$lib/ts/audio/audioManager.svelte";
+    import { setSelection } from "$lib/ts/session.svelte";
 
 	let {
 		tracks,
@@ -301,13 +304,22 @@
 					<ContextMenu.Content>
 						<ContextMenu.Group>
 							<ContextMenu.Item onSelect={() => copySelectedNameToClipboard(track)}>Copy Track & Artist Name</ContextMenu.Item>
-							<ContextMenu.Item onSelect={() => addTrackToQueue(track)}>Add to Queue</ContextMenu.Item>
+							<ContextMenu.Item
+								onSelect={() => addTrackToQueue(track)}
+								class={track.path.match(/^[a-z]+-[0-9a-f-]{36}$/) ? 'opacity-50 pointer-events-none' : ''}>
+								Add to Queue
+							</ContextMenu.Item>
 						</ContextMenu.Group>
 						<ContextMenu.Separator />
 						<ContextMenu.Group>
 							<ContextMenu.Item>
 								<TrackPlaylistEditButton track={track} isButton={false} />
 							</ContextMenu.Item>
+						</ContextMenu.Group>
+						<ContextMenu.Separator />
+						<ContextMenu.Group>
+							<ContextMenu.Item onSelect={() => setSelection(track.uid, "track")}>Go to Track</ContextMenu.Item>
+							<ContextMenu.Item onSelect={() => openEditModal({ type: "track", uid: track!.uid })}>Edit Metadata</ContextMenu.Item>
 						</ContextMenu.Group>
 					</ContextMenu.Content>
 				</ContextMenu.Root>
