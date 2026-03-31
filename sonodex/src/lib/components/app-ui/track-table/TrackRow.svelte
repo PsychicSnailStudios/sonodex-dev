@@ -112,7 +112,7 @@
 		<div class="group relative w-full h-full flex items-center justify-start">
 			<span class="text-sm pointer-events-none group-hover:opacity-0">{getTrackNumber()}</span>
 			<div class="cursor-pointer absolute top-0 -left-3 inset-0 w-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-				{#if player.isPlaying}
+				{#if player.isPlaying && player.track?.uid === track.uid}
 					<Button variant="ghost" size="icon" onclick={() => togglePlay()}>
 						<Pause />
 					</Button>
