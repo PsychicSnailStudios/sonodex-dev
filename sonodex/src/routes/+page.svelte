@@ -20,11 +20,12 @@
 	import PlaylistDisplay from "$lib/components/displays/PlaylistDisplay.svelte";
 	import TrackDisplay from "$lib/components/displays/TrackDisplay.svelte";
 	import ProfileSetup from "$lib/components/modals/ProfileSetup.svelte";
-
+	import { checkForUpdate } from "$lib/updater.svelte";
+	
 	import { House, Music, ListMusic, Search, Tags } from "lucide-svelte";
 
 	import { loadPlayerState, savePlayerState } from "$lib/ts/audio/audioManager.svelte";
-    import { save } from "@tauri-apps/plugin-dialog";
+   import { save } from "@tauri-apps/plugin-dialog";
 
 	const VIEW_TABS = [
 		{ value: "home", label: "Profile", icon: House },
@@ -46,6 +47,7 @@
 
 	let hoverTabTimeouts = new Map<string, ReturnType<typeof setTimeout>>();
 
+
 	onMount(() => {
 		loadPlayerState();
 		loadSessionState();
@@ -60,6 +62,12 @@
 	onMount(async () => {
 		needsSetup = await invoke<boolean>("needs_profile_setup");
 		setupChecked = true;
+
+		const update = await checkForUpdate(true);
+		if (update) {
+			// show your update dialog/toast here
+			console.log(`Update available: ${update.version}`);
+		}
 
 		if (!needsSetup) {
 			await loadLibrary();

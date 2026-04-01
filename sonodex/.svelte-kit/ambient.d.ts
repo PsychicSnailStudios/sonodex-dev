@@ -104,6 +104,7 @@ declare module '$env/static/private' {
 	export const TAURI_ENV_PLATFORM: string;
 	export const TAURI_ENV_PLATFORM_VERSION: string;
 	export const TAURI_ENV_TARGET_TRIPLE: string;
+	export const TAURI_UPDATER_PLUGIN_CONFIG: string;
 	export const TEMP: string;
 	export const TERM_PROGRAM: string;
 	export const TERM_PROGRAM_VERSION: string;
@@ -273,6 +274,7 @@ declare module '$env/dynamic/private' {
 		TAURI_ENV_PLATFORM: string;
 		TAURI_ENV_PLATFORM_VERSION: string;
 		TAURI_ENV_TARGET_TRIPLE: string;
+		TAURI_UPDATER_PLUGIN_CONFIG: string;
 		TEMP: string;
 		TERM_PROGRAM: string;
 		TERM_PROGRAM_VERSION: string;

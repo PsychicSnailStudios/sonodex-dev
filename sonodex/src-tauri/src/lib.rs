@@ -947,6 +947,9 @@ pub fn run() {
 				watcher::start_watcher(handle, uid, paths);
 			}
 
+			#[cfg(desktop)]
+			app.handle().plugin(tauri_plugin_updater::Builder::new().build())?;
+
 			Ok(())
 		})
 		.invoke_handler(tauri::generate_handler![
