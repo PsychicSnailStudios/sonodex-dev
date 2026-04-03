@@ -1,36 +1,35 @@
 <script lang="ts">
-	import type { Track } from "$lib/ts/util/types"
+
+	// APP
 	import { readText } from "@tauri-apps/plugin-clipboard-manager";
+
+	// COMPONENTS
+	import { Clock2, Star, ChevronUp, ChevronDown, ChevronsUpDown } from "lucide-svelte"
+   import * as ContextMenu from "$lib/components/ui/context-menu/index.js";
+
+	// CUSTOM COMPONENTS
+	import TrackRow from "$lib/components/app-ui/track-table/TrackRow.svelte"
+   import TrackContext from "$lib/components/app-ui/context-menus/TrackContext.svelte";
+
+	// SCRIPTS
+	import { parseAlbum, parseTrackNumber } from "$lib/ts/util/helpers"
+	import { dragState, endDrag } from "$lib/ts/app/dragState.svelte"
+	import { trackSelection, setTrackSelectionContext, clearTrackSelection, copySelectedToClipboard } from "$lib/ts/app/trackSelection.svelte"
+	import { removeTracksFromPlaylist, reorderPlaylistTracks, addTracksToPlaylist } from "$lib/ts/audio/playlistManager.svelte"
+	
+	// TYPES
 	import type { ColumnState } from "$lib/ts/app/columnConfig.svelte"
 	import type { SortState } from "$lib/ts/app/sortConfig.svelte"
-	import { openEditModal } from "$lib/ts/app/editModal.svelte";
-	import Button from "$lib/components/ui/button/button.svelte";
-	import { Clock2, Star, ChevronUp, ChevronDown, ChevronsUpDown } from "lucide-svelte"
-	import { parseAlbum, parseTrackNumber } from "$lib/ts/util/helpers"
-	import { trackSelection, setTrackSelectionContext, clearTrackSelection, copySelectedToClipboard, copySelectedNameToClipboard } from "$lib/ts/app/trackSelection.svelte"
-	import { dragState, endDrag } from "$lib/ts/app/dragState.svelte"
-	import { removeTracksFromPlaylist, reorderPlaylistTracks, addTracksToPlaylist } from "$lib/ts/audio/playlistManager.svelte"
-	import TrackRow from "$lib/components/app-ui/track-table/TrackRow.svelte"
-   import * as ContextMenu from "$lib/components/ui/context-menu/index.js";
-   import TrackPlaylistEditButton from "$lib/components/app-ui/TrackPlaylistEditButton.svelte";
-   import { addTrackToQueue } from "$lib/ts/audio/audioManager.svelte";
-    import { setSelection } from "$lib/ts/session.svelte";
+	import type { Track } from "$lib/ts/util/types"
 
-	let {
-		tracks,
-		columns,
-		sort,
-		compact = false,
-		playlistUid = null,
-	} = $props<{
-		tracks: Track[];
-		columns: ColumnState;
-		sort: SortState;
-		compact?: boolean;
-		playlistUid?: string | null;
-	}>()
+	// PROPS
+	let { tracks, columns, sort, compact = false, playlistUid = null, } =$props<{
+		tracks: Track[]; columns: ColumnState; sort: SortState; compact?: boolean; playlistUid?: string | null;
+	}>();
 
+	// VARIABLES
 	const v = $derived(columns.visible)
+	const orderedUids = $derived(sortedTracks.map((t) => t.uid))
 
 	const sortedTracks = $derived.by(() => {
 		if (!sort.field || !sort.direction) return tracks
@@ -50,14 +49,6 @@
 		})
 	})
 
-	function sortByNumber(a, b) {
-		if (playlistUid) return 0
-		
-		return (parseTrackNumber(a.albums) ?? 0) - (parseTrackNumber(b.albums) ?? 0)
-	}
-
-	const orderedUids = $derived(sortedTracks.map((t) => t.uid))
-
 	const gridTemplate = $derived.by(() => {
 		const parts: string[] = []
 		if (v.number)            	parts.push("40px")
@@ -72,13 +63,21 @@
 		if (v.options)           parts.push("30px")
 		return parts.join(" ")
 	})
-
+	
 	let dragOverIndex = $state<number | null>(null)
 	let dragOverPosition = $state<"above" | "below">("below")
 
+	// APP FUNCTIONS
 	$effect(() => {
 		setTrackSelectionContext(playlistUid ? "playlist" : "library", playlistUid ?? null)
 	})
+
+	// FUNCTIONS
+	function sortByNumber(a, b) {
+		if (playlistUid) return 0
+		
+		return (parseTrackNumber(a.albums) ?? 0) - (parseTrackNumber(b.albums) ?? 0)
+	}
 
 	function handleTableClick(e: MouseEvent) {
 		if ((e.target as HTMLElement) === e.currentTarget) clearTrackSelection()
@@ -232,7 +231,7 @@
 			</button>
 		{/if}
 		{#if v.rating}
-			<button class="flex items-center gap-1 hover:text-foreground transition-colors" onclick={() => sort.cycle("rating")}>
+			<button class="flex items-center justify-center gap-1 hover:text-foreground transition-colors" onclick={() => sort.cycle("rating")}>
 				<Star size={14} />
 				{#if sort.active("rating")}
 					{#if sort.direction === "asc"}<ChevronUp size={12} />{:else}<ChevronDown size={12} />{/if}
@@ -301,27 +300,7 @@
 							{playlistUid}
 						/>
 					</ContextMenu.Trigger>
-					<ContextMenu.Content>
-						<ContextMenu.Group>
-							<ContextMenu.Item onSelect={() => copySelectedNameToClipboard(track)}>Copy Track & Artist Name</ContextMenu.Item>
-							<ContextMenu.Item
-								onSelect={() => addTrackToQueue(track)}
-								class={track.path.match(/^[a-z]+-[0-9a-f-]{36}$/) ? 'opacity-50 pointer-events-none' : ''}>
-								Add to Queue
-							</ContextMenu.Item>
-						</ContextMenu.Group>
-						<ContextMenu.Separator />
-						<ContextMenu.Group>
-							<ContextMenu.Item>
-								<TrackPlaylistEditButton track={track} isButton={false} />
-							</ContextMenu.Item>
-						</ContextMenu.Group>
-						<ContextMenu.Separator />
-						<ContextMenu.Group>
-							<ContextMenu.Item onSelect={() => setSelection(track.uid, "track")}>Go to Track</ContextMenu.Item>
-							<ContextMenu.Item onSelect={() => openEditModal({ type: "track", uid: track!.uid })}>Edit Metadata</ContextMenu.Item>
-						</ContextMenu.Group>
-					</ContextMenu.Content>
+					<TrackContext track={track} />
 				</ContextMenu.Root>
 
 				{#if dragOverIndex === i && dragOverPosition === "below"}

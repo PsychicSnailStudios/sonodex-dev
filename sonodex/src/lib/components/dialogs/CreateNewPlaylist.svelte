@@ -1,8 +1,9 @@
 <script lang="ts">
+	import * as AlertDialog from "$lib/components/ui/alert-dialog/index.js";
+	import { Input } from "$lib/components/ui/input/index.js";
+	
 	import { createPlaylist } from "$lib/ts/audio/playlistManager.svelte";
 	import { profileState } from "$lib/ts/profiles.svelte";
-	import { Input } from "$lib/components/ui/input/index.js";
-	import * as AlertDialog from "$lib/components/ui/alert-dialog/index.js";
 
 	let { open = $bindable(false), folder = null } = $props<{ open: boolean; folder?: string | null }>();
 

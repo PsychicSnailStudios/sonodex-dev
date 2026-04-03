@@ -1,3 +1,5 @@
+<!-- NOTE: This view has been deprecated -->
+
 <script lang="ts">
 	import { library } from "$lib/ts/library.svelte";
 	import { setSelection } from "$lib/ts/session.svelte";
@@ -27,6 +29,7 @@
 	let compact = $state(false);
 
 	let artistSortDir = $state<"asc" | "desc">("asc");
+
 
 	let albumSortField = $state<"name" | "artist" | "year">("name");
 	let albumSortDir = $state<"asc" | "desc">("asc");

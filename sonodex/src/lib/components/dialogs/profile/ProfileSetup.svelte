@@ -1,17 +1,25 @@
 <script lang="ts">
-	import { invoke } from "@tauri-apps/api/core";
+
+	// APP
 	import { onMount } from "svelte";
-	import { createProfile } from "$lib/ts/profiles.svelte";
+
+	// COMPONENTS
 	import * as Dialog from "$lib/components/ui/dialog/index.js";
 	import { Input } from "$lib/components/ui/input/index.js";
 	import { Button } from "$lib/components/ui/button/index.js";
 	import { Label } from "$lib/components/ui/label/index.js";
 
+	// SCRIPTS
+	import { createProfile } from "$lib/ts/profiles.svelte";
+
+	// PROPS
 	let { onComplete }: { onComplete: () => void } = $props();
 
+	// VARIABLES
 	let name = $state("");
 	let creating = $state(false);
 
+	// APP FUNCTIONS
 	onMount(async () => {
 		try {
 			const { hostname } = await import("@tauri-apps/plugin-os");
@@ -20,6 +28,7 @@
 		} catch {}
 	});
 
+	// FUNCTIONS
 	async function handleCreate() {
 		if (!name.trim()) return;
 		creating = true;

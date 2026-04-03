@@ -1,26 +1,23 @@
 <script lang="ts">
+
+	// APP
+	import { invoke } from "@tauri-apps/api/core";
+
+	// COMPONENTS
 	import * as AlertDialog from "$lib/components/ui/alert-dialog/index.js";
 	import { Input } from "$lib/components/ui/input/index.js";
 	import { Label } from "$lib/components/ui/label/index.js";
-	import { invoke } from "@tauri-apps/api/core";
+
+	// SCRIPTS
 	import { library } from "$lib/ts/library.svelte";
 	import { createStubTrack } from "$lib/ts/dbManager";
-	import type { Track } from "$lib/ts/util/types";
 	import { profileState } from "$lib/ts/profiles.svelte";
+	import type { Track, ParsedTrack, ImportState } from "$lib/ts/util/types";
 
+	// PROPS
 	let { open = $bindable(false), folder = null } = $props<{ open: boolean; folder?: string | null }>();
 
-	type ParsedTrack = {
-		title: string;
-		artist: string;
-		album: string;
-		duration_ms: number | null;
-		year: string | null;
-		track_number: number | null;
-	};
-
-	type ImportState = "idle" | "parsed" | "importing" | "done" | "error";
-
+	// VARIABLES
 	let state = $state<ImportState>("idle");
 	let playlistName = $state("");
 	let fileInput = $state<HTMLInputElement | null>(null);
@@ -31,6 +28,7 @@
 	let createdCount = $state(0);
 	let fileName = $state("");
 
+	// FUNCTIONS
 	function reset() {
 		state = "idle";
 		playlistName = "";
@@ -328,6 +326,7 @@
 		reset();
 		open = false;
 	}
+
 </script>
 
 <AlertDialog.Root bind:open={open}>

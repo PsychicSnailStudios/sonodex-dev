@@ -89,6 +89,17 @@ export type UserOptions = {
 	trimStart:     number | null;
 	trimEnd:       number | null;
 };
+
+export type ParsedTrack = {
+	title: string;
+	artist: string;
+	album: string;
+	duration_ms: number | null;
+	year: string | null;
+	track_number: number | null;
+};
+
+export type ImportState = "idle" | "parsed" | "importing" | "done" | "error";
  
 export function parseUserOptions(raw: string | null | undefined): UserOptions {
 	const defaults: UserOptions = { linkedShuffle: null, trimStart: null, trimEnd: null };

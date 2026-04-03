@@ -1,9 +1,16 @@
 <script lang="ts">
+	
+	// APP
 	import { open } from "@tauri-apps/plugin-dialog";
+
+	// COMPONENTS
 	import { Upload, Clipboard, Trash2 } from "lucide-svelte";
 	import Button from "$lib/components/ui/button/button.svelte";
+
+	// CUSTOM COMPONENTS
 	import ArtworkDisplay from "$lib/components/app-ui/ArtworkDisplay.svelte";
 
+	// PROPS
 	let {
 		entityType,
 		entityUid,
@@ -14,8 +21,10 @@
 		onchange?: (path: string | null) => void;
 	}>();
 
+	// VARIABLES
 	let previewPath = $state<string | null>(null);
-
+	
+	// FUNCTIONS
 	async function handleUpload() {
 		const selected = await open({
 			filters: [{ name: "Image", extensions: ["jpg", "jpeg", "png", "webp"] }],

@@ -1,17 +1,24 @@
 <script lang="ts">
-	import type { Track } from "$lib/ts/util/types";
+
+	// COMPONENTS
+	import { Pause, Play } from "lucide-svelte";
+	import Button from "$lib/components/ui/button/button.svelte";
+
+	// CUSTOM COMPONENTS
+	import ArtworkDisplay from "$lib/components/app-ui/ArtworkDisplay.svelte";
+	import TrackTableEditButton from "$lib/components/app-ui/track-table/TrackTableEditButton.svelte";
+   import TrackRating from "$lib/components/app-ui/TrackRating.svelte";
+
+	// SCRIPTS
 	import { setSelection } from "$lib/ts/session.svelte";
 	import { trackSelection, selectTrack } from "$lib/ts/app/trackSelection.svelte";
 	import { startDrag, endDrag } from "$lib/ts/app/dragState.svelte";
 	import { player, playTrackByUid, togglePlay } from "$lib/ts/audio/audioManager.svelte";
 	import { getAlbumUidFromName, getArtistUidFromName } from "$lib/ts/library.svelte";
-	import { formatDuration, formatRating, parseAlbum, parseArtists, parseTrackNumber } from "$lib/ts/util/helpers";
-	import ArtworkDisplay from "$lib/components/app-ui/ArtworkDisplay.svelte";
-	import TrackTableEditButton from "$lib/components/app-ui/track-table/TrackTableEditButton.svelte";
-	import Button from "$lib/components/ui/button/button.svelte";
-	import { Pause, Play } from "lucide-svelte";
-   import TrackRating from "$lib/components/app-ui/TrackRating.svelte";
+	import { formatDuration, parseAlbum, parseArtists, parseTrackNumber } from "$lib/ts/util/helpers";
+	import type { Track } from "$lib/ts/util/types";
 
+	// PROPS
 	let {
 		track,
 		orderedUids,
@@ -48,10 +55,11 @@
 		playlistUid?: string | null;
 	}>();
 
+	// VARIABLES
 	const isGhosted = $derived(/^[a-z]+-[0-9a-f-]{36}$/.test(track.path));
-
 	let isSelected = $derived(trackSelection.isSelected(track.uid));
-
+	
+	// FUNCTIONS
 	function handleRowClick(e: MouseEvent) {
 		if ((e.target as HTMLElement).closest("button")) return;
 		selectTrack(track.uid, orderedUids, e);
@@ -196,7 +204,7 @@
 	{/if}
 
 	{#if showDuration}
-		<span class="text-sm font-mono pointer-events-none"></span>
+		<span class="text-sm font-mono pointer-events-none">{formatDuration(track.duration_ms)}</span>
 	{/if}
 
 	{#if showLabel}

@@ -1,14 +1,27 @@
 <script lang="ts">
+
+  // APP
   import { getCurrentWindow } from '@tauri-apps/api/window';
   import { onMount } from 'svelte';
 
+	// COMPONENTS
   import { CircleSmall, CircleDashed, Minus, X } from 'lucide-svelte';
-
-  import * as DropdownMenu from "$lib/components/ui/dropdown-menu/index.js";
-
+  import WindowContext from '$lib/components/app-ui/context-menus/WindowContext.svelte';
+  
+	// VARIABLES
   const appWindow = getCurrentWindow();
   let isMaximized = $state(false);
 
+	// APP FUNCTIONS
+  onMount(async () => {
+    isMaximized = await appWindow.isMaximized();
+
+    await appWindow.onResized(async () => {
+      isMaximized = await appWindow.isMaximized();
+    });
+  });
+
+	// FUNCTIONS
   async function startDrag() {
     await appWindow.startDragging();
   }
@@ -30,14 +43,6 @@
     await appWindow.close();
   }
 
-  onMount(async () => {
-    isMaximized = await appWindow.isMaximized();
-
-    await appWindow.onResized(async () => {
-      isMaximized = await appWindow.isMaximized();
-    });
-  });
-
 </script>
 
 <div
@@ -46,14 +51,7 @@
   tabindex="-1"
   onmousedown={startDrag}>
 
-  <DropdownMenu.Root>
-    <DropdownMenu.Trigger>...</DropdownMenu.Trigger>
-    <DropdownMenu.Content>
-      <DropdownMenu.Group>
-        <DropdownMenu.Item>Settings</DropdownMenu.Item>
-      </DropdownMenu.Group>
-    </DropdownMenu.Content>
-  </DropdownMenu.Root>
+  <WindowContext />
 
   <div class="flex items-center gap-1" role="presentation" onmousedown={(e) => e.stopPropagation()}>
     

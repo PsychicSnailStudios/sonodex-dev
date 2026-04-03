@@ -1,35 +1,37 @@
 <script lang="ts">
+
+	// COMPONENTS
+	import { CirclePlay, CirclePause, SkipBack, SkipForward,
+				Shuffle, Repeat, Repeat1,
+				Volume, Volume2, VolumeX, Volume1, VolumeOff
+	} from "lucide-svelte";
+	
 	import { Button } from "$lib/components/ui/button";
 	import { Slider } from "$lib/components/ui/slider/index.js";
-	import { CirclePlay, CirclePause, SkipBack, SkipForward, Shuffle, Repeat, Repeat1, Volume, Volume2, VolumeX, Volume1, VolumeOff } from "lucide-svelte";
+
+	// SCRIPTS
 	import { player, togglePlay, seek, skipBack, skipNext, toggleLoop, toggleShuffle, setVolume, toggleMute } from "$lib/ts/audio/audioManager.svelte";
+	import { formatDuration } from "$lib/ts/util/helpers";
 
-
-	function formatTime(seconds: number): string {
-		if (!seconds || isNaN(seconds)) return "0:00";
-		const m = Math.floor(seconds / 60);
-		const s = Math.floor(seconds % 60);
-		return `${m}:${s.toString().padStart(2, "0")}`;
-	}
-
+	// VARIABLES
 	let seeking = $state(false);
 	let seekValue = $state(0);
- 
+
+	// APP FUNCTIONS
 	$effect(() => {
 		if (!seeking) {
 			seekValue = player.currentTime;
 		}
 	});
- 
+
+	// FUNCTIONS
 	function onSliderChange(value: number[]) {
 		seekValue = value[0];
 	}
- 
 	function onSliderCommit(value: number[]) {
 		seek(value[0]);
 		seeking = false;
 	}
- 
 	function onSliderStart() {
 		seeking = true;
 	}
@@ -40,6 +42,7 @@
 
 	<div class="app-playbar-buttons-wrapper grid">
 		<span></span>
+		
 		<div class="flex justify-center items-center gap-2">
 			<Button variant="ghost" size="icon" onclick={toggleShuffle}>
 				{#if player.shuffleType === 0}
@@ -100,7 +103,7 @@
 	</div>
 
 	<div class="app-bar grid gap-2 items-center">
-		<span class="text-xs text-muted-foreground">{formatTime(player.currentTime)}</span>
+		<span class="text-xs text-muted-foreground">{formatDuration(player.currentTime)}</span>
 		
 		<div class="flex-1" onpointerdown={onSliderStart} aria-hidden="true" tabindex="-1">
 			<Slider
@@ -116,7 +119,7 @@
 			/>
 		</div>
 
-		<span class="text-xs text-muted-foreground">{formatTime(player.duration)}</span>
+		<span class="text-xs text-muted-foreground">{formatDuration(player.duration)}</span>
 	</div>
 
 </div>

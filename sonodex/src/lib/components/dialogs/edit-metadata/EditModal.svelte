@@ -1,11 +1,18 @@
 <script lang="ts">
-	import { editModal, closeEditModal } from "$lib/ts/app/editModal.svelte";
-	import * as Dialog from "$lib/components/ui/dialog/index.js";
-	import TrackEditForm from "$lib/components/modals/TrackEditForm.svelte";
-	import AlbumEditForm from "$lib/components/modals/AlbumEditForm.svelte";
-	import ArtistEditForm from "$lib/components/modals/ArtistEditForm.svelte";
-	import PlaylistEditForm from "$lib/components/modals/PlaylistEditForm.svelte";
 
+	// COMPONENTS
+	import * as Dialog from "$lib/components/ui/dialog/index.js";
+
+	// CUSTOM COMPONENTS
+	import TrackEditForm from "$lib/components/dialogs/edit-metadata/TrackEditForm.svelte";
+	import AlbumEditForm from "$lib/components/dialogs/edit-metadata/AlbumEditForm.svelte";
+	import ArtistEditForm from "$lib/components/dialogs/edit-metadata/ArtistEditForm.svelte";
+	import PlaylistEditForm from "$lib/components/dialogs/edit-metadata/PlaylistEditForm.svelte";
+
+	// SCRIPTS
+	import { editModal, closeEditModal } from "$lib/ts/app/editModal.svelte";
+
+	// VARIABLES
 	const titles: Record<string, string> = {
 		track: "Edit Track",
 		album: "Edit Album",

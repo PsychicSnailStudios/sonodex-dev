@@ -1,17 +1,25 @@
 <script lang="ts">
+
+	// COMPONENTS
 	import { EllipsisIcon, List, TextAlignJustify } from "lucide-svelte";
+
 	import * as DropdownMenu from "$lib/components/ui/dropdown-menu/index.js";
-	import Button from "../../ui/button/button.svelte";
-	import ScrollArea from "../../ui/scroll-area/scroll-area.svelte";
+	import Button from "$lib/components/ui/button/button.svelte";
 	import { Toggle } from "$lib/components/ui/toggle/index.js";
 
-	import type { ColumnState, ColumnKey } from "$lib/ts/app/columnConfig.svelte"
-	import { ALL_COLUMNS, COLUMN_LABELS } from "$lib/ts/app/columnConfig.svelte"
+	// CUSTOM COMPONENTS
 	import SortDropdown from "$lib/components/app-ui/track-table/SortDropdown.svelte";
 
+	// SCRIPTS
 	import { SortState } from "$lib/ts/app/sortConfig.svelte";
+	import { ALL_COLUMNS, COLUMN_LABELS } from "$lib/ts/app/columnConfig.svelte"
+	import type { ColumnState, ColumnKey } from "$lib/ts/app/columnConfig.svelte"
 
-	let { sort, cols, compact, onCompactChange } = $props<{ sort: SortState, cols: ColumnState, compact: boolean, onCompactChange: (v: boolean) => void }>();
+	// PROPS
+	let { sort, cols, compact, onCompactChange } = $props<{
+			sort: SortState, cols: ColumnState, compact: boolean, onCompactChange: (v: boolean) => void
+		}>();
+
 </script>
 
 <DropdownMenu.Root>
@@ -45,9 +53,8 @@
 		<DropdownMenu.Separator />
 
 		<DropdownMenu.Group>
-			<DropdownMenu.Label>View Columns</DropdownMenu.Label>
+			<DropdownMenu.Label>Display Columns</DropdownMenu.Label>
 			<div class="flex flex-col flex-wrap gap-1">
-				<p class="text-xs text-muted-foreground">Display Columns</p>
 				{#each ALL_COLUMNS as col (col)}
 					<Toggle
 						pressed={cols.visible[col as ColumnKey]}
@@ -62,11 +69,4 @@
 			</div>
 		</DropdownMenu.Group>
 	</DropdownMenu.Content>
-	<!-- <div>
-		<ScrollArea class="h-[250px]">
-			<div>
-				
-			</div>
-		</ScrollArea>
-	</div> -->
 </DropdownMenu.Root>

@@ -3,6 +3,7 @@ import { createColumnState } from "$lib/ts/app/columnConfig.svelte";
 import type { SortField, SortDirection } from "$lib/ts/app/sortConfig.svelte";
 import type { ColumnKey } from "$lib/ts/app/columnConfig.svelte";
 import { clamp } from "$lib/ts/util/helpers";
+import { get } from "svelte/store";
 
 type Selection = {
 	uid: string;

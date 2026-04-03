@@ -1,21 +1,32 @@
 <script lang="ts">
+
+	// APP
 	import { invoke } from "@tauri-apps/api/core";
 	import { onMount } from "svelte";
-	import ArtworkEditor from "./ArtworkEditor.svelte";
+
+	// COMPONENTS
+	import { X, Plus, ChevronUp, ChevronDown } from "lucide-svelte";
+
+	import * as Tabs from "$lib/components/ui/tabs";
 	import { Label } from "$lib/components/ui/label";
 	import { Input } from "$lib/components/ui/input";
 	import { Textarea } from "$lib/components/ui/textarea";
 	import { Button } from "$lib/components/ui/button";
 	import { Separator } from "$lib/components/ui/separator";
-	import * as Tabs from "$lib/components/ui/tabs";
-	import { editModal, closeEditModal } from "$lib/ts/app/editModal.svelte";
+
+	// CUSTOM COMPONENTS
+	import ArtworkEditor from "./ArtworkEditor.svelte";
+	
+	// SCRIPTS
+	import { closeEditModal } from "$lib/ts/app/editModal.svelte";
 	import { loadLibrary } from "$lib/ts/library.svelte";
 	import { syncAlbums, removeTrackFromOldAlbums, syncArtists } from "$lib/ts/dbManager";
 	import type { AlbumEntry } from "$lib/ts/dbManager";
-	import { X, Plus, ChevronUp, ChevronDown } from "lucide-svelte";
 
+	// PROPS
 	let { uid } = $props<{ uid: string }>();
 
+	// VARIABLES
 	let title = $state("");
 	let artists = $state("");
 	let albumArtist = $state("");
@@ -72,6 +83,7 @@
 		} catch { tags = ""; }
 	});
 
+	// FUNCTIONS
 	function addAlbum() {
 		albums = [...albums, { uid: "", name: "", track_number: null }];
 	}

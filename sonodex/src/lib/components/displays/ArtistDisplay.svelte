@@ -1,29 +1,27 @@
 <script lang="ts">
+
+	// APP
 	import { invoke } from "@tauri-apps/api/core";
 
-	import { selection } from "$lib/ts/session.svelte";
-	import { library } from "$lib/ts/library.svelte";
-	import type { Artist, Track, Album } from "$lib/ts/util/types";
-	import { openEditModal } from "$lib/ts/app/editModal.svelte";
-
-	import ArtworkDisplay from "$lib/components/app-ui/ArtworkDisplay.svelte";
-	import TrackTable from "$lib/components/app-ui/track-table/TrackTable.svelte";
+	// COMPONENTS
 	import * as Tabs from "$lib/components/ui/tabs/index.js";
 	import { Button } from "$lib/components/ui/button/index.js";
-	import AudioCard from "../app-ui/AudioCard.svelte";
-   import ScrollArea from "../ui/scroll-area/scroll-area.svelte";
+   import ScrollArea from "$lib/components/ui/scroll-area/scroll-area.svelte";
+
+	// CUSTOM COMPONENTS
+	import ArtworkDisplay from "$lib/components/app-ui/ArtworkDisplay.svelte";
+	import AudioCard from "$lib/components/app-ui/AudioCard.svelte";
    import NavButtons from "$lib/components/app-ui/NavButtons.svelte";
 
+	// SCRIPTS
+	import { selection } from "$lib/ts/session.svelte";
+	import { library } from "$lib/ts/library.svelte";
+	import { openEditModal } from "$lib/ts/app/editModal.svelte";
+	import type { Artist, Track, Album } from "$lib/ts/util/types";
+
+	// VARIABLES
 	let artist: Artist | null = $state(null);
-
-	let artistTracks: Track[] = $derived.by(() => {
-		if (!artist) return [];
-		return library.tracks.filter(t => {
-			const artists: string[] = JSON.parse(t.artists ?? "[]");
-			return artists.some(a => a.toLowerCase() === artist!.name.toLowerCase());
-		});
-	});
-
+	
 	let artistAlbums: Album[] = $derived.by(() => {
 		if (!artist) return [];
 		return library.albums.filter(a =>
@@ -31,6 +29,7 @@
 		);
 	});
 
+	// APP FUNCTIONS
 	$effect(() => {
 		const uid = selection.uid;
 		artist = null;

@@ -1,21 +1,38 @@
 <script lang="ts">
+
+	// COMPONENTS
+	import { BadgePlus, ChevronRight, House, Folder, CirclePlus, CircleCheck } from "lucide-svelte";
+
 	import * as DropdownMenu from "$lib/components/ui/dropdown-menu/index.js";
 	import Button from "../ui/button/button.svelte";
 	import Input from "../ui/input/input.svelte";
 	import ScrollArea from "../ui/scroll-area/scroll-area.svelte";
 
-	import { BadgePlus, ChevronRight, House, Folder } from "lucide-svelte";
-	import { CirclePlus, CircleCheck } from "lucide-svelte";
-
+	// SCRIPTS
 	import { library } from "$lib/ts/library.svelte";
-	import type { Playlist, Track } from "$lib/ts/util/types";
 	import { addTrackToPlaylist, removeTrackFromPlaylist } from "$lib/ts/audio/playlistManager.svelte";
+	import type { Playlist, Track } from "$lib/ts/util/types";
 
+	// PROPS
 	let { track, isButton = true } = $props<{ track: Track; isButton?: boolean }>();
 
+	// VARIABLES
 	let search = $state("");
 	let browsePath = $state<string | null>(null);
 
+	const searchActive = $derived(search.trim() !== "");
+	const visibleFolders = $derived(searchActive ? [] : getChildFolders(browsePath));
+
+	const filteredPlaylists = $derived(
+	searchActive
+		? library.playlists.filter((p) => {
+			const q = search.toLowerCase();
+			return p.title.toLowerCase().includes(q) || ((p as any).description?.toLowerCase() ?? "").includes(q);
+		})
+		: getDirectPlaylists(browsePath)
+	);
+
+	// FUNCTIONS
 	function folderOf(p: Playlist): string | null {
 		const f = (p as any).folder;
 		return f && f !== "" ? f : null;
@@ -56,19 +73,6 @@
 		}
 		return crumbs;
 	}
-
-	const searchActive = $derived(search.trim() !== "");
-
-	const filteredPlaylists = $derived(
-		searchActive
-			? library.playlists.filter((p) => {
-				const q = search.toLowerCase();
-				return p.title.toLowerCase().includes(q) || ((p as any).description?.toLowerCase() ?? "").includes(q);
-			})
-			: getDirectPlaylists(browsePath)
-	);
-
-	const visibleFolders = $derived(searchActive ? [] : getChildFolders(browsePath));
 
 	function hasTrack(playlistUid: string): boolean {
 		const playlist = library.playlists.find((p) => p.uid === playlistUid);

@@ -1,13 +1,21 @@
 <script lang="ts">
-	import { invoke, convertFileSrc } from "@tauri-apps/api/core";
-	import { Skeleton } from "$lib/components/ui/skeleton/index.js";
-	import { Music4, User, DiscAlbum, ListMusic } from "lucide-svelte";
-	import type { AudioCatagories } from "$lib/types";
-	import { library } from "$lib/ts/library.svelte";
+
+	// APP
 	import { untrack } from "svelte";
+	import { invoke, convertFileSrc } from "@tauri-apps/api/core";
 
+	// COMPONENTS
+	import { Music4, User, DiscAlbum, ListMusic } from "lucide-svelte";
+	import { Skeleton } from "$lib/components/ui/skeleton/index.js";
+	
+	// SCRIPTS
+	import { library } from "$lib/ts/library.svelte";
+	import type { AudioCatagories } from "$lib/types";
+	
+	// PROPS
 	let { uid, size = null, type = "track", previewPath = null }: { uid: string; size?: number | null; type?: AudioCatagories; previewPath?: string | null } = $props();
-
+	
+	// VARIABLES
 	let artworkUrl: string | null = $state(null);
 	let loaded = $state(false);
 	let el: HTMLDivElement;
@@ -27,6 +35,7 @@
 		playlist: () => library.playlists.find(p => p.uid === uid)?.artwork_path ?? null,
 	};
 
+	// APP FUNCTIONS
 	$effect(() => {
 		if (previewPath) {
 			artworkUrl = convertFileSrc(previewPath);

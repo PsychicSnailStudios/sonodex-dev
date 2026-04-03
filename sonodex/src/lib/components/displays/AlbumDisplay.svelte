@@ -1,31 +1,32 @@
 <script lang="ts">
+
+	// APP
 	import { invoke } from "@tauri-apps/api/core";
 
-	import Button from "../ui/button/button.svelte";
-
-	import { selection, setSelection } from "$lib/ts/session.svelte";
-	import { getArtistUidFromName, library, getAlbumTracks } from "$lib/ts/library.svelte";
-	import type { Album, Track } from "$lib/ts/util/types";
-	import { queueTracksByObject } from "$lib/ts/audio/audioManager.svelte";
-	import { openEditModal } from "$lib/ts/app/editModal.svelte";
-
+	// COMPONENTS
 	import { Pencil } from "lucide-svelte";
 
-	import { createColumnState } from "$lib/ts/app/columnConfig.svelte"
-	import TrackTableSettings from "$lib/components/app-ui/track-table/TrackTableSettings.svelte";
+	import { ScrollArea } from "$lib/components/ui/scroll-area/index.js";
+	import Button from "$lib/components/ui/button/button.svelte";
 
+	// CUSTOM COMPONENTS
+	import TrackTableSettings from "$lib/components/app-ui/track-table/TrackTableSettings.svelte";
 	import ArtworkDisplay from "$lib/components/app-ui/ArtworkDisplay.svelte";
 	import TrackTable from "$lib/components/app-ui/track-table/TrackTable.svelte";
-	import { ScrollArea } from "$lib/components/ui/scroll-area/index.js";
-	import { getArtworkColor } from "$lib/ts/util/helpers"
+	import AudioCard from "$lib/components/app-ui/AudioCard.svelte";
+	import NavButtons from "$lib/components/app-ui/NavButtons.svelte";
 
-	import { formatDuration, totalDuration } from '$lib/ts/util/helpers';
-   import AudioCard from "$lib/components/app-ui/AudioCard.svelte";
-	import { SortState } from "$lib/ts/app/sortConfig.svelte";
-   import NavButtons from "$lib/components/app-ui/NavButtons.svelte";
-
+	// SCRIPTS
+	import { selection, setSelection } from "$lib/ts/session.svelte";
+	import { getArtistUidFromName, library, getAlbumTracks } from "$lib/ts/library.svelte";
+	import { queueTracksByObject } from "$lib/ts/audio/audioManager.svelte";
+	import { openEditModal } from "$lib/ts/app/editModal.svelte";
+	import { getArtworkColor, totalDuration } from "$lib/ts/util/helpers"
 	import { createPersistedViewState } from "$lib/ts/session.svelte";
+	
+	import type { Album, Track } from "$lib/ts/util/types";
 
+	// VARIABLES
 	const view = createPersistedViewState("album", {
 		sortField: "number",
 		sortDir: "asc",
@@ -47,6 +48,7 @@
 		);
 	});
 
+	// APP FUNCTIONS
 	$effect(() => {
 		const uid = selection.uid;
 		album = null;

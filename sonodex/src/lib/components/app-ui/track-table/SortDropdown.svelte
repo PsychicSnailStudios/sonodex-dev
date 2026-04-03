@@ -1,11 +1,18 @@
 <script lang="ts">
-	import type { SortState, SortField } from "$lib/ts/app/sortConfig.svelte"
-	import { Button } from "$lib/components/ui/button"
-	import * as DropdownMenu from "$lib/components/ui/dropdown-menu"
+
+	// COMPONENTS
 	import { ArrowDownUp, ChevronUp, ChevronDown } from "lucide-svelte"
 
+	import * as DropdownMenu from "$lib/components/ui/dropdown-menu"
+	import { Button } from "$lib/components/ui/button"
+	
+	// SCRIPTS
+	import type { SortState, SortField } from "$lib/ts/app/sortConfig.svelte"
+
+	// PROPS
 	let { sort } = $props<{ sort: SortState }>()
 
+	// VARIABLES
 	const fields: { value: SortField; label: string }[] = [
 		{ value: "title", label: "Title" },
 		{ value: "artist", label: "Artist" },
@@ -16,7 +23,8 @@
 		{ value: "label", label: "Label" },
 		{ value: "number", label: "Track Number" },
 	]
-
+	
+	// FUNCTIONS
 	function toggleDirection() {
 		if (!sort.field) return
 		sort.set(sort.field, sort.direction === "asc" ? "desc" : "asc")

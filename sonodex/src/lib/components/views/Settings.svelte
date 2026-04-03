@@ -1,74 +1,109 @@
 <script lang="ts">
-  import { invoke } from "@tauri-apps/api/core";
-  import { listen } from "@tauri-apps/api/event";
-  import { onMount } from "svelte";
-  import { open } from "@tauri-apps/plugin-dialog";
-  import { setMode, mode } from "mode-watcher";
-  import { loadLibrary } from "$lib/ts/library.svelte";
-  import { scanState } from "$lib/ts/session.svelte";
-  
-  import { ScrollArea } from "$lib/components/ui/scroll-area/index.js";
-  import { Button } from "$lib/components/ui/button/index.js";
-  import * as Select from "$lib/components/ui/select/index.js";
-  import { Label } from "$lib/components/ui/label/index.js";
-  import { Switch } from "$lib/components/ui/switch/index.js";
 
-  import {
-		eq,
-		EQ_BANDS,
-		EQ_PRESETS,
-		loadEqSettings,
-		setEqEnabled,
-		setEqBandGain,
-		applyEqPreset,
-	} from "$lib/ts/app/eqStore.svelte";
+	// APP
+	import { invoke } from "@tauri-apps/api/core";
+	import { listen } from "@tauri-apps/api/event";
+	import { open } from "@tauri-apps/plugin-dialog";
+	import { onMount } from "svelte";
+	import { setMode, mode } from "mode-watcher";
+
+	// COMPONENTS
+	import * as Select from "$lib/components/ui/select/index.js";
+	import { ScrollArea } from "$lib/components/ui/scroll-area/index.js";
+	import { Button } from "$lib/components/ui/button/index.js";
+	import { Switch } from "$lib/components/ui/switch/index.js";
+	import { Label } from "$lib/components/ui/label/index.js";
+
+	// SCRIPTS
+	import { loadLibrary } from "$lib/ts/library.svelte";
+	import { scanState } from "$lib/ts/session.svelte";
+	import { eq, EQ_BANDS, EQ_PRESETS, loadEqSettings, setEqEnabled, setEqBandGain, applyEqPreset,	} from "$lib/ts/app/eqStore.svelte";
 	import { applyEqToGraph } from "$lib/ts/audio/audioManager.svelte";
+	
+	// VARIABLES
+	let paths: { id: number; path: string }[] = [];
+	let newPath = "";
+	let settings: Record<string, string> = {};
 
-  let paths: { id: number; path: string }[] = [];
-  let newPath = "";
-  
-  let settings: Record<string, string> = {};
+	let themeOptions = [
+		{ value: "system", label: "System" },
+		{ value: "light", label: "Light" },
+		{ value: "dark", label: "Dark" },
+	];
 
-  let themeOptions = [
-	{ value: "system", label: "System" },
-	{ value: "light", label: "Light" },
-	{ value: "dark", label: "Dark" },
-  ];
+	const PRIORITY_OPTIONS = [
+		{ value: "tag", label: "File Tag" },
+		{ value: "filename", label: "Filename (override)" },
+		{ value: "filename_fallback", label: "Filename (fallback)" },
+	];
 
-  const PRIORITY_OPTIONS = [
-    { value: "tag", label: "File Tag" },
-    { value: "filename", label: "Filename (override)" },
-    { value: "filename_fallback", label: "Filename (fallback)" },
-  ];
+	const SETTING_LABELS: Record<string, string> = {
+		filename_priority_title: "Title",
+		filename_priority_artist: "Artist",
+		filename_priority_album: "Album",
+		filename_priority_year: "Year",
+		filename_custom_pattern: "Custom Filename Pattern",
+	};
 
-  const SETTING_LABELS: Record<string, string> = {
-    filename_priority_title: "Title",
-    filename_priority_artist: "Artist",
-    filename_priority_album: "Album",
-    filename_priority_year: "Year",
-    filename_custom_pattern: "Custom Filename Pattern",
-  };
+	// APP FUNCTIONS
+	onMount(async () => {
+		await loadPaths();
+		await loadSettings();
+		await loadEqSettings();
 
-  async function browsePath() {
-    const selected = await open({ directory: true, multiple: false });
-    if (selected) newPath = selected as string;
-  }
+		await listen("enrich:progress", (event: any) => {
+			scanState.enrichDone = event.payload.done;
+			scanState.enrichTotal = event.payload.total;
+			scanState.enrichErrors = event.payload.errors;
+		});
 
-  async function loadPaths() {
-    paths = await invoke("get_paths");
-  }
+		await listen("enrich:done", (event: any) => {
+			scanState.enriching = false;
+			scanState.enrichErrors = event.payload.errors;
+			scanState.status = `Enrichment done. ${event.payload.total - event.payload.errors} updated, ${event.payload.errors} not found.`;
+		});
 
-  async function loadSettings() {
-    const raw: { key: string; value: string }[] = await invoke("get_settings");
-    settings = Object.fromEntries(raw.map((s) => [s.key, s.value]));
-  }
+		await listen("scan:progress", async (event: any) => {
+			scanState.progress = event.payload.scanned;
+			scanState.total = event.payload.total;
+			scanState.status = `Scanning... ${scanState.progress} / ${scanState.total}`;
+		});
 
-  async function saveSetting(key: string, value: string) {
-    settings[key] = value;
-    await invoke("save_setting", { key, value });
-  }
+		await listen("scan:done", async () => {
+			scanState.status = "Scan done.";
+			scanState.loading = false;
+			scanState.progress = 0;
+			scanState.total = 0;
+			await loadLibrary();
+		});
 
-  async function addPath() {
+		await listen("scan:error", (event: any) => {
+			scanState.status = `Scan error: ${event.payload}`;
+			scanState.loading = false;
+		});
+	});
+
+	// FUNCTIONS
+	async function browsePath() {
+		const selected = await open({ directory: true, multiple: false });
+		if (selected) newPath = selected as string;
+	}
+
+	async function loadPaths() {
+		paths = await invoke("get_paths");
+	}
+
+	async function loadSettings() {
+		const raw: { key: string; value: string }[] = await invoke("get_settings");
+		settings = Object.fromEntries(raw.map((s) => [s.key, s.value]));
+	}
+
+	async function saveSetting(key: string, value: string) {
+		settings[key] = value;
+		await invoke("save_setting", { key, value });
+	}
+
+	async function addPath() {
 		if (!newPath.trim()) return;
 		scanState.loading = true;
 		scanState.status = "Scanning...";
@@ -111,53 +146,16 @@
 		}
 	}
 
-	onMount(async () => {
-		await loadPaths();
-		await loadSettings();
-		await loadEqSettings();
-
-		await listen("enrich:progress", (event: any) => {
-			scanState.enrichDone = event.payload.done;
-			scanState.enrichTotal = event.payload.total;
-			scanState.enrichErrors = event.payload.errors;
-		});
-
-		await listen("enrich:done", (event: any) => {
-			scanState.enriching = false;
-			scanState.enrichErrors = event.payload.errors;
-			scanState.status = `Enrichment done. ${event.payload.total - event.payload.errors} updated, ${event.payload.errors} not found.`;
-		});
-
-		await listen("scan:progress", async (event: any) => {
-			scanState.progress = event.payload.scanned;
-			scanState.total = event.payload.total;
-			scanState.status = `Scanning... ${scanState.progress} / ${scanState.total}`;
-		});
-
-		await listen("scan:done", async () => {
-			scanState.status = "Scan done.";
-			scanState.loading = false;
-			scanState.progress = 0;
-			scanState.total = 0;
-			await loadLibrary();
-		});
-
-		await listen("scan:error", (event: any) => {
-			scanState.status = `Scan error: ${event.payload}`;
-			scanState.loading = false;
-		});
-	});
-
 	async function handleEqToggle(checked: boolean) {
 		await setEqEnabled(checked);
 		applyEqToGraph();
 	}
-	
+
 	async function handleBandChange(index: number, value: number) {
 		await setEqBandGain(index, value);
 		applyEqToGraph();
 	}
-	
+
 	async function handlePreset(preset: (typeof EQ_PRESETS)[number]) {
 		await applyEqPreset(preset);
 		applyEqToGraph();

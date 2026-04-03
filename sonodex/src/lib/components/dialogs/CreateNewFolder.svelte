@@ -1,7 +1,8 @@
 <script lang="ts">
-	import { navigateTo, registerFolder } from "$lib/ts/app/folderSelection.svelte";
-	import { Input } from "$lib/components/ui/input/index.js";
 	import * as AlertDialog from "$lib/components/ui/alert-dialog/index.js";
+	import { Input } from "$lib/components/ui/input/index.js";
+	
+	import { navigateTo, registerFolder } from "$lib/ts/app/folderSelection.svelte";
 
 	let { open = $bindable(false), parent = null } = $props<{ open: boolean; parent?: string | null }>();
 

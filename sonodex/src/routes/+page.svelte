@@ -1,41 +1,41 @@
 <script lang="ts">
+	// APP
 	import { onMount } from "svelte";
 	import { invoke } from "@tauri-apps/api/core";
 	import { listen } from "@tauri-apps/api/event";
-	import { loadLibrary } from "$lib/ts/library.svelte";
-	import { selection, scanState, loadSessionState, saveSessionState } from "$lib/ts/session.svelte";
-	import { togglePlay, skipBack, skipNext } from "$lib/ts/audio/audioManager.svelte";
-	import { dragState } from "$lib/ts/app/dragState.svelte";
 
+	// COMPONENTS
 	import * as Resizable from "$lib/components/ui/resizable/index.js";
-	import { Button } from "$lib/components/ui/button/index.js";
+
+	// CUSTOM COMPONENTS
+	import PlayControls from "$lib/components/app/PlayControls.svelte";
+	import NowPlaying from "$lib/components/app/now-playing/NowPlaying.svelte";
+   import AppNavigation from "$lib/components/app/AppNavigation.svelte";
 
 	import HomeView from "$lib/components/views/Profile.svelte";
+	import PlaylistsView from "$lib/components/views/PlaylistsLibrary.svelte";
 	import MusicView from "$lib/components/views/MusicLibrary.svelte";
-	import PlaylistsView from "$lib/components/views/Playlists.svelte";
-	import PlayControls from "$lib/components/app/PlayControls.svelte";
-	import NowPlaying from "$lib/components/app/NowPlaying.svelte";
+	import TracksView from "$lib/components/views/TrackLibrary.svelte";
+	import AlbumsView from "$lib/components/views/AlbumLibrary.svelte";
+	import ArtistsView from "$lib/components/views/ArtistLibrary.svelte";
+
 	import AlbumDisplay from "$lib/components/displays/AlbumDisplay.svelte";
 	import ArtistDisplay from "$lib/components/displays/ArtistDisplay.svelte";
 	import PlaylistDisplay from "$lib/components/displays/PlaylistDisplay.svelte";
 	import TrackDisplay from "$lib/components/displays/TrackDisplay.svelte";
-	import ProfileSetup from "$lib/components/modals/ProfileSetup.svelte";
+
+	import ProfileSetup from "$lib/components/dialogs/profile/ProfileSetup.svelte";
+
+	// SCRIPTS
+	import { loadLibrary } from "$lib/ts/library.svelte";
+	import { selection, scanState, loadSessionState, saveSessionState } from "$lib/ts/session.svelte";
+	import { dragState } from "$lib/ts/app/dragState.svelte";
+	import { togglePlay, skipBack, skipNext, loadPlayerState, savePlayerState } from "$lib/ts/audio/audioManager.svelte";
 	import { checkForUpdate } from "$lib/updater.svelte";
-	
-	import { House, Music, ListMusic, Search, Tags } from "lucide-svelte";
 
-	import { loadPlayerState, savePlayerState } from "$lib/ts/audio/audioManager.svelte";
-   import { save } from "@tauri-apps/plugin-dialog";
-
-	const VIEW_TABS = [
-		{ value: "home", label: "Profile", icon: House },
-		{ value: "search", label: "Explore", icon: Search },
-		{ value: "music", label: "Music Library", icon: Music },
-		{ value: "playlists", label: "Playlists", icon: ListMusic },
-		{ value: "tags", label: "Tags", icon: Tags },
-	];
-
+	// VARIABLES
 	let activeView = $state("home");
+
 	let needsSetup = $state(false);
 	let setupChecked = $state(false);
 
@@ -45,12 +45,11 @@
 	let maxSidebarWidth = $derived(containerWidth ? (480 / containerWidth) * 100 : 40);
 	let defaultSidebarWidth = $derived(containerWidth ? (300 / containerWidth) * 100 : 40);
 
-	let hoverTabTimeouts = new Map<string, ReturnType<typeof setTimeout>>();
-
-
+	// APP FUNCTIONS
 	onMount(() => {
 		loadPlayerState();
 		loadSessionState();
+
 		window.addEventListener("beforeunload", savePlayerState);
 		window.addEventListener("beforeunload", saveSessionState);
 		return () => {
@@ -87,6 +86,7 @@
 		});
 	});
 
+	// FUNCTIONS
 	function onSetupComplete() {
 		needsSetup = false;
 		loadLibrary();
@@ -109,36 +109,17 @@
 		}
 	}
 
-	function handleTabDragEnter(tabValue: string) {
-		if (!dragState.active) return;
-		if (tabValue === activeView) return;
-
-		const timeout = setTimeout(() => {
-			activeView = tabValue;
-			hoverTabTimeouts.delete(tabValue);
-		}, 700);
-
-		hoverTabTimeouts.set(tabValue, timeout);
-	}
-
-	function handleTabDragLeave(tabValue: string) {
-		const timeout = hoverTabTimeouts.get(tabValue);
-		if (timeout) {
-			clearTimeout(timeout);
-			hoverTabTimeouts.delete(tabValue);
-		}
-	}
-
 	function handleWindowDragOver(e: DragEvent) {
 		if (dragState.active) e.preventDefault();
 	}
 </script>
 
+<svelte:window ondragover={handleWindowDragOver} />
+
 {#if setupChecked && needsSetup}
 	<ProfileSetup onComplete={onSetupComplete} />
 {/if}
 
-<svelte:window ondragover={handleWindowDragOver} />
 <div bind:clientWidth={containerWidth} class="h-full w-full overflow-hidden">
 <Resizable.PaneGroup direction="horizontal" class="app-wrapper grid gap-0.5 p-2 overflow-hidden">
 
@@ -169,20 +150,7 @@
 				{/if}
 			</div>
 
-			<div class="app-nav bg-muted flex flex-col p-2 gap-1 rounded-md">
-				{#each VIEW_TABS as tab}
-					<Button
-						variant="{activeView === tab.value ? 'default' : 'outline'}"
-						onclick={() => activeView = tab.value}
-						class="justify-start"
-						ondragenter={() => handleTabDragEnter(tab.value)}
-						ondragleave={() => handleTabDragLeave(tab.value)}
-					>
-						<svelte:component this={tab.icon} />
-						<span>{tab.label}</span>
-					</Button>
-				{/each}
-			</div>
+			<AppNavigation bind:activeView />
 
 			<NowPlaying />
 		</div>
@@ -198,6 +166,12 @@
 						<HomeView />
 					{:else if activeView === "music"}
 						<MusicView />
+					{:else if activeView === "tracks"}
+						<TracksView />
+					{:else if activeView === "albums"}
+						<AlbumsView />
+					{:else if activeView === "artists"}
+						<ArtistsView />
 					{:else if activeView === "playlists"}
 						<PlaylistsView />
 					{/if}

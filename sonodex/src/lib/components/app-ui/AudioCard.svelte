@@ -1,16 +1,22 @@
 <script lang="ts">
-	import ArtworkDisplay from "./ArtworkDisplay.svelte";
-	import { setSelection } from "$lib/ts/session.svelte";
-	import Button from "../ui/button/button.svelte";
-	import type { AudioCatagories } from "$lib/ts/util/types";
 
-	import { playTrackByUid, queueTracksByObject } from "$lib/ts/audio/audioManager.svelte";
-
+	// COMPONENTS
+	import Button from "$lib/components/ui/button/button.svelte";
+	
+	// CUSTOM COMPONENTS
 	import { Play } from "lucide-svelte";
-    import { getAlbumTracks, getPlaylistTracks } from "$lib/ts/library.svelte";
+	import ArtworkDisplay from "$lib/components/app-ui/ArtworkDisplay.svelte";
 
+	// SCRIPTS
+	import { setSelection } from "$lib/ts/session.svelte";
+	import { playTrackByUid, queueTracksByObject } from "$lib/ts/audio/audioManager.svelte";
+   import { getAlbumTracks, getPlaylistTracks } from "$lib/ts/library.svelte";
+	import type { AudioCatagories } from "$lib/ts/util/types";
+	
+	// PROPS
 	let { title, subTitle, artworkUid, type } = $props<{ title: string; subTitle: string | null; artworkUid: string; type: AudioCatagories }>();
-
+	
+	// FUNCTIONS
 	function play(e: MouseEvent) {
 		e.stopPropagation();
 		if (type === "track") {

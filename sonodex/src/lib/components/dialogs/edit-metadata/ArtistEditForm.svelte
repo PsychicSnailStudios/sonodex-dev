@@ -1,18 +1,28 @@
 <script lang="ts">
+
+	// APP
 	import { invoke } from "@tauri-apps/api/core";
 	import { onMount } from "svelte";
-	import ArtworkEditor from "./ArtworkEditor.svelte";
+
+	// COMPONENTS
+	import * as Tabs from "$lib/components/ui/tabs";
 	import { Label } from "$lib/components/ui/label";
 	import { Input } from "$lib/components/ui/input";
 	import { Textarea } from "$lib/components/ui/textarea";
 	import { Button } from "$lib/components/ui/button";
 	import { Separator } from "$lib/components/ui/separator";
-	import * as Tabs from "$lib/components/ui/tabs";
-	import { editModal, closeEditModal } from "$lib/ts/app/editModal.svelte";
+
+	// CUSTOM COMPONENTS
+	import ArtworkEditor from "./ArtworkEditor.svelte";
+
+	// SCRIPTS
+	import { closeEditModal } from "$lib/ts/app/editModal.svelte";
 	import { loadLibrary } from "$lib/ts/library.svelte";
 
+	// PROPS
 	let { uid } = $props<{ uid: string }>();
 
+	// VARIABLES
 	let name = $state("");
 	let aka = $state("");
 	let about = $state("");
@@ -23,6 +33,7 @@
 	let profileArtPath = $state<string | null>(null);
 	let saving = $state(false);
 
+	// APP FUNCTIONS
 	onMount(async () => {
 		const artist = await invoke<any | null>("get_artist", { uid });
 		if (!artist) return;
@@ -38,6 +49,7 @@
 		try { members = (artist.members ? JSON.parse(artist.members) : []).join(", "); } catch { members = ""; }
 	});
 
+	// FUNCTIONS
 	function splitList(val: string) {
 		return val.split(",").map((s) => s.trim()).filter(Boolean);
 	}

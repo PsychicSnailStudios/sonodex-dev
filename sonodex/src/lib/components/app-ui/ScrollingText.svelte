@@ -1,15 +1,7 @@
 <script lang="ts">
 	import { onMount, tick } from 'svelte';
 
-	interface Props {
-		text: string;
-		class?: string;
-		speed?: number;
-		pauseMs?: number;
-		hoverOnly?: boolean;
-		onclick?: () => void;
-	}
-
+	// PROPS
 	let {
 		text,
 		class: className = '',
@@ -17,8 +9,16 @@
 		pauseMs = 1600,
 		hoverOnly = false,
 		onclick,
-	}: Props = $props();
+	} = $props<{
+		text: string;
+		class?: string;
+		speed?: number;
+		pauseMs?: number;
+		hoverOnly?: boolean;
+		onclick?: () => void;
+	}>();
 
+	// VARIABLES
 	let containerEl: HTMLElement;
 	let textEl: HTMLElement;
 	let animating = $state(false);
@@ -29,7 +29,30 @@
 	let transitionDuration = $state(0);
 
 	let timeoutId: ReturnType<typeof setTimeout>;
+		
+	let resizeObserver: ResizeObserver;
 
+	// APP FUNCTIONS
+	onMount(() => {
+		resizeObserver = new ResizeObserver(() => checkOverflow());
+		if (containerEl) resizeObserver.observe(containerEl);
+		checkOverflow();
+
+		return () => {
+			cleanup();
+			resizeObserver?.disconnect();
+		};
+	});
+
+	$effect(() => {
+		text;
+		if (containerEl) {
+			cleanup();
+			timeoutId = setTimeout(() => checkOverflow(), 0);
+		}
+	});
+
+	// FUNCTIONS
 	function getCurrentTranslateX(): number {
 		if (!textEl) return 0;
 		const style = window.getComputedStyle(textEl);
@@ -184,26 +207,6 @@
 		returnToStart();
 	}
 
-	let resizeObserver: ResizeObserver;
-
-	onMount(() => {
-		resizeObserver = new ResizeObserver(() => checkOverflow());
-		if (containerEl) resizeObserver.observe(containerEl);
-		checkOverflow();
-
-		return () => {
-			cleanup();
-			resizeObserver?.disconnect();
-		};
-	});
-
-	$effect(() => {
-		text;
-		if (containerEl) {
-			cleanup();
-			timeoutId = setTimeout(() => checkOverflow(), 0);
-		}
-	});
 </script>
 
 <div

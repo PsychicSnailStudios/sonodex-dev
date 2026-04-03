@@ -26,6 +26,15 @@ export function registerFolder(path: string) {
 	_knownFolders = new Set([..._knownFolders, path]);
 }
 
+export function removeFolder(path: string) {
+	_seedFromLibrary();
+	const next = new Set(_knownFolders);
+	for (const k of next) {
+		if (k === path || k.startsWith(path + "/")) next.delete(k);
+	}
+	_knownFolders = next;
+}
+
 export function navigateTo(path: string | null) {
 	currentPath = path;
 }

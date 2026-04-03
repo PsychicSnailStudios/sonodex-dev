@@ -1,39 +1,43 @@
 <script lang="ts">
-	import { selection } from "$lib/ts/session.svelte";
-	import { getPlaylistTracks, library } from "$lib/ts/library.svelte";
-	import type { Playlist, Track } from "$lib/ts/util/types";
-	import { openEditModal } from "$lib/ts/app/editModal.svelte";
+	
+	// APP
+	import { invoke } from "@tauri-apps/api/core";
 
+	// COMPONENTS
 	import { CirclePlus, Pencil } from "lucide-svelte";
 
-	import { createColumnState } from "$lib/ts/app/columnConfig.svelte"
-	import TrackTableSettings from "$lib/components/app-ui/track-table/TrackTableSettings.svelte"
-
-	import ArtworkDisplay from "$lib/components/app-ui/ArtworkDisplay.svelte";
-	import TrackTable from "$lib/components/app-ui/track-table/TrackTable.svelte";
 	import { Button } from "$lib/components/ui/button/index.js";
 	import { ScrollArea } from "$lib/components/ui/scroll-area/index.js";
 	import { Input } from "$lib/components/ui/input/index.js";
 
-	import { getArtworkColor, parseArtists, totalDuration } from '$lib/ts/util/helpers';
-	import { addTrackToPlaylist, addTracksToPlaylist, parseTracks } from "$lib/ts/audio/playlistManager.svelte";
-	import { queueTracksByObject } from "$lib/ts/audio/audioManager.svelte";
-	import { invoke } from "@tauri-apps/api/core";
-	import { SortState } from "$lib/ts/app/sortConfig.svelte"
+	// CUSTOM COMPONENTS
+	import TrackTableSettings from "$lib/components/app-ui/track-table/TrackTableSettings.svelte"
+	import ArtworkDisplay from "$lib/components/app-ui/ArtworkDisplay.svelte";
+	import TrackTable from "$lib/components/app-ui/track-table/TrackTable.svelte";
 	import NavButtons from "$lib/components/app-ui/NavButtons.svelte";
-	import { dragState, endDrag } from "$lib/ts/app/dragState.svelte";
 
-	let search = $state("");
-	
+	// SCRIPTS
+	import { selection } from "$lib/ts/session.svelte";
+	import { getPlaylistTracks, library } from "$lib/ts/library.svelte";
+	import { openEditModal } from "$lib/ts/app/editModal.svelte";
+	import { getArtworkColor, parseArtists, totalDuration } from '$lib/ts/util/helpers';
+	import { addTrackToPlaylist, addTracksToPlaylist } from "$lib/ts/audio/playlistManager.svelte";
+	import { queueTracksByObject } from "$lib/ts/audio/audioManager.svelte";
+	import { dragState, endDrag } from "$lib/ts/app/dragState.svelte";
 	import { createPersistedViewState } from "$lib/ts/session.svelte";
+
+	import type { Track } from "$lib/ts/util/types";
+
+	// VARIABLES
+	let search = $state("");
+	let playlist = $derived(library.playlists.find(p => p.uid === selection.uid) ?? null);
+	let color = $state("rgb(30, 30, 30)")
 
 	const view = createPersistedViewState("playlist", {
 		sortField: null,
 		sortDir: "asc",
 		colPreset: "playlist",
 	});
-
-	let playlist = $derived(library.playlists.find(p => p.uid === selection.uid) ?? null);
 
 	let tracks: Track[] = $derived.by(() => {
 		if (!playlist) return [];
@@ -53,8 +57,7 @@
 			  })
 	);
 
-	let color = $state("rgb(30, 30, 30)")
-
+	// APP FUNCTIONS
 	$effect(() => {
 		const uid = selection.uid;
 		if (!uid) return;
@@ -71,6 +74,7 @@
 		});
 	});
 
+	// FUNCTIONS
 	function handleDisplayDragOver(e: DragEvent) {
 		if (dragState.active) e.preventDefault();
 	}
@@ -120,13 +124,7 @@
 				</div>
 			</div>
 
-			<TrackTable
-				tracks={tracks}
-				columns={view.cols}
-				sort={view.sort}
-				compact={view.compact}
-				playlistUid={playlist.uid}
-			/>
+			<TrackTable tracks={tracks} columns={view.cols} sort={view.sort} compact={view.compact} playlistUid={playlist.uid} />
 			
 			<div class="flex flex-col gap-1 p-3 mt-8 m-4 rounded-md bg-muted">
 				<div class="flex items-center justify-between p-2">
