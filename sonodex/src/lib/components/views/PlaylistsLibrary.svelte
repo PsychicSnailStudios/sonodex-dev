@@ -25,15 +25,20 @@
 	// SCRIPTS
 	import { library } from "$lib/ts/library.svelte";
 	import { dragState, setHoveredPlaylist, endDrag, onFolderDragOver, onFolderDragExit, onBreadcrumbDragOver,
-				onBreadcrumbDragExit, dropOnPlaylist, movePlaylists, startDrag } from "$lib/ts/app/dragState.svelte";
+				onBreadcrumbDragExit, dropOnPlaylist, movePlaylists, startDrag } from "$lib/ts/drag-n-drop/dragState.svelte";
 	import { folderSelection, navigateTo, breadcrumbs, registerFolder, removeFolder } from "$lib/ts/app/folderSelection.svelte";
 	import { addTracksToPlaylist } from "$lib/ts/audio/playlistManager.svelte";
-	import { createPersistedViewState } from "$lib/ts/session.svelte";
 	import { playlistOrder, applyCustomOrder, reorder } from "$lib/ts/app/playlistOrderStore.svelte";
+	
 	import type { Playlist } from "$lib/ts/util/types";
+	type PlaylistSortField = "title" | "date_created" | "custom";
 
 	// VARIABLES
-	const view = createPersistedViewState("playlists", { sortField: null, sortDir: "asc" });
+	const SORT_KEY = "sonodex:view:playlists";
+	const _saved = loadSort();
+	let sortField = $state<PlaylistSortField>(_saved.field);
+	let sortDir   = $state<"asc" | "desc">(_saved.dir);
+	let compact   = $state<boolean>(_saved.compact);
 
 	let search          = $state("");
 	let expandedFolders = $state<Set<string>>(new Set());
@@ -76,7 +81,29 @@
 		])].sort()
 	);
 	
+	// APP FUNCTIONS
+	$effect(() => {
+		try {
+			localStorage.setItem(SORT_KEY, JSON.stringify({ sortField, sortDir, compact }));
+		} catch {}
+	});
+
 	// FUNCTIONS
+	function loadSort(): { field: PlaylistSortField; dir: "asc" | "desc"; compact: boolean } {
+		try {
+			const raw = localStorage.getItem(SORT_KEY);
+			if (raw) {
+				const s = JSON.parse(raw);
+				return {
+					field: s.sortField ?? "custom",
+					dir: s.sortDir ?? "asc",
+					compact: s.compact ?? false,
+				};
+			}
+		} catch {}
+		return { field: "custom", dir: "asc", compact: false };
+	}
+
 	function folderOf(p: Playlist): string | null {
 		const f = (p as any).folder;
 		return f && f !== "" ? f : null;
@@ -361,9 +388,9 @@
 			<Button
 				variant="outline"
 				size="icon"
-				onclick={() => (view.compact = !view.compact)}
+				onclick={() => (compact = !compact)}
 			>
-				{#if view.compact === false}
+				{#if !compact}
 					<List class="size-4" />
 				{:else}
 					<LayoutGrid class="size-4" />
@@ -393,7 +420,7 @@
 		</div>
 
 		<div class="flex items-center gap-1 shrink-0">
-			<PlaylistSortBar field={view.sort.field} direction={view.sort.direction} />
+			<PlaylistSortBar bind:field={sortField} bind:direction={sortDir} />
 			<Button variant="outline" size="icon" onclick={() => openCreatePlaylistIn(currentPath)}>
 				<ListPlus class="size-4" />
 			</Button>
@@ -422,7 +449,7 @@
 				</button>
 			{/if}
 
-			{#if view.compact === false}
+			{#if !compact}
 				<div
 					class="app-music-grid grid gap-2"
 					ondragover={handleGridDragOver}

@@ -13,7 +13,7 @@
 
 	// SCRIPTS
 	import { parseAlbum, parseTrackNumber } from "$lib/ts/util/helpers"
-	import { dragState, endDrag } from "$lib/ts/app/dragState.svelte"
+	import { dragState, endDrag } from "$lib/ts/drag-n-drop/dragState.svelte"
 	import { trackSelection, setTrackSelectionContext, clearTrackSelection, copySelectedToClipboard } from "$lib/ts/app/trackSelection.svelte"
 	import { removeTracksFromPlaylist, reorderPlaylistTracks, addTracksToPlaylist } from "$lib/ts/audio/playlistManager.svelte"
 	

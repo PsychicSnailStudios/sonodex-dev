@@ -23,7 +23,7 @@
 	import { getArtworkColor, parseArtists, totalDuration } from '$lib/ts/util/helpers';
 	import { addTrackToPlaylist, addTracksToPlaylist } from "$lib/ts/audio/playlistManager.svelte";
 	import { queueTracksByObject } from "$lib/ts/audio/audioManager.svelte";
-	import { dragState, endDrag } from "$lib/ts/app/dragState.svelte";
+	import { dragState, endDrag } from "$lib/ts/drag-n-drop/dragState.svelte";
 	import { createPersistedViewState } from "$lib/ts/session.svelte";
 
 	import type { Track } from "$lib/ts/util/types";

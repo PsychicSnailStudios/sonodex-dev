@@ -1,9 +1,8 @@
 import { SortState } from "$lib/ts/app/sortConfig.svelte";
 import { createColumnState } from "$lib/ts/app/columnConfig.svelte";
+import { clamp } from "$lib/ts/util/helpers";
 import type { SortField, SortDirection } from "$lib/ts/app/sortConfig.svelte";
 import type { ColumnKey } from "$lib/ts/app/columnConfig.svelte";
-import { clamp } from "$lib/ts/util/helpers";
-import { get } from "svelte/store";
 
 type Selection = {
 	uid: string;
@@ -28,6 +27,7 @@ export const scanState = $state({
 
 const SESSION_STORAGE_KEY = "sonodex:session";
 
+// SAVE/LOAD
 export function loadSessionState() {
 	try {
 		const raw = localStorage.getItem(SESSION_STORAGE_KEY);
@@ -106,6 +106,7 @@ export function createPersistedViewState(
 	};
 }
 
+// SELECTION
 export function setSelection(uid: string, type: "track" | "album" | "artist" | "playlist" | "none") {
 	selection.uid = uid;
 	selection.type = type;
