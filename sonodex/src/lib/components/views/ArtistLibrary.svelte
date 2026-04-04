@@ -58,15 +58,15 @@
 						<ArrowUpAZ />
 					{/if}
 				</Button>
-				<Toggle onPressedChange={() => view.compact = !view.compact}>
+				<Button variant="ghost" size="icon" onclick={() => view.compact = !view.compact}>
 					{#if view.compact}
 						<LayoutGrid />
-						Table
+						<!-- Table -->
 					{:else}
 						<List />
-						List
+						<!-- List -->
 					{/if}
-				</Toggle>
+				</Button>
 			</div>
 		</div>
 

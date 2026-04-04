@@ -31,11 +31,11 @@
 	}
 </script>
 
-<div class="flex items-center gap-1">
+<div class="flex items-center">
 	<DropdownMenu.Root>
 		<DropdownMenu.Trigger>
-			<Button variant="outline" size="sm" class="gap-2">
-				<ArrowDownUp size={14} />
+			<Button variant="ghost" size="sm" class="gap-2">
+				<!-- <ArrowDownUp size={14} /> -->
 				{sort.field ? fields.find(f => f.value === sort.field)?.label : "Sort"}
 			</Button>
 		</DropdownMenu.Trigger>
@@ -52,7 +52,7 @@
 	</DropdownMenu.Root>
 
 	{#if sort.field}
-		<Button variant="outline" size="sm" onclick={toggleDirection} class="px-2">
+		<Button variant="ghost" size="sm" onclick={toggleDirection} class="px-2">
 			{#if sort.direction === "asc"}
 				<ChevronUp size={14} />
 			{:else}

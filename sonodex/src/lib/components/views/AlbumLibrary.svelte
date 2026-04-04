@@ -77,8 +77,8 @@
 			<div class="flex items-center gap-1">
 				<DropdownMenu.Root>
 					<DropdownMenu.Trigger>
-						<Button variant="outline" size="sm" class="gap-2">
-							<ArrowUpDown size={14} />
+						<Button variant="ghost" size="sm" class="gap-2">
+							<!-- <ArrowUpDown size={14} /> -->
 							{view.sort.field}
 						</Button>
 					</DropdownMenu.Trigger>
@@ -98,7 +98,7 @@
 					</DropdownMenu.Content>
 				</DropdownMenu.Root>
 
-				<Button variant="outline" size="sm" onclick={() => view.sort.direction = view.sort.direction === "asc" ? "desc" : "asc"} class="px-2">
+				<Button variant="ghost" size="sm" onclick={() => view.sort.direction = view.sort.direction === "asc" ? "desc" : "asc"} class="px-2">
 					{#if view.sort.direction === "asc"}
 						<ChevronUp size={14} />
 					{:else}
@@ -109,10 +109,10 @@
 				<Toggle onPressedChange={() => view.compact = !view.compact}>
 					{#if view.compact}
 						<LayoutGrid />
-						Table
+						<!-- Table -->
 					{:else}
 						<List />
-						List
+						<!-- List -->
 					{/if}
 				</Toggle>
 			</div>

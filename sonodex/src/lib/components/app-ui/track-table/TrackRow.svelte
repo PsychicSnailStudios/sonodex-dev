@@ -6,7 +6,7 @@
 
 	// CUSTOM COMPONENTS
 	import ArtworkDisplay from "$lib/components/app-ui/ArtworkDisplay.svelte";
-	import TrackTableEditButton from "$lib/components/app-ui/track-table/TrackTableEditButton.svelte";
+	import TrackTableEditButton from "$lib/components/app-ui/track-table/TrackRowEditButton.svelte";
    import TrackRating from "$lib/components/app-ui/TrackRating.svelte";
 
 	// SCRIPTS

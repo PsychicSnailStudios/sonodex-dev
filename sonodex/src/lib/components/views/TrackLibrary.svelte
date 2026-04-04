@@ -6,7 +6,7 @@
 
 	// CUSTOM COMPONENTS
 	import TrackTable from "$lib/components/app-ui/track-table/TrackTable.svelte";
-	import TrackTableSettings from "$lib/components/app-ui/track-table/TrackTableSettings.svelte";
+	import TrackTableSettings from "$lib/components/app-ui/track-table/TrackTableButtons.svelte";
 	import SearchBar from "$lib/components/app-ui/search/SearchBar.svelte";
 
 	// SCRIPTS
