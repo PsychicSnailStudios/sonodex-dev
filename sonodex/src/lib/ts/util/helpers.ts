@@ -54,6 +54,17 @@ export function parsePlaylistTracks(tracks: string | null): PlaylistTrackEntry[]
 	}
 }
 
+export function parseTags(tags: string | null): string[] {
+	if (!tags) return [];
+	try {
+		const parsed = JSON.parse(tags);
+		if (!Array.isArray(parsed)) return [];
+		return parsed;
+	} catch {
+		return [];
+	}
+}
+
 export function formatRating(rating: number | null): string {
 	if (rating === null) return "—";
 	return rating.toFixed(1);

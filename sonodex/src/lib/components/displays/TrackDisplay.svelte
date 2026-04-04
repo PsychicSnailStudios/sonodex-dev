@@ -15,12 +15,13 @@
    import NavButtons from "$lib/components/app-ui/NavButtons.svelte";
    import TrackPlaylistEditButton from "$lib/components/app-ui/TrackPlaylistEditButton.svelte";
    import TrackRating from "$lib/components/app-ui/TrackRating.svelte";
+	import TagList from "$lib/components/app-ui/TagList.svelte";
 
 	// SCRIPTS
 	import { getArtistUidFromName, library } from "$lib/ts/library.svelte";
 	import { selection, setSelection } from "$lib/ts/session.svelte";
 	import { openEditModal } from "$lib/ts/app/editModal.svelte";
-	import { formatDuration, parseAlbumEntries, parseArtists } from '$lib/ts/util/helpers';
+	import { formatDuration, parseAlbumEntries, parseArtists, parseTags } from '$lib/ts/util/helpers';
    import { playTrackByObject } from "$lib/ts/audio/audioManager.svelte";
 	import type { Lyrics } from "$lib/ts/util/types";
 
@@ -65,6 +66,7 @@
 				<div>
 					<TrackRating uid={track.uid} rating={track.rating} />
 				</div>
+				<TagList tags={parseTags(track.tags)} />
 				<div class="flex gap-1 flex-wrap">
 					<Button variant="default" onclick={() => playTrackByObject(track)}>Play</Button>
 					<TrackPlaylistEditButton track={track} />
