@@ -105,6 +105,7 @@
 				<ArtworkDisplay uid={playlist.uid} size={160} type="playlist" />
 
 				<div class="flex flex-col gap-2">
+					<span class="text-xs text-muted-foreground">Playlist</span>
 					<h2 class="text-2xl font-bold">{playlist.title}</h2>
 					{#if playlist.description}
 						<span class="text-sm text-muted-foreground">{playlist.description}</span>
@@ -115,6 +116,8 @@
 							<span>|</span>
 							<span>{totalDuration(tracks)}</span>
 						{/if}
+						<span>|</span>
+						<span>{playlist.owner}</span>
 					</div>
 					<div class="flex gap-2 flex-wrap">
 						<Button variant="default" onclick={() => queueTracksByObject(tracks, true)}>Play All</Button>
