@@ -28,19 +28,20 @@
 	}
 </script>
 
-<Tabs.Content value="queue">
-	<p class="text-xs text-muted-foreground">Now Playing</p>
-
-	<QueueTrackItem track={player.track!} />
+<Tabs.Content value="queue" class="p-1 space-y-2">
+	<p class="text-sm text-foreground">Now Playing</p>
+	<div class="rounded-md border-2">
+		<QueueTrackItem track={player.track!} />
+	</div>
 	
-	<p class="text-xs text-muted-foreground">Next up from: </p>
+	<p class="text-sm text-foreground">Next up: </p>
 	
-	<div class="flex justify-between p-2">
+	<div class="flex justify-between">
 		<p class="text-xs text-muted-foreground">{formatTotalRemainingTime()} Remaining</p>
-		<button class="text-xs text-muted-foreground" onclick={clearQueue}>Clear</button>
+		<button class="text-xs text-muted-foreground cursor-pointer hover:underline" onclick={clearQueue}>Clear</button>
 	</div>
 
-	<ScrollArea class="min-h-0 min-w-0 h-[290px]">
+	<ScrollArea class="min-h-0 min-w-0 h-[254px]">
 		<div class="flex flex-col gap-0.5">
 			{#each upcomingTracks as track}
 				<QueueTrackItem track={track} />

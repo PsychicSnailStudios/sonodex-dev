@@ -480,7 +480,7 @@
 	</div>
 
 	<div class="flex justify-between items-center pl-4 pr-4">
-		<span class="text-sm text-muted-foreground mb-2">{playlists.length} playlists</span>
+		<span class="text-sm text-muted-foreground">{playlists.length} playlists</span>
 		
 		<div class="flex items-center gap-2">
 			<PlaylistSortBar bind:field={sortField} bind:direction={sortDir} />
@@ -494,17 +494,17 @@
 		</div>
 	</div>
 
-	<div class="flex flex-col h-full w-full overflow-hidden">
-		<ScrollArea class="min-h-0 min-w-0">
+	<div class="flex flex-col h-full w-full overflow-hidden pr-0.5">
+		<ScrollArea class="min-h-0 min-w-0 mt-0 pt-0">
 
 			{@const showRootDrop = currentPath !== null && dragState.active}
 			<button
-				class="w-full mb-2 py-1.5 px-3 rounded-md border border-dashed border-muted-foreground/30 text-xs text-muted-foreground flex items-center gap-2 transition-all duration-150 overflow-hidden"
+				class="w-full mx-4 px-3 rounded-md border border-dashed border-muted-foreground/30 text-xs text-muted-foreground flex items-center gap-2 transition-all duration-150 overflow-hidden"
 				class:opacity-0={!showRootDrop}
 				class:max-h-0={!showRootDrop}
 				class:max-h-10={showRootDrop}
-				class:py-0={!showRootDrop}
-				class:mb-0={!showRootDrop}
+				class:py-2={showRootDrop}
+				class:mb-4={showRootDrop}
 				class:pointer-events-none={!showRootDrop}
 				ondragover={(e) => { e.preventDefault(); onBreadcrumbDragOver(null, navigateTo); }}
 				ondragleave={onBreadcrumbDragExit}
@@ -620,17 +620,6 @@
 										ondrop={(e) => handleCompactFolderDrop(e, ri, row.path)}
 									>
 										<button
-											class="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
-											onclick={() => toggleExpand(row.path)}
-											aria-label={isExpanded ? "Collapse" : "Expand"}
-										>
-											{#if isExpanded}
-												<ChevronDown class="size-4" />
-											{:else}
-												<ChevronRight class="size-4" />
-											{/if}
-										</button>
-										<button
 											class="flex items-center gap-2 flex-1 min-w-0 text-left"
 											onclick={() => navigateTo(row.path)}
 										>
@@ -640,6 +629,17 @@
 												<Folder class="size-4 shrink-0 text-muted-foreground" />
 											{/if}
 											<span class="text-sm truncate">{folderLabel(row.path)}</span>
+										</button>
+										<button
+											class="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
+											onclick={() => toggleExpand(row.path)}
+											aria-label={isExpanded ? "Collapse" : "Expand"}
+										>
+											{#if isExpanded}
+												<ChevronDown class="size-4" />
+											{:else}
+												<ChevronRight class="size-4" />
+											{/if}
 										</button>
 									</div>
 								</div>

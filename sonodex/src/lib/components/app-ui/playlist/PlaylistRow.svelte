@@ -32,31 +32,25 @@
 </script>
 
 <div
-	class="flex items-center gap-2 py-1.5 pr-2 rounded-md hover:bg-muted/50 group cursor-default"
+	class="flex items-center gap-2 pr-2 rounded-md hover:bg-muted/50 group cursor-default"
 	class:ring-1={highlighted}
 	class:ring-primary={highlighted}
-	style="padding-left: {indent}px"
+	style="padding-left: {indent+7}px"
 	role="region"
 	aria-label="Playlist"
 	{ondragover}
 	{ondragleave}
 	{ondrop}
 >
+	{#if indent > 20}
+		<div class="h-8 w-0.5 bg-muted"></div>
+	{/if}
+	
 	<button
-		class="flex items-center gap-2 flex-1 min-w-0 text-left"
+		class="flex items-center gap-2 flex-1 min-w-0 text-left h-8"
 		onclick={() => setSelection(playlist.uid, "playlist")}
 	>
-		<div class="size-8 rounded shrink-0 overflow-hidden bg-muted">
-			<ArtworkDisplay uid={playlist.uid} type="playlist">
-				<DefultPlaylistArt tracks={playlist.tracks} />
-			</ArtworkDisplay>
-		</div>
-		<div class="flex flex-col min-w-0 flex-1">
-			<span class="text-sm truncate leading-tight">{playlist.title}</span>
-			{#if (playlist as any).owner}
-				<span class="text-xs text-muted-foreground truncate leading-tight">{(playlist as any).owner}</span>
-			{/if}
-		</div>
+		<span class="text-sm truncate leading-tight">{playlist.title}</span>
 	</button>
 
 	<Button

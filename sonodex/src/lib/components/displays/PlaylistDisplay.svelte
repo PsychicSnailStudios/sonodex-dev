@@ -29,11 +29,13 @@
 	import { createPersistedViewState } from "$lib/ts/app-states/state_session.svelte";
 
 	import type { Track } from "$lib/ts/util/types";
+    import X from "@lucide/svelte/icons/x";
 
 	// VARIABLES
 	let search = $state("");
 	let playlist = $derived(library.playlists.find(p => p.uid === selection.uid) ?? null);
 	let color = $state("rgb(30, 30, 30)")
+	let showSearch = $state(false);
 
 	const view = createPersistedViewState("playlist", {
 		sortField: null,
@@ -142,27 +144,35 @@
 
 			<TrackTable tracks={tracks} columns={view.cols} sort={view.sort} compact={view.compact} playlistUid={playlist.uid} />
 			
-			<div class="flex flex-col gap-1 p-3 mt-8 m-4 rounded-md bg-muted">
-				<div class="flex items-center justify-between p-2">
-					<h3>Find More</h3>
-					<SearchBar bind:search searchCount={filteredTracks.length} />
-				</div>
-				
-				<ScrollArea class="min-h-0 min-w-0 h-[300px] p-2">
-					<div class="flex flex-col gap-0.5">
-						{#each filteredTracks as track}
-							<div class="grid gap-2 p-2" style="grid-template-columns: auto auto 1fr auto;">
-								<ArtworkDisplay uid={track.uid} size={30} type="track" />
-								<div class="min-w-0 grid">
-									<span class="text-sm font-medium truncate">{track.title}</span>
-									<span class="text-xs text-muted-foreground truncate">{parseArtists(track.artists)}</span>
-								</div>
-								<span></span>
-								<button onclick={() => { addTrackToPlaylist(playlist!, track) }}><CirclePlus size={20} /></button>
-							</div>
-						{/each}
+			<div class="flex flex-col justify-end items-end m-4 mt-8 gap-1">
+			{#if showSearch}
+				<Button variant="ghost" size="icon" onclick={() => showSearch = false}><X /></Button>
+
+				<div class="flex flex-col gap-1 p-3 rounded-md bg-muted">
+					<div class="flex items-center justify-between p-2">
+						<h3>Find More</h3>
+						<SearchBar bind:search searchCount={filteredTracks.length} />
 					</div>
-				</ScrollArea>
+					
+					<ScrollArea class="min-h-0 min-w-0 h-[300px] p-2">
+						<div class="flex flex-col gap-0.5">
+							{#each filteredTracks as track}
+								<div class="grid gap-2 p-2" style="grid-template-columns: auto auto 1fr auto;">
+									<ArtworkDisplay uid={track.uid} size={30} type="track" />
+									<div class="min-w-0 grid">
+										<span class="text-sm font-medium truncate">{track.title}</span>
+										<span class="text-xs text-muted-foreground truncate">{parseArtists(track.artists)}</span>
+									</div>
+									<span></span>
+									<button onclick={() => { addTrackToPlaylist(playlist!, track) }}><CirclePlus size={20} /></button>
+								</div>
+							{/each}
+						</div>
+					</ScrollArea>
+				</div>
+			{:else}
+				<Button variant="ghost" onclick={() => showSearch = true}>Find More</Button>
+			{/if}
 			</div>
 
 		</div>
