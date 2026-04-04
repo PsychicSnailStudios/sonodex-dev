@@ -2,6 +2,7 @@
 	import { Play } from "lucide-svelte";
 	import Button from "$lib/components/ui/button/button.svelte";
 	import ArtworkDisplay from "$lib/components/app-ui/ArtworkDisplay.svelte";
+	import DefultPlaylistArt from "$lib/components/app-ui/DefultPlaylistArt.svelte";
 
 	import { setSelection } from "$lib/ts/session.svelte";
 	import { queueTracksByObject } from "$lib/ts/audio/audioManager.svelte";
@@ -46,7 +47,9 @@
 		onclick={() => setSelection(playlist.uid, "playlist")}
 	>
 		<div class="size-8 rounded shrink-0 overflow-hidden bg-muted">
-			<ArtworkDisplay uid={playlist.uid} type="playlist" />
+			<ArtworkDisplay uid={playlist.uid} type="playlist">
+				<DefultPlaylistArt tracks={playlist.tracks} />
+			</ArtworkDisplay>
 		</div>
 		<div class="flex flex-col min-w-0 flex-1">
 			<span class="text-sm truncate leading-tight">{playlist.title}</span>

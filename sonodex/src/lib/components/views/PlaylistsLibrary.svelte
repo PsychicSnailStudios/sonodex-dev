@@ -21,9 +21,10 @@
 	import PlaylistContext from "$lib/components/app-ui/context-menus/PlaylistContext.svelte";
 	import PlaylistFolderCard from "$lib/components/app-ui/playlist/PlaylistFolderCard.svelte";
 	import ImportPlaylist from "$lib/components/dialogs/ImportPlaylist.svelte";
+	import DefultPlaylistArt from "$lib/components/app-ui/DefultPlaylistArt.svelte";
 
 	// SCRIPTS
-	import { library } from "$lib/ts/library.svelte";
+	import { getPlaylistTracks, library } from "$lib/ts/library.svelte";
 	import { dragState, setHoveredPlaylist, endDrag, onFolderDragOver, onFolderDragExit, onBreadcrumbDragOver,
 				onBreadcrumbDragExit, dropOnPlaylist, movePlaylists, startDrag } from "$lib/ts/drag-n-drop/dragState.svelte";
 	import { folderSelection, navigateTo, breadcrumbs, registerFolder, removeFolder } from "$lib/ts/app/folderSelection.svelte";
@@ -550,7 +551,9 @@
 										role="region"
 										aria-label="Playlist"
 									>
-										<AudioCard title={p.title} subTitle={(p as any).owner ?? ""} artworkUid={p.uid} type="playlist" />
+										<AudioCard title={p.title} subTitle={(p as any).owner ?? ""} artworkUid={p.uid} type="playlist">
+											<DefultPlaylistArt tracks={getPlaylistTracks(p.uid)} />
+										</AudioCard>
 									</div>
 								</div>
 							</ContextMenu.Trigger>

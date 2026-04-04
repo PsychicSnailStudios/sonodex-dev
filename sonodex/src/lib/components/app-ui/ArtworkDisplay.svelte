@@ -10,7 +10,7 @@
 	
 	// SCRIPTS
 	import { library } from "$lib/ts/library.svelte";
-	import type { AudioCatagories } from "$lib/types";
+	import type { AudioCatagories } from "$lib/ts/util/types";
 	
 	// PROPS
 	let { uid, size = null, type = "track", previewPath = null }: { uid: string; size?: number | null; type?: AudioCatagories; previewPath?: string | null } = $props();
@@ -118,7 +118,8 @@
 			{:else if type === "artist"}
 				<User class="text-muted-foreground" />
 			{:else if type === "playlist"}
-				<ListMusic class="text-muted-foreground" />
+				<!-- <ListMusic class="text-muted-foreground" /> -->
+				<slot />
 			{/if}
 		</div>
 	{/if}

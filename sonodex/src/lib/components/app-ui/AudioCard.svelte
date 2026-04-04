@@ -6,6 +6,7 @@
 	// CUSTOM COMPONENTS
 	import { Play } from "lucide-svelte";
 	import ArtworkDisplay from "$lib/components/app-ui/ArtworkDisplay.svelte";
+	import DefultPlaylistArt from "$lib/components/app-ui/DefultPlaylistArt.svelte";
 
 	// SCRIPTS
 	import { setSelection } from "$lib/ts/session.svelte";
@@ -35,7 +36,9 @@
 	onclick={() => setSelection(artworkUid, type)}
 >
 	<div class="relative w-full">
-		<ArtworkDisplay uid={artworkUid} type={type} />
+		<ArtworkDisplay uid={artworkUid} type={type}>
+			<slot />
+		</ArtworkDisplay>
 		<div class="absolute inset-0 flex items-end justify-end p-1 opacity-0 group-hover:opacity-100 transition-opacity">
 			<Button variant="secondary" size="icon" onclick={play}>
 				<Play />

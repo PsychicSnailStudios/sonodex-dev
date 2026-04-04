@@ -14,6 +14,7 @@
 	import TrackTableSettings from "$lib/components/app-ui/track-table/TrackTableSettings.svelte"
 	import ArtworkDisplay from "$lib/components/app-ui/ArtworkDisplay.svelte";
 	import TrackTable from "$lib/components/app-ui/track-table/TrackTable.svelte";
+   import DefultPlaylistArt from "$lib/components/app-ui/DefultPlaylistArt.svelte";
 	import NavButtons from "$lib/components/app-ui/NavButtons.svelte";
 	import SearchBar from "$lib/components/app-ui/search/SearchBar.svelte";
 
@@ -102,7 +103,9 @@
 			<NavButtons />
 			
 			<div class="flex gap-4 items-end p-0">
-				<ArtworkDisplay uid={playlist.uid} size={160} type="playlist" />
+				<ArtworkDisplay uid={playlist.uid} size={160} type="playlist">
+					<DefultPlaylistArt tracks={tracks} />
+				</ArtworkDisplay>
 
 				<div class="flex flex-col gap-2">
 					<span class="text-xs text-muted-foreground">Playlist</span>
