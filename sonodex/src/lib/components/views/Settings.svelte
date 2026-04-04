@@ -16,7 +16,7 @@
 
 	// SCRIPTS
 	import { loadLibrary } from "$lib/ts/library.svelte";
-	import { scanState } from "$lib/ts/session.svelte";
+	import { scanState } from "$lib/ts/app-states/state_session.svelte";
 	import { eq, EQ_BANDS, EQ_PRESETS, loadEqSettings, setEqEnabled, setEqBandGain, applyEqPreset,	} from "$lib/ts/app/eqStore.svelte";
 	import { applyEqToGraph } from "$lib/ts/audio/audioManager.svelte";
 	

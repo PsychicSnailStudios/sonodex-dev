@@ -4,7 +4,7 @@
 	import ArtworkDisplay from "$lib/components/app-ui/ArtworkDisplay.svelte";
 	import DefultPlaylistArt from "$lib/components/app-ui/DefultPlaylistArt.svelte";
 
-	import { setSelection } from "$lib/ts/session.svelte";
+	import { setSelection } from "$lib/ts/app-states/state_session.svelte";
 	import { queueTracksByObject } from "$lib/ts/audio/audioManager.svelte";
    import { getPlaylistTracks } from "$lib/ts/library.svelte";
 	import type { Playlist } from "$lib/ts/util/types";

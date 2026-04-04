@@ -8,7 +8,7 @@
    import TrackContext from "$lib/components/app-ui/context-menus/TrackContext.svelte";
 
 	// SCRIPTS
-	import { setSelection } from "$lib/ts/session.svelte";
+	import { setSelection } from "$lib/ts/app-states/state_session.svelte";
 	import { getArtistUidFromName } from "$lib/ts/library.svelte";
 	import { parseArtists } from "$lib/ts/util/helpers";
 	import type { Track } from "$lib/ts/util/types";

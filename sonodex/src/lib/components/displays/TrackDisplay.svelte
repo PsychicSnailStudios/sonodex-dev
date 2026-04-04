@@ -19,7 +19,7 @@
 
 	// SCRIPTS
 	import { getArtistUidFromName, library } from "$lib/ts/library.svelte";
-	import { selection, setSelection } from "$lib/ts/session.svelte";
+	import { selection, setSelection } from "$lib/ts/app-states/state_session.svelte";
 	import { openEditModal } from "$lib/ts/app/editModal.svelte";
 	import { formatDuration, parseAlbumEntries, parseArtists, parseTags } from '$lib/ts/util/helpers';
    import { playTrackByObject } from "$lib/ts/audio/audioManager.svelte";

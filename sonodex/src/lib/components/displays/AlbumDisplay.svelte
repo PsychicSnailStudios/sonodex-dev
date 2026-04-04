@@ -17,12 +17,12 @@
 	import NavButtons from "$lib/components/app-ui/NavButtons.svelte";
 
 	// SCRIPTS
-	import { selection, setSelection } from "$lib/ts/session.svelte";
+	import { selection, setSelection } from "$lib/ts/app-states/state_session.svelte";
 	import { getArtistUidFromName, library, getAlbumTracks } from "$lib/ts/library.svelte";
 	import { queueTracksByObject } from "$lib/ts/audio/audioManager.svelte";
 	import { openEditModal } from "$lib/ts/app/editModal.svelte";
 	import { getArtworkColor, totalDuration } from "$lib/ts/util/helpers"
-	import { createPersistedViewState } from "$lib/ts/session.svelte";
+	import { createPersistedViewState } from "$lib/ts/app-states/state_session.svelte";
 	
 	import type { Album, Track } from "$lib/ts/util/types";
 

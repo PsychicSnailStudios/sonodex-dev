@@ -16,9 +16,9 @@
 
 	// SCRIPTS
 	import { library } from "$lib/ts/library.svelte";
-	import { setSelection } from "$lib/ts/session.svelte";
+	import { setSelection } from "$lib/ts/app-states/state_session.svelte";
 	import { parseArtists } from "$lib/ts/util/helpers";
-	import { createPersistedViewState } from "$lib/ts/session.svelte";
+	import { createPersistedViewState } from "$lib/ts/app-states/state_session.svelte";
 	import type { SortField } from "$lib/ts/app/sortConfig.svelte";
 	
 	// VARIABLES

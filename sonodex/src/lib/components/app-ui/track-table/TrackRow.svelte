@@ -10,9 +10,9 @@
    import TrackRating from "$lib/components/app-ui/TrackRating.svelte";
 
 	// SCRIPTS
-	import { setSelection } from "$lib/ts/session.svelte";
+	import { setSelection } from "$lib/ts/app-states/state_session.svelte";
 	import { trackSelection, selectTrack } from "$lib/ts/app/trackSelection.svelte";
-	import { startDrag, endDrag } from "$lib/ts/drag-n-drop/dragState.svelte";
+	import { startDrag, endDrag } from "$lib/ts/app-states/state_drag.svelte";
 	import { player, playTrackByUid, togglePlay } from "$lib/ts/audio/audioManager.svelte";
 	import { getAlbumUidFromName, getArtistUidFromName } from "$lib/ts/library.svelte";
 	import { formatDuration, parseAlbum, parseArtists, parseTrackNumber } from "$lib/ts/util/helpers";

@@ -19,14 +19,14 @@
 	import SearchBar from "$lib/components/app-ui/search/SearchBar.svelte";
 
 	// SCRIPTS
-	import { selection } from "$lib/ts/session.svelte";
+	import { selection } from "$lib/ts/app-states/state_session.svelte";
 	import { getPlaylistTracks, library } from "$lib/ts/library.svelte";
 	import { openEditModal } from "$lib/ts/app/editModal.svelte";
 	import { getArtworkColor, parseArtists, totalDuration } from '$lib/ts/util/helpers';
 	import { addTrackToPlaylist, addTracksToPlaylist } from "$lib/ts/audio/playlistManager.svelte";
 	import { queueTracksByObject } from "$lib/ts/audio/audioManager.svelte";
-	import { dragState, endDrag } from "$lib/ts/drag-n-drop/dragState.svelte";
-	import { createPersistedViewState } from "$lib/ts/session.svelte";
+	import { dragState, endDrag } from "$lib/ts/app-states/state_drag.svelte";
+	import { createPersistedViewState } from "$lib/ts/app-states/state_session.svelte";
 
 	import type { Track } from "$lib/ts/util/types";
 

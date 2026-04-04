@@ -16,7 +16,7 @@
    import NavButtons from "$lib/components/app-ui/NavButtons.svelte";
 
 	// SCRIPTS
-	import { selection } from "$lib/ts/session.svelte";
+	import { selection } from "$lib/ts/app-states/state_session.svelte";
 	import { library } from "$lib/ts/library.svelte";
 	import { openEditModal } from "$lib/ts/app/editModal.svelte";
 	import type { Artist, Track, Album } from "$lib/ts/util/types";

@@ -28,8 +28,8 @@
 
 	// SCRIPTS
 	import { loadLibrary } from "$lib/ts/library.svelte";
-	import { selection, scanState, loadSessionState, saveSessionState } from "$lib/ts/session.svelte";
-	import { dragState } from "$lib/ts/drag-n-drop/dragState.svelte";
+	import { selection, scanState, loadSessionState, saveSessionState } from "$lib/ts/app-states/state_session.svelte";
+	import { dragState } from "$lib/ts/app-states/state_drag.svelte";
 	import { togglePlay, skipBack, skipNext, loadPlayerState, savePlayerState } from "$lib/ts/audio/audioManager.svelte";
 	import { checkForUpdate } from "$lib/updater.svelte";
 

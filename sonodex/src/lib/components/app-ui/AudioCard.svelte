@@ -9,7 +9,7 @@
 	import DefultPlaylistArt from "$lib/components/app-ui/DefultPlaylistArt.svelte";
 
 	// SCRIPTS
-	import { setSelection } from "$lib/ts/session.svelte";
+	import { setSelection } from "$lib/ts/app-states/state_session.svelte";
 	import { playTrackByUid, queueTracksByObject } from "$lib/ts/audio/audioManager.svelte";
    import { getAlbumTracks, getPlaylistTracks } from "$lib/ts/library.svelte";
 	import type { AudioCatagories } from "$lib/ts/util/types";

@@ -2,7 +2,7 @@
 	import { CircleArrowLeft, CircleArrowRight, CircleX } from "lucide-svelte";
    import Button from "$lib/components/ui/button/button.svelte";
 	
-   import { canGoBack, canGoForward, clearSelection, moveSelection } from "$lib/ts/session.svelte";
+   import { canGoBack, canGoForward, clearSelection, moveSelection } from "$lib/ts/app-states/state_session.svelte";
 
 	let { class: className }: ButtonProps = $props();
 </script>

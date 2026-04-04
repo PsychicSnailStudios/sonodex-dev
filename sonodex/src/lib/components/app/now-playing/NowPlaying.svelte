@@ -18,7 +18,7 @@
 	import RecentlyPlayed from "$lib/components/app/now-playing/RecentlyPlayed.svelte";
 
 	// SCRIPTS
-	import { setSelection } from "$lib/ts/session.svelte";
+	import { setSelection } from "$lib/ts/app-states/state_session.svelte";
 	import { getArtistUidFromName } from "$lib/ts/library.svelte";
 	import { currentlyPlaying, player } from "$lib/ts/audio/audioManager.svelte";
 	import { getArtworkColor, parseArtists } from "$lib/ts/util/helpers";

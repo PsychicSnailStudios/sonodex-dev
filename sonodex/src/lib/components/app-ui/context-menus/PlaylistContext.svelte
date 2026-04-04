@@ -1,6 +1,6 @@
 <script lang="ts">
 	import * as ContextMenu from "$lib/components/ui/context-menu/index.js";
-	import { movePlaylists } from "$lib/ts/drag-n-drop/dragState.svelte";
+	import { movePlaylists } from "$lib/ts/drag-n-drop/dragdrop_playlists";
 
 	let { folderPaths, uid } = $props<{ folderPaths: string[]; uid: string }>();
 </script>

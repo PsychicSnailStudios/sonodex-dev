@@ -2,7 +2,7 @@
 	import { onMount } from "svelte";
 	import { invoke } from "@tauri-apps/api/core";
 	import { library, getArtistUidFromName } from "$lib/ts/library.svelte";
-	import { setSelection } from "$lib/ts/session.svelte";
+	import { setSelection } from "$lib/ts/app-states/state_session.svelte";
 	import { parseArtists } from "$lib/ts/util/helpers";
 	import ArtworkDisplay from "$lib/components/app-ui/ArtworkDisplay.svelte";
 	import type { Track } from "$lib/ts/util/types";

@@ -21,16 +21,16 @@
 	import PlaylistContext from "$lib/components/app-ui/context-menus/PlaylistContext.svelte";
 	import PlaylistFolderCard from "$lib/components/app-ui/playlist/PlaylistFolderCard.svelte";
 	import ImportPlaylist from "$lib/components/dialogs/ImportPlaylist.svelte";
-	import DefultPlaylistArt from "$lib/components/app-ui/DefultPlaylistArt.svelte";
 
 	// SCRIPTS
-	import { getPlaylistTracks, library } from "$lib/ts/library.svelte";
-	import { dragState, setHoveredPlaylist, endDrag, onFolderDragOver, onFolderDragExit, onBreadcrumbDragOver,
-				onBreadcrumbDragExit, dropOnPlaylist, movePlaylists, startDrag } from "$lib/ts/drag-n-drop/dragState.svelte";
+	import { library } from "$lib/ts/library.svelte";
+	import { dragState, endDrag, setHoveredPlaylist } from "$lib/ts/app-states/state_drag.svelte";
+	import { isDraggingFolderType } from "$lib/ts/drag-n-drop/dragdrop";
+	import { startFolderDrag, onFolderDragOver, onFolderDragExit, onBreadcrumbDragOver, onBreadcrumbDragExit, dropOnFolder, dropOnRoot, resetFolderTimers } from "$lib/ts/drag-n-drop/dragdrop_folders";
+	import { startPlaylistDrag, dropOnPlaylist, movePlaylists } from "$lib/ts/drag-n-drop/dragdrop_playlists";
 	import { folderSelection, navigateTo, breadcrumbs, registerFolder, removeFolder } from "$lib/ts/app/folderSelection.svelte";
-	import { addTracksToPlaylist } from "$lib/ts/audio/playlistManager.svelte";
 	import { playlistOrder, applyCustomOrder, reorder } from "$lib/ts/app/playlistOrderStore.svelte";
-	
+
 	import type { Playlist } from "$lib/ts/util/types";
 	type PlaylistSortField = "title" | "date_created" | "custom";
 
@@ -81,7 +81,7 @@
 			...folderSelection.knownFolders,
 		])].sort()
 	);
-	
+
 	// APP FUNCTIONS
 	$effect(() => {
 		try {
@@ -207,34 +207,12 @@
 		expandedFolders = next;
 	}
 
-	function isDraggingFolderType(e: DragEvent): boolean {
-		return e.dataTransfer?.types.includes("application/x-sonodex-folder") ?? false;
-	}
-
-	function startPlaylistDrag(e: DragEvent, uid: string) {
-		if (e.dataTransfer) {
-			e.dataTransfer.setData("text/plain", uid);
-			e.dataTransfer.effectAllowed = "move";
-		}
-		draggingPlaylistUid = uid;
-		startDrag({ type: "tracks", uids: [uid], sourcePlaylistUid: null });
-	}
-
-	function startFolderDrag(e: DragEvent, path: string) {
-		if (e.dataTransfer) {
-			e.dataTransfer.setData("text/plain", path);
-			e.dataTransfer.setData("application/x-sonodex-folder", "1");
-			e.dataTransfer.effectAllowed = "move";
-		}
-		draggingFolderPath = path;
-		startDrag({ type: "tracks", uids: [path], sourcePlaylistUid: null });
-	}
-
 	function handleDragEnd() {
 		draggingPlaylistUid = null;
 		draggingFolderPath = null;
 		dragOverIndex = null;
 		dragOverFolderIndex = null;
+		resetFolderTimers();
 		endDrag();
 	}
 
@@ -248,65 +226,14 @@
 		if (dragState.hoveredPlaylistUid === playlistUid) setHoveredPlaylist(null);
 	}
 
-	async function nestFolder(draggedPath: string, targetPath: string) {
-		if (draggedPath === targetPath) return;
-		if (targetPath.startsWith(draggedPath + "/")) return;
-		const folderName = draggedPath.split("/").at(-1)!;
-		const newPath = `${targetPath}/${folderName}`;
-		await invoke("rename_playlist_folder", { oldPath: draggedPath, newPath });
-		removeFolder(draggedPath);
-		registerFolder(newPath);
-		library.playlists = await invoke("get_playlists");
+	function handleFolderDragStart(e: DragEvent, folderPath: string) {
+		draggingFolderPath = folderPath;
+		startFolderDrag(e, folderPath);
 	}
 
-	async function moveFolderToRoot(draggedPath: string) {
-		const folderName = draggedPath.split("/").at(-1)!;
-		if (draggedPath === folderName) return;
-		await invoke("rename_playlist_folder", { oldPath: draggedPath, newPath: folderName });
-		removeFolder(draggedPath);
-		registerFolder(folderName);
-		library.playlists = await invoke("get_playlists");
-	}
-
-	async function dropOnFolder(e: DragEvent, targetPath: string) {
-		e.preventDefault();
-		e.stopPropagation();
-		onFolderDragExit(targetPath);
-		dragOverIndex = null;
-		dragOverFolderIndex = null;
-		const raw = e.dataTransfer?.getData("text/plain");
-		if (!raw) { endDrag(); return; }
-
-		if (isDraggingFolderType(e)) {
-			await nestFolder(raw.trim(), targetPath);
-			draggingFolderPath = null;
-		} else {
-			const uids = raw.split(",").map((u) => u.trim()).filter(Boolean);
-			if (uids.every((u) => u.startsWith("p-"))) {
-				await movePlaylists(uids, targetPath);
-			} else {
-				const first = getDirectPlaylists(targetPath)[0];
-				if (first) await addTracksToPlaylist(first.uid, uids);
-			}
-		}
-		endDrag();
-	}
-
-	async function dropOnRoot(e: DragEvent) {
-		e.preventDefault();
-		const raw = e.dataTransfer?.getData("text/plain");
-		if (!raw) { endDrag(); return; }
-
-		if (isDraggingFolderType(e)) {
-			await moveFolderToRoot(raw.trim());
-			draggingFolderPath = null;
-		} else {
-			const uids = raw.split(",").map((u) => u.trim()).filter(Boolean);
-			if (uids.every((u) => u.startsWith("p-"))) {
-				await movePlaylists(uids, null);
-			}
-		}
-		endDrag();
+	function handlePlaylistDragStart(e: DragEvent, uid: string) {
+		draggingPlaylistUid = uid;
+		startPlaylistDrag(e, uid);
 	}
 
 	function reorderFolders(fromIndex: number, toIndex: number) {
@@ -478,7 +405,7 @@
 										class:ring-primary={folderHovered && !isDropTarget}
 										draggable="true"
 										onclick={() => navigateTo(folderPath)}
-										ondragstart={(e) => startFolderDrag(e, folderPath)}
+										ondragstart={(e) => handleFolderDragStart(e, folderPath)}
 										ondragend={handleDragEnd}
 										ondragover={(e) => {
 											e.preventDefault();
@@ -495,7 +422,7 @@
 										}}
 										ondrop={(e) => {
 											e.stopPropagation();
-											dropOnFolder(e, folderPath);
+											dropOnFolder(e, folderPath, getDirectPlaylists);
 										}}
 									>
 										<PlaylistFolderCard folderPath={folderLabel(folderPath)} artUids={artUids} />
@@ -524,7 +451,7 @@
 									<div
 										draggable="true"
 										class="cursor-grab"
-										ondragstart={(e) => startPlaylistDrag(e, p.uid)}
+										ondragstart={(e) => handlePlaylistDragStart(e, p.uid)}
 										ondragend={handleDragEnd}
 										ondragover={(e) => {
 											e.preventDefault();
@@ -551,9 +478,7 @@
 										role="region"
 										aria-label="Playlist"
 									>
-										<AudioCard title={p.title} subTitle={(p as any).owner ?? ""} artworkUid={p.uid} type="playlist">
-											<DefultPlaylistArt tracks={getPlaylistTracks(p.uid)} />
-										</AudioCard>
+										<AudioCard title={p.title} subTitle={(p as any).owner ?? ""} artworkUid={p.uid} type="playlist" />
 									</div>
 								</div>
 							</ContextMenu.Trigger>
@@ -579,7 +504,7 @@
 									class:ring-primary={folderHovered}
 									class:opacity-40={draggingFolderPath === row.path}
 									style="padding-left: {(row.depth + 1) * 16}px; padding-right: 8px;"
-									ondragstart={(e) => startFolderDrag(e, row.path)}
+									ondragstart={(e) => handleFolderDragStart(e, row.path)}
 									ondragend={handleDragEnd}
 									ondragover={(e) => {
 										e.preventDefault();
@@ -588,7 +513,7 @@
 										}
 									}}
 									ondragleave={() => onFolderDragExit(row.path)}
-									ondrop={(e) => dropOnFolder(e, row.path)}
+									ondrop={(e) => dropOnFolder(e, row.path, getDirectPlaylists)}
 								>
 									<button
 										class="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
@@ -631,7 +556,7 @@
 											{/if}
 											<div
 												draggable="true"
-												ondragstart={(e) => startPlaylistDrag(e, p.uid)}
+												ondragstart={(e) => handlePlaylistDragStart(e, p.uid)}
 												ondragend={handleDragEnd}
 												ondragover={(e) => handleCompactPlaylistDragOver(e, pi)}
 												ondrop={(e) => handleCompactPlaylistDrop(e, pi)}
@@ -666,7 +591,7 @@
 									{/if}
 									<div
 										draggable="true"
-										ondragstart={(e) => startPlaylistDrag(e, p.uid)}
+										ondragstart={(e) => handlePlaylistDragStart(e, p.uid)}
 										ondragend={handleDragEnd}
 										ondragover={(e) => handleCompactPlaylistDragOver(e, pi)}
 										ondrop={(e) => handleCompactPlaylistDrop(e, pi)}

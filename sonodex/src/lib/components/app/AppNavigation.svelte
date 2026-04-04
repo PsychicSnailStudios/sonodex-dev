@@ -5,7 +5,7 @@
 	import { Button } from "$lib/components/ui/button/index.js";
 
 	// SCRIPTS
-	import { dragState } from "$lib/ts/drag-n-drop/dragState.svelte";
+	import { dragState } from "$lib/ts/app-states/state_drag.svelte";
 
 	// PROPS
 	let {activeView = $bindable("home")} = $props<{ activeView: string }>();

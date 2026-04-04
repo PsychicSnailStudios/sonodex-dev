@@ -12,7 +12,7 @@
 	// SCRIPTS
 	import { library } from "$lib/ts/library.svelte";
 	import { createColumnState } from "$lib/ts/app/columnConfig.svelte"
-	import { createPersistedViewState } from "$lib/ts/session.svelte";
+	import { createPersistedViewState } from "$lib/ts/app-states/state_session.svelte";
 
 	// VARIABLES
 	let search = $state("");

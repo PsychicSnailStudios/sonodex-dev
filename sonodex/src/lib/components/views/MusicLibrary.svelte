@@ -2,7 +2,7 @@
 
 <script lang="ts">
 	import { library } from "$lib/ts/library.svelte";
-	import { setSelection } from "$lib/ts/session.svelte";
+	import { setSelection } from "$lib/ts/app-states/state_session.svelte";
 
 	import { createColumnState } from "$lib/ts/app/columnConfig.svelte"
 
