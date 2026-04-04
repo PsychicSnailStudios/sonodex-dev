@@ -9,7 +9,7 @@
 
 <div class="flex w-full max-w-sm items-center gap-2">
 	<InputGroup.Root>
-		<InputGroup.Input placeholder="Search..." bind:value={search} class="w-48" />
+		<InputGroup.Input placeholder="Search…" bind:value={search} class="w-48" />
 		<InputGroup.Addon>
 		<Search />
 		</InputGroup.Addon>

@@ -96,8 +96,10 @@
 		</div>
 
 		<div class="flex gap-2  flex-wrap">
-			<Button variant="default" onclick={() => queueTracksByObject(tracks, true)}>Play All</Button>
-			<Button variant="outline" onclick={() => queueTracksByObject(tracks, true, true)}>Shuffle</Button>
+			<Button variant="default" onclick={() => queueTracksByObject(tracks, true)}>{ tracks.length === 1 ? "Play" : "Play All"}</Button>
+			{#if tracks.length > 1}
+				<Button variant="outline" onclick={() => queueTracksByObject(tracks, true, true)}>Shuffle</Button>
+			{/if}
 			<Button variant="ghost" onclick={() => openEditModal({ type: "album", uid: album!.uid })}><Pencil /></Button>
 			<TrackTableSettings cols={view.cols} sort={view.sort} compact={view.compact} onCompactChange={(v) => view.compact = v} />
 		</div>

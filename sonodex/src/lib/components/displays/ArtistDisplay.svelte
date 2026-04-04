@@ -4,6 +4,8 @@
 	import { invoke } from "@tauri-apps/api/core";
 
 	// COMPONENTS
+	import { Pencil } from "lucide-svelte";
+
 	import * as Tabs from "$lib/components/ui/tabs/index.js";
 	import { Button } from "$lib/components/ui/button/index.js";
    import ScrollArea from "$lib/components/ui/scroll-area/scroll-area.svelte";
@@ -62,7 +64,7 @@
 				<div class="flex gap-2">
 					<Button variant="default">Play All</Button>
 					<Button variant="outline">Shuffle</Button>
-					<Button variant="ghost" onclick={() => openEditModal({ type: "artist", uid: artist!.uid })}>...</Button>
+					<Button variant="ghost" onclick={() => openEditModal({ type: "artist", uid: artist!.uid })}><Pencil/></Button>
 				</div>
 			</div>
 		</div>
