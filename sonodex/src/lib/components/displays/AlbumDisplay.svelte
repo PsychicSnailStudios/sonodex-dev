@@ -73,9 +73,7 @@
 			<ArtworkDisplay uid={album.uid} size={160} type="album" />
 
 			<div class="flex flex-col gap-1">
-				{#if album.format}
-					<span class="text-xs text-muted-foreground">{album.format}</span>
-				{/if}
+				<span class="text-xs text-muted-foreground">{album.format ? album.format : "Album"}</span>
 				<h2 class="text-2xl font-bold">{album.title}</h2>
 				<div class="flex gap-3 text-sm text-muted-foreground flex-wrap">
 					{#if album.album_artist}
