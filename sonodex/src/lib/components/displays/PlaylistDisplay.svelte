@@ -122,12 +122,21 @@
 						<span>|</span>
 						<span>{playlist.owner}</span>
 					</div>
-					<div class="flex gap-2 flex-wrap">
-						<Button variant="default" onclick={() => queueTracksByObject(tracks, true)}>Play All</Button>
-						<Button variant="outline" onclick={() => queueTracksByObject(tracks, true, true)}>Shuffle</Button>
-						<Button variant="ghost" size="icon" onclick={() => openEditModal({ type: "playlist", uid: playlist!.uid })}><Pencil /></Button>
-						<TrackTableSettings cols={view.cols} sort={view.sort} compact={view.compact} onCompactChange={(v) => view.compact = v} />
-					</div>
+				</div>
+			</div>
+
+			<div class="flex gap-2 justify-between items-center flex-wrap p-2 rounded-md"
+				  style="background: {color};">
+				<div>
+					<Button variant="default" onclick={() => queueTracksByObject(tracks, true)}>{ tracks.length === 1 ? "Play" : "Play All"}</Button>
+					{#if tracks.length > 1}
+					<Button variant="outline" onclick={() => queueTracksByObject(tracks, true, true)}>Shuffle</Button>
+					{/if}
+				</div>
+				
+				<div class="flex gap-1 items-center">
+					<Button variant="ghost" size="icon" onclick={() => openEditModal({ type: "playlist", uid: playlist!.uid })}><Pencil /></Button>
+					<TrackTableSettings cols={view.cols} sort={view.sort} compact={view.compact} onCompactChange={(v) => view.compact = v} />
 				</div>
 			</div>
 

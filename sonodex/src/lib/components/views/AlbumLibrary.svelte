@@ -1,7 +1,7 @@
 <script lang="ts">
 	// APP
 	// COMPONENTS
-	import { ArrowDownAZ, ArrowUpAZ, ArrowUpDown, ChevronUp, ChevronDown, LayoutGrid, List } from "lucide-svelte";
+	import { ArrowUpDown, ArrowUp, ArrowDown, LayoutGrid, List } from "lucide-svelte";
 
 	import * as DropdownMenu from "$lib/components/ui/dropdown-menu/index.js";
 	import { ScrollArea } from "$lib/components/ui/scroll-area/index.js";
@@ -13,6 +13,7 @@
 	import AudioCard from "$lib/components/app-ui/AudioCard.svelte";
 	import ArtworkDisplay from "$lib/components/app-ui/ArtworkDisplay.svelte";
 	import SearchBar from "$lib/components/app-ui/search/SearchBar.svelte";
+	import MediaGrid from "$lib/layouts/MediaGrid.svelte";
 
 	// SCRIPTS
 	import { library } from "$lib/ts/library.svelte";
@@ -62,90 +63,117 @@
 	}
 </script>
 
-<div class="flex flex-col gap-2 p-4 border-2 h-full w-full overflow-hidden rounded-md">
+<div class="flex flex-col gap-2 pt-4 border-2 h-full w-full overflow-hidden rounded-md">
 
-	<div class="flex justify-between items-center gap-2">
+	<div class="flex justify-between items-center gap-2 pr-4 pl-4">
 		<h1 class="h1">Albums</h1>
 
 		<SearchBar bind:search searchCount={filteredAlbums.length} />
 
 	</div>
 
-	<div class="flex flex-col h-full w-full overflow-hidden gap-3">
-		<div class="flex justify-between">
-			<span>{library.albums.length} {library.albums.length === 1 ? "album" : "albums"}</span>
-			<div class="flex items-center gap-1">
-				<DropdownMenu.Root>
-					<DropdownMenu.Trigger>
-						<Button variant="ghost" size="sm" class="gap-2">
-							<!-- <ArrowUpDown size={14} /> -->
-							{view.sort.field}
-						</Button>
-					</DropdownMenu.Trigger>
-					<DropdownMenu.Content>
-						<DropdownMenu.Item
-							class={view.sort.field === "name" as SortField ? "bg-accent" : ""}
-							onSelect={() => toggleAlbumSort("name")}
-						>Name</DropdownMenu.Item>
-						<DropdownMenu.Item
-							class={view.sort.field === "artist" ? "bg-accent" : ""}
-							onSelect={() => toggleAlbumSort("artist")}
-						>Artist</DropdownMenu.Item>
-						<DropdownMenu.Item
-							class={view.sort.field === "year" ? "bg-accent" : ""}
-							onSelect={() => toggleAlbumSort("year")}
-						>Year</DropdownMenu.Item>
-					</DropdownMenu.Content>
-				</DropdownMenu.Root>
+	<div class="flex justify-between pr-4 pl-4">
+		<span>{library.albums.length} {library.albums.length === 1 ? "album" : "albums"}</span>
+		<div class="flex items-center gap-1">
+			<DropdownMenu.Root>
+				<DropdownMenu.Trigger>
+					<Button variant="ghost" size="sm" class="gap-2">
+						{#if view.sort.field === null}
+							<ArrowUpDown class="size-3" />
+						{:else if view.sort.direction === "asc"}
+							<ArrowUp class="size-3" />
+						{:else}
+							<ArrowDown class="size-3" />
+						{/if}
+						{view.sort.field}
+					</Button>
+				</DropdownMenu.Trigger>
+				<DropdownMenu.Content>
+					<DropdownMenu.Item
+						class={view.sort.field === "name" as SortField ? "bg-accent" : ""}
+						onSelect={() => toggleAlbumSort("name")}
+					>
+						{#if view.sort.field === "name"}
+							{#if view.sort.field === null}
+							<ArrowUpDown class="size-3 text-primary" />
+							{:else if view.sort.direction === "asc"}
+								<ArrowUp class="size-3 text-primary" />
+							{:else}
+								<ArrowDown class="size-3 text-primary" />
+							{/if}
+						{/if}
+						Name
+					</DropdownMenu.Item>
+					<DropdownMenu.Item
+						class={view.sort.field === "artist" ? "bg-accent" : ""}
+						onSelect={() => toggleAlbumSort("artist")}
+					>
+						{#if view.sort.field === "artist"}
+							{#if view.sort.field === null}
+							<ArrowUpDown class="size-3 text-primary" />
+							{:else if view.sort.direction === "asc"}
+								<ArrowUp class="size-3 text-primary" />
+							{:else}
+								<ArrowDown class="size-3 text-primary" />
+							{/if}
+						{/if}
+						Artist
+					</DropdownMenu.Item>
+					<DropdownMenu.Item
+						class={view.sort.field === "year" ? "bg-accent" : ""}
+						onSelect={() => toggleAlbumSort("year")}
+					>
+						{#if view.sort.field === "year"}
+							{#if view.sort.field === null}
+							<ArrowUpDown class="size-3 text-primary" />
+							{:else if view.sort.direction === "asc"}
+								<ArrowUp class="size-3 text-primary" />
+							{:else}
+								<ArrowDown class="size-3 text-primary" />
+							{/if}
+						{/if}
+						Year
+					</DropdownMenu.Item>
+				</DropdownMenu.Content>
+			</DropdownMenu.Root>
 
-				<Button variant="ghost" size="sm" onclick={() => view.sort.direction = view.sort.direction === "asc" ? "desc" : "asc"} class="px-2">
-					{#if view.sort.direction === "asc"}
-						<ChevronUp size={14} />
-					{:else}
-						<ChevronDown size={14} />
-					{/if}
-				</Button>
-
-				<Toggle onPressedChange={() => view.compact = !view.compact}>
-					{#if view.compact}
-						<LayoutGrid />
-						<!-- Table -->
-					{:else}
-						<List />
-						<!-- List -->
-					{/if}
-				</Toggle>
-			</div>
+			<Button variant="ghost" size="icon" onclick={() => view.compact = !view.compact}>
+				{#if view.compact}
+				<!-- Table -->
+				<List />
+				{:else}
+				<LayoutGrid />
+					<!-- List -->
+				{/if}
+			</Button>
 		</div>
+	</div>
 
-		<ScrollArea class="min-h-0 min-w-0 pr-4">
+	<div class="flex flex-col h-full w-full overflow-hidden gap-3 p-0.5">
+		<ScrollArea class="min-h-0 min-w-0 pr-2">
 		{#if view.compact}
-			{#each filteredAlbums() as album}
-			<div
-				class="grid items-center px-3 border-b hover:bg-muted/50"
-				style="grid-template-columns: 40px 1fr 1fr 40px; height: 56px;"
-			>
-				<ArtworkDisplay uid={album.uid} type="album" size={40} />
-				<button onclick={() => setSelection(album.uid, "album")} class="pl-2 text-sm truncate text-left">
-					<p class="text-sm font-medium">{album.title}</p>
-				</button>
-				<p class="text-sm">{parseArtists(album.artists)}</p>
-				<p class="text-sm">{album.release_date}</p>
+			<div class="pr-4 pl-4 pb-4">
+				{#each filteredAlbums() as album}
+					<div
+						class="grid items-center px-3 border-b hover:bg-muted/50"
+						style="grid-template-columns: 40px 1fr 1fr 40px; height: 56px;"
+					>
+						<ArtworkDisplay uid={album.uid} type="album" size={40} />
+						<button onclick={() => setSelection(album.uid, "album")} class="pl-2 text-sm truncate text-left">
+							<p class="text-sm font-medium">{album.title}</p>
+						</button>
+						<p class="text-sm">{parseArtists(album.artists)}</p>
+						<p class="text-sm">{album.release_date}</p>
+					</div>
+				{/each}
 			</div>
-			{/each}
 		{:else}
-			<div class="app-music-grid grid gap-2">
+			<MediaGrid>
 				{#each filteredAlbums() as album}
 					<AudioCard title={album.title} subTitle={album.album_artist} artworkUid={album.uid} type="album" />
 				{/each}
-			</div>
+			</MediaGrid>
 		{/if}
 		</ScrollArea>
 	</div>
 </div>
-
-<style>
-.app-music-grid {
-	grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-}
-</style>

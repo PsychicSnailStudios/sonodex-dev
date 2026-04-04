@@ -28,10 +28,12 @@
 	// VARIABLES
 	let track = $derived(library.tracks.find(t => t.uid === selection.uid) ?? null);
 	let lyrics: Lyrics | null = $state(null);
+	let tags: string[] | null = $state(null);
 	
 	// APP FUNCTIONS
 	onMount(async () => {
 		lyrics = await invoke("get_track_lyrics", { uid: selection.uid });
+		tags = track?.tags ? parseTags(track.tags) : null;
 	});
 </script>
 
@@ -66,18 +68,19 @@
 				<div>
 					<TrackRating uid={track.uid} rating={track.rating} />
 				</div>
-				<TagList tags={parseTags(track.tags)} />
-				<div class="flex gap-1 flex-wrap">
-					<Button variant="default" onclick={() => playTrackByObject(track)}>Play</Button>
-					<TrackPlaylistEditButton track={track} />
-					<Button variant="ghost" size="icon" onclick={() => openEditModal({ type: "track", uid: track!.uid })}><Pencil /></Button>
-				</div>
 			</div>
+		</div>
+
+		<div class="flex gap-1 flex-wrap">
+			<Button variant="default" onclick={() => playTrackByObject(track)}>Play</Button>
+			<TrackPlaylistEditButton track={track} />
+			<Button variant="ghost" size="icon" onclick={() => openEditModal({ type: "track", uid: track!.uid })}><Pencil /></Button>
 		</div>
 
 		<Tabs.Root value="lyrics" class="flex flex-col min-h-0 flex-1">
 			<Tabs.List>
 				<Tabs.Trigger value="lyrics">Lyrics</Tabs.Trigger>
+				<Tabs.Trigger value="tags">Tags</Tabs.Trigger>
 				<Tabs.Trigger value="credits">Credits</Tabs.Trigger>
 				<Tabs.Trigger value="explore">Explore</Tabs.Trigger>
 			</Tabs.List>
@@ -89,6 +92,14 @@
 					<pre class="text-sm whitespace-pre-wrap font-sans leading-relaxed">{lyrics.plain}</pre>
 				{:else}
 					<p class="text-muted-foreground text-sm">No lyrics available.</p>
+				{/if}
+			</Tabs.Content>
+
+			<Tabs.Content value="tags" class="flex-1 overflow-y-auto mt-2">
+				{#if tags}
+					<TagList tags={tags} canEdit={true} />
+				{:else}
+					<p class="text-muted-foreground text-sm">Track has no tags.</p>
 				{/if}
 			</Tabs.Content>
 

@@ -95,13 +95,18 @@
 			</div>
 		</div>
 
-		<div class="flex gap-2  flex-wrap">
-			<Button variant="default" onclick={() => queueTracksByObject(tracks, true)}>{ tracks.length === 1 ? "Play" : "Play All"}</Button>
-			{#if tracks.length > 1}
-				<Button variant="outline" onclick={() => queueTracksByObject(tracks, true, true)}>Shuffle</Button>
-			{/if}
-			<Button variant="ghost" onclick={() => openEditModal({ type: "album", uid: album!.uid })}><Pencil /></Button>
-			<TrackTableSettings cols={view.cols} sort={view.sort} compact={view.compact} onCompactChange={(v) => view.compact = v} />
+		<div class="flex gap-2 justify-between items-center flex-wrap p-2 rounded-md"
+			  style="background: {color};">
+			<div>
+				<Button variant="default" onclick={() => queueTracksByObject(tracks, true)}>{ tracks.length === 1 ? "Play" : "Play All"}</Button>
+				{#if tracks.length > 1}
+					<Button variant="outline" onclick={() => queueTracksByObject(tracks, true, true)}>Shuffle</Button>
+				{/if}
+			</div>
+			<div class="flex gap-1 items-center">
+				<Button variant="ghost" onclick={() => openEditModal({ type: "album", uid: album!.uid })}><Pencil /></Button>
+				<TrackTableSettings cols={view.cols} sort={view.sort} compact={view.compact} onCompactChange={(v) => view.compact = v} />
+			</div>
 		</div>
 
 		<TrackTable tracks={tracks} columns={view.cols} sort={view.sort} compact={view.compact} />

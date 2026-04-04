@@ -25,22 +25,29 @@
 <DropdownMenu.Root>
 	<DropdownMenu.Trigger>
 		{#snippet child({ props })}
-			<Button {...props} variant="ghost" size="icon"><EllipsisIcon/></Button>
+			<Button {...props} variant="ghost">
+				<!-- {sort.field ? sort.field : "Custom"} -->
+				{#if compact}
+				<TextAlignJustify />
+				{:else}
+				<List />
+				{/if}
+			</Button>
 		{/snippet}
 	</DropdownMenu.Trigger>
 
 	<DropdownMenu.Content>
 		<DropdownMenu.Group>
 			<DropdownMenu.Label>View As</DropdownMenu.Label>
-			<Toggle onPressedChange={() => onCompactChange(!compact)} >
+			<Button variant="ghost" onclick={() => onCompactChange(!compact)} >
 				{#if compact}
-					<List />
-					List
+				<TextAlignJustify />
+				Compact
 				{:else}
-					<TextAlignJustify />
-					Compact
+				<List />
+				List
 				{/if}
-			</Toggle>
+			</Button>
 		</DropdownMenu.Group>
 
 		<DropdownMenu.Separator />

@@ -5,6 +5,10 @@
 
 	let { tags, canEdit = false } = $props<{ tags: string[], canEdit?: boolean }>();
 
+	function removeTag(tag: string) {
+		tags = tags.filter(t => t !== tag);
+	}
+
 </script>
 
 <div class="flex flex-wrap gap-1">
@@ -12,7 +16,7 @@
 		<Badge variant="outline">
 			<span class="text-xs">{tag}</span>
 			{#if canEdit}
-				<button><X class="cursor-pointer w-4 h-4"/></button>
+				<button onclick={() => removeTag(tag)}><X class="cursor-pointer w-4 h-4"/></button>
 			{/if}
 		</Badge>
 	{/each}
