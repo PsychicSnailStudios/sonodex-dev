@@ -16,6 +16,9 @@
 		{#if searchCount > 0 && search !== ""}
 			<InputGroup.Addon align="inline-end">{searchCount} {searchCount === 1 ? "result" : "results"}</InputGroup.Addon>
 		{/if}
+		<InputGroup.Addon align="inline-end">
+			<X class="cursor-pointer" onclick={() => (search = "")} />
+		</InputGroup.Addon>
 	</InputGroup.Root>
   <Button type="submit" variant="outline"><Funnel/></Button>
 </div>
