@@ -121,7 +121,7 @@
 {/if}
 
 <div bind:clientWidth={containerWidth} class="h-full w-full overflow-hidden">
-<Resizable.PaneGroup direction="horizontal" class="app-wrapper grid gap-0.5 p-2 overflow-hidden">
+<Resizable.PaneGroup direction="horizontal" class="app-wrapper grid gap-0.5 pl-2 pr-2 pb-2 overflow-hidden">
 
 	<Resizable.Pane defaultSize={defaultSidebarWidth} minSize={minSidebarWidth} maxSize={maxSidebarWidth} class="app-sidebar grid gap-1">
 		<div class="app-sidebar grid gap-1 max-[{maxSidebarWidth}px]">

@@ -46,18 +46,19 @@
 </script>
 
 <div
-  class="flex h-9 w-full select-none items-center justify-between bg-background px-4"
+  class="flex h-9 w-full select-none items-center justify-between bg-background px-2"
   role="presentation"
   tabindex="-1"
   onmousedown={startDrag}>
 
-  <WindowContext />
+  <!-- <WindowContext /> -->
+  <span></span>
 
-  <div class="flex items-center gap-1" role="presentation" onmousedown={(e) => e.stopPropagation()}>
+  <div class="flex items-center gap-2" role="presentation" onmousedown={(e) => e.stopPropagation()}>
     
     <button
       onclick={minimize}
-      class="flex h-7 w-7 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+      class="flex h-5 w-5 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
       aria-label="Minimize"
     >
       <Minus size={16} />
@@ -65,7 +66,7 @@
 
     <button
       onclick={maximize}
-      class="flex h-7 w-7 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+      class="flex h-5 w-5 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
       aria-label="Maximize"
     >
       {#if isMaximized}
@@ -77,7 +78,7 @@
 
     <button
       onclick={close}
-      class="flex h-7 w-7 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-destructive hover:text-destructive-foreground"
+      class="flex h-5 w-5 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-destructive hover:text-destructive-foreground"
       aria-label="Close"
     >
       <X size={16} />
