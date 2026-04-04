@@ -12,6 +12,7 @@
 	// CUSTOM COMPONENTS
 	import AudioCard from "$lib/components/app-ui/AudioCard.svelte";
 	import ArtworkDisplay from "$lib/components/app-ui/ArtworkDisplay.svelte";
+	import SearchBar from "$lib/components/app-ui/search/SearchBar.svelte";
 
 	// SCRIPTS
 	import { library } from "$lib/ts/library.svelte";
@@ -66,11 +67,7 @@
 	<div class="flex justify-between items-center gap-2">
 		<h1 class="h1">Albums</h1>
 
-		<Input
-			placeholder="Search..."
-			bind:value={search}
-			class="w-48"
-		/>
+		<SearchBar bind:search searchCount={filteredAlbums.length} />
 
 	</div>
 

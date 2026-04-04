@@ -9,7 +9,8 @@
 	import Toggle from "$lib/components/ui/toggle/toggle.svelte";
 
 	// CUSTOM COMPONENTS
-	import ArtworkDisplay from "../app-ui/ArtworkDisplay.svelte";
+	import ArtworkDisplay from "$lib/components/app-ui/ArtworkDisplay.svelte";
+	import SearchBar from "$lib/components/app-ui/search/SearchBar.svelte";
 
 	// SCRIPTS
 	import { library } from "$lib/ts/library.svelte";
@@ -42,11 +43,7 @@
 	<div class="flex justify-between items-center gap-2">
 		<h1 class="h1">Artists</h1>
 
-		<Input
-			placeholder="Search..."
-			bind:value={search}
-			class="w-48"
-		/>
+		<SearchBar bind:search searchCount={filteredArtists.length} />
 
 	</div>
 

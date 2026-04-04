@@ -15,6 +15,7 @@
 	import ArtworkDisplay from "$lib/components/app-ui/ArtworkDisplay.svelte";
 	import TrackTable from "$lib/components/app-ui/track-table/TrackTable.svelte";
 	import NavButtons from "$lib/components/app-ui/NavButtons.svelte";
+	import SearchBar from "$lib/components/app-ui/search/SearchBar.svelte";
 
 	// SCRIPTS
 	import { selection } from "$lib/ts/session.svelte";
@@ -129,11 +130,7 @@
 			<div class="flex flex-col gap-1 p-3 mt-8 m-4 rounded-md bg-muted">
 				<div class="flex items-center justify-between p-2">
 					<h3>Find More</h3>
-					<Input
-						placeholder="Search..."
-						bind:value={search}
-						class="w-48"
-					/>
+					<SearchBar bind:search searchCount={filteredTracks.length} />
 				</div>
 				
 				<ScrollArea class="min-h-0 min-w-0 h-[300px] p-2">
