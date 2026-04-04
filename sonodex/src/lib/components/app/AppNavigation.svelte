@@ -14,11 +14,11 @@
 	const VIEW_TABS = [
 		{ value: "home", label: "Profile", icon: House },
 		// { value: "search", label: "Explore", icon: Search },
-		{ value: "playlists", label: "Playlists", icon: ListMusic },
 		// { value: "music", label: "Music", icon: Music },
 		{ value: "tracks", label: "Tracks", icon: Music },
 		{ value: "albums", label: "Albums", icon: DiscAlbum },
 		{ value: "artists", label: "Artists", icon: SquareUser },
+		{ value: "playlists", label: "Playlists", icon: ListMusic },
 	];
 
 	let hoverTabTimeouts = new Map<string, ReturnType<typeof setTimeout>>();
