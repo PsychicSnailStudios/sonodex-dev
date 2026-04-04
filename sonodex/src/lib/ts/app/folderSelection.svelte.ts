@@ -45,7 +45,7 @@ export function navigateInto(segment: string) {
 
 export function breadcrumbs(): { label: string; path: string | null }[] {
 	const crumbs: { label: string; path: string | null }[] = [
-		{ label: "Playlists", path: null },
+		{ label: "Home", path: null },
 	];
 	if (!currentPath) return crumbs;
 	let acc = "";

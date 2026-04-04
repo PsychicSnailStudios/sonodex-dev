@@ -15,7 +15,7 @@
 	import type { Track, ParsedTrack, ImportState } from "$lib/ts/util/types";
 
 	// PROPS
-	let { open = $bindable(false), folder = null } = $props<{ open: boolean; folder?: string | null }>();
+	let { folder = null } = $props<{ folder?: string | null }>();
 
 	// VARIABLES
 	let state = $state<ImportState>("idle");
@@ -329,96 +329,93 @@
 
 </script>
 
-<AlertDialog.Root bind:open={open}>
-	<AlertDialog.Content class="max-w-md">
-		<AlertDialog.Header>
-			<AlertDialog.Title>Import Playlist</AlertDialog.Title>
-		</AlertDialog.Header>
 
-		<div class="flex flex-col gap-4 py-2">
-			{#if state === "idle" || state === "error"}
-				<div class="flex flex-col gap-2">
-					<Label for="playlist-name">Playlist Name</Label>
-					<Input
-						id="playlist-name"
-						bind:value={playlistName}
-						placeholder="My Playlist"
-					/>
-				</div>
+<AlertDialog.Header>
+	<AlertDialog.Title class="mt-4">Import Playlist</AlertDialog.Title>
+</AlertDialog.Header>
 
-				<div class="flex flex-col gap-2">
-					<Label for="csv-file">CSV File</Label>
-					<input
-						id="csv-file"
-						type="file"
-						accept=".csv,.txt"
-						class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-						bind:this={fileInput}
-						onchange={handleFileChange}
-					/>
-					<p class="text-xs text-muted-foreground">
-						Supports Spotify, iTunes/Apple Music exports, and generic CSVs with Title/Artist/Album columns.
-					</p>
-				</div>
-
-				{#if parseError}
-					<p class="text-sm text-destructive">{parseError}</p>
-				{/if}
-			{/if}
-
-			{#if state === "parsed"}
-				<div class="rounded-md border border-border bg-muted/40 px-4 py-3 flex flex-col gap-1">
-					<p class="text-sm font-medium">Ready to import</p>
-					<p class="text-sm text-muted-foreground">{parsedTracks.length} tracks found in <span class="font-mono text-xs">{fileName}</span></p>
-				</div>
-
-				<div class="flex flex-col gap-2">
-					<Label for="playlist-name-confirm">Playlist Name</Label>
-					<Input
-						id="playlist-name-confirm"
-						bind:value={playlistName}
-						placeholder="My Playlist"
-					/>
-				</div>
-
-				<p class="text-xs text-muted-foreground">
-					Tracks already in your library will be matched. Unrecognised tracks will be created as stubs — they won't play until the file is scanned into your library.
-				</p>
-			{/if}
-
-			{#if state === "importing"}
-				<div class="rounded-md border border-border bg-muted/40 px-4 py-3">
-					<p class="text-sm text-muted-foreground">Importing tracks…</p>
-				</div>
-			{/if}
-
-			{#if state === "done"}
-				<div class="rounded-md border border-border bg-muted/40 px-4 py-3 flex flex-col gap-1">
-					<p class="text-sm font-medium">Import complete</p>
-					<p class="text-sm text-muted-foreground">{matchedCount} matched from library</p>
-					<p class="text-sm text-muted-foreground">{createdCount} stub tracks created</p>
-				</div>
-			{/if}
-
-			{#if importError}
-				<p class="text-sm text-destructive">{importError}</p>
-			{/if}
+<div class="flex flex-col gap-4 py-2">
+	{#if state === "idle" || state === "error"}
+		<div class="flex flex-col gap-2">
+			<Label for="playlist-name">Playlist Name</Label>
+			<Input
+				id="playlist-name"
+				bind:value={playlistName}
+				placeholder="My Playlist"
+			/>
 		</div>
 
-		<AlertDialog.Footer>
-			{#if state === "done"}
-				<AlertDialog.Action onclick={handleDone}>Done</AlertDialog.Action>
-			{:else}
-				<AlertDialog.Cancel onclick={handleCancel}>Cancel</AlertDialog.Cancel>
-				{#if state === "parsed"}
-					<AlertDialog.Action
-						onclick={handleImportPlaylist}
-						disabled={!playlistName.trim()}
-					>
-						Import {parsedTracks.length} Tracks
-					</AlertDialog.Action>
-				{/if}
-			{/if}
-		</AlertDialog.Footer>
-	</AlertDialog.Content>
-</AlertDialog.Root>
+		<div class="flex flex-col gap-2">
+			<Label for="csv-file">CSV File</Label>
+			<input
+				id="csv-file"
+				type="file"
+				accept=".csv,.txt"
+				class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+				bind:this={fileInput}
+				onchange={handleFileChange}
+			/>
+			<p class="text-xs text-muted-foreground">
+				Supports Spotify, iTunes/Apple Music exports, and generic CSVs with Title/Artist/Album columns.
+			</p>
+		</div>
+
+		{#if parseError}
+			<p class="text-sm text-destructive">{parseError}</p>
+		{/if}
+	{/if}
+
+	{#if state === "parsed"}
+		<div class="rounded-md border border-border bg-muted/40 px-4 py-3 flex flex-col gap-1">
+			<p class="text-sm font-medium">Ready to import</p>
+			<p class="text-sm text-muted-foreground">{parsedTracks.length} tracks found in <span class="font-mono text-xs">{fileName}</span></p>
+		</div>
+
+		<div class="flex flex-col gap-2">
+			<Label for="playlist-name-confirm">Playlist Name</Label>
+			<Input
+				id="playlist-name-confirm"
+				bind:value={playlistName}
+				placeholder="My Playlist"
+			/>
+		</div>
+
+		<p class="text-xs text-muted-foreground">
+			Tracks already in your library will be matched. Unrecognised tracks will be created as stubs — they won't play until the file is scanned into your library.
+		</p>
+	{/if}
+
+	{#if state === "importing"}
+		<div class="rounded-md border border-border bg-muted/40 px-4 py-3">
+			<p class="text-sm text-muted-foreground">Importing tracks…</p>
+		</div>
+	{/if}
+
+	{#if state === "done"}
+		<div class="rounded-md border border-border bg-muted/40 px-4 py-3 flex flex-col gap-1">
+			<p class="text-sm font-medium">Import complete</p>
+			<p class="text-sm text-muted-foreground">{matchedCount} matched from library</p>
+			<p class="text-sm text-muted-foreground">{createdCount} stub tracks created</p>
+		</div>
+	{/if}
+
+	{#if importError}
+		<p class="text-sm text-destructive">{importError}</p>
+	{/if}
+</div>
+
+<AlertDialog.Footer>
+	{#if state === "done"}
+		<AlertDialog.Action onclick={handleDone}>Done</AlertDialog.Action>
+	{:else}
+		<AlertDialog.Cancel onclick={handleCancel}>Cancel</AlertDialog.Cancel>
+		{#if state === "parsed"}
+			<AlertDialog.Action
+				onclick={handleImportPlaylist}
+				disabled={!playlistName.trim()}
+			>
+				Import {parsedTracks.length} Tracks
+			</AlertDialog.Action>
+		{/if}
+	{/if}
+</AlertDialog.Footer>

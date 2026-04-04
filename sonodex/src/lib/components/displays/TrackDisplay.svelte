@@ -82,7 +82,7 @@
 				<Tabs.Trigger value="lyrics">Lyrics</Tabs.Trigger>
 				<Tabs.Trigger value="tags">Tags</Tabs.Trigger>
 				<Tabs.Trigger value="credits">Credits</Tabs.Trigger>
-				<Tabs.Trigger value="explore">Explore</Tabs.Trigger>
+				<Tabs.Trigger value="explore">Featured On</Tabs.Trigger>
 			</Tabs.List>
 
 			<Tabs.Content value="lyrics" class="flex-1 overflow-y-auto mt-2">
@@ -106,6 +106,7 @@
 			<Tabs.Content value="credits" class="flex-1 overflow-y-auto mt-2">
 				{#if track.credits}
 					<pre class="text-sm whitespace-pre-wrap font-sans">{track.credits}</pre>
+					// featured artists, credits list
 				{:else}
 					<p class="text-muted-foreground text-sm">No credits available.</p>
 				{/if}

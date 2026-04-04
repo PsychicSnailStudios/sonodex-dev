@@ -61,7 +61,7 @@
 
 		<DropdownMenu.Group>
 			<DropdownMenu.Label>Display Columns</DropdownMenu.Label>
-			<div class="flex flex-col flex-wrap gap-1">
+			<div class="flex flex-col flex-wrap gap-1 p-1">
 				{#each ALL_COLUMNS as col (col)}
 					<Toggle
 						pressed={cols.visible[col as ColumnKey]}

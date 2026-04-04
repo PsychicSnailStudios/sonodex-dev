@@ -6,9 +6,8 @@
 
 	// SCRIPTS
 	import { dragState } from "$lib/ts/app-states/state_drag.svelte";
+	import { activeView, setView } from "$lib/ts/app-states/state_session.svelte";
 
-	// PROPS
-	let {activeView = $bindable("home")} = $props<{ activeView: string }>();
 
 	// VARIABLES
 	const VIEW_TABS = [
@@ -25,10 +24,10 @@
 
 	function handleTabDragEnter(tabValue: string) {
 		if (!dragState.active) return;
-		if (tabValue === activeView) return;
+		if (tabValue === activeView.id) return;
 
 		const timeout = setTimeout(() => {
-			activeView = tabValue;
+			setView(tabValue);
 			hoverTabTimeouts.delete(tabValue);
 		}, 700);
 
@@ -47,8 +46,8 @@
 <div class="app-nav bg-muted flex flex-col p-2 gap-1 rounded-md">
 	{#each VIEW_TABS as tab}
 		<Button
-			variant="{activeView === tab.value ? 'default' : 'outline'}"
-			onclick={() => activeView = tab.value}
+			variant="{activeView.id === tab.value ? 'default' : 'outline'}"
+			onclick={() => setView(tab.value)}
 			class="justify-start"
 			ondragenter={() => handleTabDragEnter(tab.value)}
 			ondragleave={() => handleTabDragLeave(tab.value)}

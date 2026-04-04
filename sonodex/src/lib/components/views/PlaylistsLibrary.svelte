@@ -29,6 +29,7 @@
 	import { folderOf, folderLabel, getSortedFolders, getDirectPlaylists, getFolderArtworkUids } from "$lib/ts/app/playlistLibrary.svelte";
 	import type { PlaylistSortField } from "$lib/ts/app/playlistLibrary.svelte";
     import MediaGrid from "$lib/layouts/MediaGrid.svelte";
+    import type { Playlist } from "$lib/ts/util/types";
 
 	type GridDropTarget = {
 		kind: "folder" | "playlist";
@@ -60,6 +61,9 @@
 	let compactDrop = $state<CompactDropTarget>(null);
 	type CompactFolderDrop = { index: number; side: "before" | "after" } | null;
 	let compactFolderDrop = $state<CompactFolderDrop>(null);
+	type CompactRow =
+	| { kind: "folder"; path: string; depth: number }
+	| { kind: "playlist"; playlist: Playlist; depth: number; folderPath: string };
 
 	let playlists   = $derived(library.playlists ?? []);
 	let currentPath = $derived(folderSelection.currentPath);
@@ -95,6 +99,23 @@
 	});
 
 	// FUNCTIONS
+	function compactRows(
+		parentPath: string | null,
+		depth: number = 0
+	): CompactRow[] {
+		const result: CompactRow[] = [];
+		for (const fp of getSortedFolders(playlists, parentPath, sortField, sortDir)) {
+			result.push({ kind: "folder", path: fp, depth });
+			if (expandedFolders.has(fp)) {
+				result.push(...compactRows(fp, depth + 1));
+				for (const p of getDirectPlaylists(playlists, fp, sortField, sortDir)) {
+					result.push({ kind: "playlist", playlist: p, depth: depth + 1, folderPath: fp });
+				}
+			}
+		}
+		return result;
+	}
+
 	function loadSort(): { field: PlaylistSortField; dir: "asc" | "desc"; compact: boolean } {
 		try {
 			const raw = localStorage.getItem(SORT_KEY);
@@ -361,15 +382,7 @@
 
 	function handleCompactFolderDragOver(e: DragEvent, ri: number, folderPath: string) {
 		e.preventDefault();
-		// if (_compactFolderLeaveTimer !== null) {
-		// 	clearTimeout(_compactFolderLeaveTimer);
-		// 	_compactFolderLeaveTimer = null;
-		// }
 		if (draggingFolderPath === folderPath) return;
-
-		const rows = compactFolderRows(currentPath);
-		const draggedRow = rows.find((r) => r.path === draggingFolderPath);
-		const targetRow = rows[ri];
 
 		const el = e.currentTarget as HTMLElement;
 		const rect = el.getBoundingClientRect();
@@ -377,10 +390,7 @@
 		const y = e.clientY - rect.top;
 		const nearEdge = y < edgeZone || y > rect.height - edgeZone;
 
-		// only show reorder indicator if target is same depth as dragged folder
-		const sameDepth = draggedRow && targetRow && draggedRow.depth === targetRow.depth;
-
-		if (isDraggingFolderType(e) && nearEdge && sameDepth) {
+		if (isDraggingFolderType(e) && nearEdge) {
 			compactFolderDrop = { index: ri, side: y < rect.height / 2 ? "before" : "after" };
 			onFolderDragExit(folderPath);
 		} else {
@@ -412,31 +422,42 @@
 		const targetRow = rows[targetRi];
 		if (!targetRow) return;
 
-		// get the parent path of both folders to reorder within the right level
-		const draggedParent = draggedPath.includes("/")
-			? draggedPath.split("/").slice(0, -1).join("/")
-			: null;
 		const targetParent = targetRow.path.includes("/")
 			? targetRow.path.split("/").slice(0, -1).join("/")
 			: null;
 
-		// only reorder if they share the same parent
-		if (draggedParent !== targetParent) return;
+		const draggedParent = draggedPath.includes("/")
+			? draggedPath.split("/").slice(0, -1).join("/")
+			: null;
 
-		const current = getSortedFolders(playlists, draggedParent, sortField, sortDir);
-		const fromIndex = current.indexOf(draggedPath);
+		const draggedName = draggedPath.split("/").at(-1)!;
+		const newDraggedPath = targetParent !== null
+			? `${targetParent}/${draggedName}`
+			: draggedName;
+
+		// if cross-level, move the folder first
+		if (draggedParent !== targetParent) {
+			if (targetParent !== null) {
+				await nestFolder(draggedPath, targetParent);
+			} else {
+				await moveFolderToRoot(draggedPath);
+			}
+		}
+
+		// now reorder within the target level
+		const current = getSortedFolders(playlists, targetParent, sortField, sortDir);
+		const fromIndex = current.indexOf(newDraggedPath);
 		const toIndex = current.indexOf(targetRow.path);
 		if (fromIndex === -1 || toIndex === -1) return;
 
 		const insertAt = side === "before" ? toIndex : toIndex + 1;
 		const without = current.filter((_, i) => i !== fromIndex);
 		const adjusted = fromIndex < insertAt ? insertAt - 1 : insertAt;
-		without.splice(Math.max(0, Math.min(adjusted, without.length)), 0, draggedPath);
-		playlistOrder.setFolders(draggedParent, without);
+		without.splice(Math.max(0, Math.min(adjusted, without.length)), 0, newDraggedPath);
+		playlistOrder.setFolders(targetParent, without);
 	}
 </script>
 
-<ImportPlaylist bind:open={importDialogOpen} />
 <CreateNewPlaylist bind:open={createDialogOpen} folder={createDialogFolder} />
 <CreateNewFolder bind:open={folderDialogOpen} parent={folderDialogParent} />
 
@@ -444,7 +465,31 @@
 
 	<div class="flex justify-between items-center gap-2 p-4">
 		<h1 class="h1">Playlists</h1>
-		<SearchBar bind:search searchCount={filteredDirect.length} />
+		<div class="flex items-center gap-1 shrink-0">
+			<SearchBar bind:search searchCount={filteredDirect.length} />
+			
+			<Button variant="outline" size="icon" onclick={() => openCreatePlaylistIn(currentPath)}>
+				<ListPlus class="size-4" />
+			</Button>
+			<Button variant="outline" size="icon" onclick={() => openCreateFolderIn(currentPath)}>
+				<FolderPlus class="size-4" />
+			</Button>
+		</div>
+	</div>
+
+	<div class="flex justify-between items-center pl-4 pr-4">
+		<span class="text-sm text-muted-foreground">{playlists.length} playlists</span>
+		
+		<div class="flex items-center gap-2">
+			<PlaylistSortBar bind:field={sortField} bind:direction={sortDir} />
+			<Button variant="ghost" size="icon" onclick={() => (compact = !compact)}>
+				{#if !compact}
+				<LayoutGrid class="size-4" />
+				{:else}
+				<List class="size-4" />
+				{/if}
+			</Button>
+		</div>
 	</div>
 
 	<div class="flex items-center justify-between gap-2 pl-4 pr-4">
@@ -465,32 +510,6 @@
 					{crumb.label}
 				</button>
 			{/each}
-		</div>
-		<div class="flex items-center gap-1 shrink-0">
-			<Button variant="outline" size="icon" onclick={() => openCreatePlaylistIn(currentPath)}>
-				<ListPlus class="size-4" />
-			</Button>
-			<Button variant="outline" size="icon" onclick={() => openCreateFolderIn(currentPath)}>
-				<FolderPlus class="size-4" />
-			</Button>
-			<Button variant="outline" size="icon" onclick={() => importDialogOpen = true}>
-				<FileDown class="size-4" />
-			</Button>
-		</div>
-	</div>
-
-	<div class="flex justify-between items-center pl-4 pr-4">
-		<span class="text-sm text-muted-foreground">{playlists.length} playlists</span>
-		
-		<div class="flex items-center gap-2">
-			<PlaylistSortBar bind:field={sortField} bind:direction={sortDir} />
-			<Button variant="ghost" size="icon" onclick={() => (compact = !compact)}>
-				{#if !compact}
-				<LayoutGrid class="size-4" />
-				{:else}
-				<List class="size-4" />
-				{/if}
-			</Button>
 		</div>
 	</div>
 
@@ -587,86 +606,86 @@
 			{:else}
 				<div class="flex flex-col pr-4 pl-4 pb-4">
 
-					{#each compactFolderRows(currentPath) as row, ri (row.path)}
-						{@const isExpanded = expandedFolders.has(row.path)}
-						{@const folderHovered = dragState.hoveredFolderPath === row.path && compactFolderDrop === null}
-						{@const isReorderTarget = compactFolderDrop?.index === ri}
+					{#each compactRows(currentPath) as row, ri}
+						{#if row.kind === "folder"}
+							{@const isExpanded = expandedFolders.has(row.path)}
+							{@const folderHovered = dragState.hoveredFolderPath === row.path && compactFolderDrop === null}
+							{@const isReorderTarget = compactFolderDrop?.index === ri}
 
-						<ContextMenu.Root>
-							<ContextMenu.Trigger class="w-full">
-								<div class="relative">
-									{#if isReorderTarget && compactFolderDrop?.side === "before" && draggingFolderPath !== row.path}
-										<div class="absolute left-0 right-0 -top-px h-0.5 bg-primary rounded-full z-10 pointer-events-none"></div>
-									{/if}
-									{#if isReorderTarget && compactFolderDrop?.side === "after" && draggingFolderPath !== row.path}
-										<div class="absolute left-0 right-0 -bottom-px h-0.5 bg-primary rounded-full z-10 pointer-events-none"></div>
-									{/if}
-									<div
-										draggable="true"
-										class="flex items-center gap-1 py-1.5 rounded-md hover:bg-muted/50 transition-all cursor-grab"
-										class:ring-1={folderHovered}
-										class:ring-primary={folderHovered}
-										class:opacity-40={draggingFolderPath === row.path}
-										style="padding-left: {(row.depth + 1) * 16}px; padding-right: 8px;"
-										ondragstart={(e) => handleFolderDragStart(e, row.path)}
-										ondragend={handleDragEnd}
-										ondragover={(e) => handleCompactFolderDragOver(e, ri, row.path)}
-										ondragleave={(e) => {
-											if (!(e.currentTarget as HTMLElement).contains(e.relatedTarget as Node)) {
-												compactFolderDrop = null;
-												onFolderDragExit(row.path);
-											}
-										}}
-										ondrop={(e) => handleCompactFolderDrop(e, ri, row.path)}
-									>
-										<button
-											class="flex items-center gap-2 flex-1 min-w-0 text-left"
-											onclick={() => navigateTo(row.path)}
+							<ContextMenu.Root>
+								<ContextMenu.Trigger class="w-full">
+									<div class="relative">
+										{#if isReorderTarget && compactFolderDrop?.side === "before" && draggingFolderPath !== row.path}
+											<div class="absolute left-0 right-0 -top-px h-0.5 bg-primary rounded-full z-10 pointer-events-none"></div>
+										{/if}
+										{#if isReorderTarget && compactFolderDrop?.side === "after" && draggingFolderPath !== row.path}
+											<div class="absolute left-0 right-0 -bottom-px h-0.5 bg-primary rounded-full z-10 pointer-events-none"></div>
+										{/if}
+										<div
+											draggable="true"
+											class="flex items-center gap-1 py-1.5 rounded-md hover:bg-muted/50 transition-all cursor-grab"
+											class:ring-1={folderHovered}
+											class:ring-primary={folderHovered}
+											class:opacity-40={draggingFolderPath === row.path}
+											style="padding-left: {(row.depth + 1) * 16}px; padding-right: 8px;"
+											ondragstart={(e) => handleFolderDragStart(e, row.path)}
+											ondragend={handleDragEnd}
+											ondragover={(e) => handleCompactFolderDragOver(e, ri, row.path)}
+											ondragleave={(e) => {
+												if (!(e.currentTarget as HTMLElement).contains(e.relatedTarget as Node)) {
+													compactFolderDrop = null;
+													onFolderDragExit(row.path);
+												}
+											}}
+											ondrop={(e) => handleCompactFolderDrop(e, ri, row.path)}
 										>
-											{#if isExpanded}
-												<FolderOpen class="size-4 shrink-0 text-muted-foreground" />
-											{:else}
-												<Folder class="size-4 shrink-0 text-muted-foreground" />
-											{/if}
-											<span class="text-sm truncate">{folderLabel(row.path)}</span>
-										</button>
-										<button
-											class="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
-											onclick={() => toggleExpand(row.path)}
-											aria-label={isExpanded ? "Collapse" : "Expand"}
-										>
-											{#if isExpanded}
-												<ChevronDown class="size-4" />
-											{:else}
-												<ChevronRight class="size-4" />
-											{/if}
-										</button>
+											<button
+												class="flex items-center gap-2 flex-1 min-w-0 text-left"
+												onclick={() => navigateTo(row.path)}
+											>
+												{#if isExpanded}
+													<FolderOpen class="size-4 shrink-0 text-muted-foreground" />
+												{:else}
+													<Folder class="size-4 shrink-0 text-muted-foreground" />
+												{/if}
+												<span class="text-sm truncate">{folderLabel(row.path)}</span>
+											</button>
+											<button
+												class="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
+												onclick={() => toggleExpand(row.path)}
+												aria-label={isExpanded ? "Collapse" : "Expand"}
+											>
+												{#if isExpanded}
+													<ChevronDown class="size-4" />
+												{:else}
+													<ChevronRight class="size-4" />
+												{/if}
+											</button>
+										</div>
 									</div>
-								</div>
-							</ContextMenu.Trigger>
-							<FolderContext path={row.path} onCreatePlaylist={openCreatePlaylistIn} onCreateFolder={openCreateFolderIn} />
-						</ContextMenu.Root>
+								</ContextMenu.Trigger>
+								<FolderContext path={row.path} onCreatePlaylist={openCreatePlaylistIn} onCreateFolder={openCreateFolderIn} />
+							</ContextMenu.Root>
 
-						{#if isExpanded}
-							{#each getDirectPlaylists(playlists, row.path, sortField, sortDir) as p, pi (p.uid)}
-								<PlaylistCompactRow
-									playlist={p}
-									indent={(row.depth + 2) * 16}
-									isDraggingThis={draggingPlaylistUid === p.uid}
-									isDropBefore={compactDrop?.folderPath === row.path && compactDrop.index === pi && compactDrop.side === "before"}
-									isDropAfter={compactDrop?.folderPath === row.path && compactDrop.index === pi && compactDrop.side === "after"}
-									{allFolderPaths}
-									{draggingPlaylistUid}
-									ondragstart={(e) => handlePlaylistDragStart(e, p.uid)}
-									ondragend={handleDragEnd}
-									ondragover={(e) => handleCompactPlaylistDragOver(e, pi, row.path)}
-									ondragleave={() => { compactDrop = null; }}
-									ondrop={(e) => handleCompactPlaylistDrop(e, pi, row.path)}
-									onrowdragover={(e) => { e.preventDefault(); setHoveredPlaylist(p.uid); }}
-									onrowdragleave={() => setHoveredPlaylist(null)}
-									onrowdrop={(e) => dropOnPlaylist(e, p.uid)}
-								/>
-							{/each}
+						{:else}
+							{@const pi = getDirectPlaylists(playlists, row.folderPath, sortField, sortDir).findIndex((p) => p.uid === row.playlist.uid)}
+							<PlaylistCompactRow
+								playlist={row.playlist}
+								indent={(row.depth + 1) * 16}
+								isDraggingThis={draggingPlaylistUid === row.playlist.uid}
+								isDropBefore={compactDrop?.folderPath === row.folderPath && compactDrop.index === pi && compactDrop.side === "before"}
+								isDropAfter={compactDrop?.folderPath === row.folderPath && compactDrop.index === pi && compactDrop.side === "after"}
+								{allFolderPaths}
+								{draggingPlaylistUid}
+								ondragstart={(e) => handlePlaylistDragStart(e, row.playlist.uid)}
+								ondragend={handleDragEnd}
+								ondragover={(e) => handleCompactPlaylistDragOver(e, pi, row.folderPath)}
+								ondragleave={() => { compactDrop = null; }}
+								ondrop={(e) => handleCompactPlaylistDrop(e, pi, row.folderPath)}
+								onrowdragover={(e) => { e.preventDefault(); setHoveredPlaylist(row.playlist.uid); }}
+								onrowdragleave={() => setHoveredPlaylist(null)}
+								onrowdrop={(e) => dropOnPlaylist(e, row.playlist.uid)}
+							/>
 						{/if}
 					{/each}
 

@@ -9,6 +9,7 @@ type Selection = {
 	type: "track" | "album" | "artist" | "playlist" | "none";
 }
 
+export let activeView = $state({ "id": "home"});
 let viewIndex = $state(0);
 let viewHistory = $state([] as Selection[]);
 
@@ -34,6 +35,7 @@ export function loadSessionState() {
 		if (!raw) return;
 		const saved = JSON.parse(raw);
 		setSelection(saved.selection.uid, saved.selection.type);
+		setView(saved.activeView.id);
 
 	} catch {}
 }
@@ -42,6 +44,7 @@ export function saveSessionState() {
 	try {
 		localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify({
 			selection: selection,
+			activeView: activeView
 		}));
 	} catch {}
 }
@@ -117,6 +120,9 @@ export function setSelection(uid: string, type: "track" | "album" | "artist" | "
 
 	viewHistory = [...viewHistory, { uid, type }];
 	viewIndex = viewHistory.length - 1;
+}
+export function setView(view: string) {
+	activeView.id = view;
 }
 export function clearSelection() {
 	selection.uid = "";

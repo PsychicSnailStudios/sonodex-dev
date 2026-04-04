@@ -28,14 +28,12 @@
 
 	// SCRIPTS
 	import { loadLibrary } from "$lib/ts/library.svelte";
-	import { selection, scanState, loadSessionState, saveSessionState } from "$lib/ts/app-states/state_session.svelte";
+	import { selection, scanState, activeView, setView, loadSessionState, saveSessionState } from "$lib/ts/app-states/state_session.svelte";
 	import { dragState } from "$lib/ts/app-states/state_drag.svelte";
 	import { togglePlay, skipBack, skipNext, loadPlayerState, savePlayerState } from "$lib/ts/audio/audioManager.svelte";
 	import { checkForUpdate } from "$lib/updater.svelte";
 
 	// VARIABLES
-	let activeView = $state("home");
-
 	let needsSetup = $state(false);
 	let setupChecked = $state(false);
 
@@ -150,7 +148,7 @@
 				{/if}
 			</div>
 
-			<AppNavigation bind:activeView />
+			<AppNavigation />
 
 			<NowPlaying />
 		</div>
@@ -162,17 +160,17 @@
 		<div class="app-body h-full w-full overflow-hidden grid gap-1">
 			<Resizable.PaneGroup direction="horizontal" class="app-views h-full w-full overflow-hidden flex gap-0.5">
 				<Resizable.Pane minSize={minViewWidth}>
-					{#if activeView === "home"}
+					{#if activeView.id === "home"}
 						<HomeView />
-					{:else if activeView === "music"}
+					{:else if activeView.id === "music"}
 						<MusicView />
-					{:else if activeView === "tracks"}
+					{:else if activeView.id === "tracks"}
 						<TracksView />
-					{:else if activeView === "albums"}
+					{:else if activeView.id === "albums"}
 						<AlbumsView />
-					{:else if activeView === "artists"}
+					{:else if activeView.id === "artists"}
 						<ArtistsView />
-					{:else if activeView === "playlists"}
+					{:else if activeView.id === "playlists"}
 						<PlaylistsView />
 					{/if}
 				</Resizable.Pane>

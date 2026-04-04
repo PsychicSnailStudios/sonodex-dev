@@ -58,7 +58,7 @@
 		if (v.album)             parts.push("1fr")
 		if (v.year)              parts.push("60px")
 		if (v.rating)            parts.push("60px")
-		if (v.duration)          parts.push("80px")
+		if (v.duration)          parts.push("50px")
 		if (v.label)             parts.push("100px")
 		if (v.options)           parts.push("30px")
 		return parts.join(" ")

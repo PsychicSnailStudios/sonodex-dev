@@ -20,6 +20,7 @@
 	import { library } from "$lib/ts/library.svelte";
 	import { openEditModal } from "$lib/ts/app/editModal.svelte";
 	import type { Artist, Track, Album } from "$lib/ts/util/types";
+    import TopTracks from "../app-ui/TopTracks.svelte";
 
 	// VARIABLES
 	let artist: Artist | null = $state(null);
@@ -78,6 +79,7 @@
 
 			<Tabs.Content value="home" class="flex-1 overflow-y-auto">
 				<h3 class="text-sm font-semibold mb-2 mt-2">TOP SONGS</h3>
+				<TopTracks uid={artist.uid} />
 			</Tabs.Content>
 
 			<Tabs.Content value="discography" class="flex-1 overflow-y-auto">
