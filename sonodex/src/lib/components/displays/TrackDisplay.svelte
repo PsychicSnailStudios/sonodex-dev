@@ -38,86 +38,84 @@
 </script>
 
 <div class="flex flex-col gap-4 p-4 border-2 h-full w-full overflow-hidden rounded-md">
-
-	{#if track}
 		<NavButtons />
+	
+		{#if track}
+			<div class="flex gap-4 items-center">
+				<ArtworkDisplay uid={track.uid} size={160} type="track" />
 
-		<div class="flex gap-4 items-center">
-			<ArtworkDisplay uid={track.uid} size={160} type="track" />
-
-			<div class="flex flex-col gap-1">
-				<h2 class="text-2xl font-bold">{track.title ?? "Unknown Title"}</h2>
-				<div class="flex gap-2 text-sm text-muted-foreground flex-wrap">
-					<button onclick={() => setSelection(getArtistUidFromName(track.album_artist), "artist")} class="text-sm truncate cursor-pointer hover:underline">
-						{parseArtists(track.artists)}
-					</button>
-					<span>|</span>
-					<div>
-						{#each parseAlbumEntries(track.albums) as album, i}
-							<button onclick={() => setSelection(album.uid, "album")} class="text-sm truncate cursor-pointer hover:underline">
-								{album.name}
-								{#if i < parseAlbumEntries(track.albums).length - 1}<span>,</span>{/if}
-							</button>
-						{/each}
+				<div class="flex flex-col gap-1">
+					<h2 class="text-2xl font-bold">{track.title ?? "Unknown Title"}</h2>
+					<div class="flex gap-2 text-sm text-muted-foreground flex-wrap">
+						<button onclick={() => setSelection(getArtistUidFromName(track.album_artist), "artist")} class="text-sm truncate cursor-pointer hover:underline">
+							{parseArtists(track.artists)}
+						</button>
+						<span>|</span>
+						<div>
+							{#each parseAlbumEntries(track.albums) as album, i}
+								<button onclick={() => setSelection(album.uid, "album")} class="text-sm truncate cursor-pointer hover:underline">
+									{album.name}
+									{#if i < parseAlbumEntries(track.albums).length - 1}<span>,</span>{/if}
+								</button>
+							{/each}
+						</div>
+						<span>|</span>
+						<span>{track.year ?? "—"}</span>
+						<span>|</span>
+						<span>{formatDuration(track.duration_ms)}</span>
 					</div>
-					<span>|</span>
-					<span>{track.year ?? "—"}</span>
-					<span>|</span>
-					<span>{formatDuration(track.duration_ms)}</span>
-				</div>
-				<div>
-					<TrackRating uid={track.uid} rating={track.rating} />
+					<div>
+						<TrackRating uid={track.uid} rating={track.rating} />
+					</div>
 				</div>
 			</div>
-		</div>
 
-		<div class="flex gap-1 flex-wrap">
-			<Button variant="default" onclick={() => playTrackByObject(track)}>Play</Button>
-			<TrackPlaylistEditButton track={track} />
-			<Button variant="ghost" size="icon" onclick={() => openEditModal({ type: "track", uid: track!.uid })}><Pencil /></Button>
-		</div>
+			<div class="flex gap-1 flex-wrap">
+				<Button variant="default" onclick={() => playTrackByObject(track)}>Play</Button>
+				<TrackPlaylistEditButton track={track} />
+				<Button variant="ghost" size="icon" onclick={() => openEditModal({ type: "track", uid: track!.uid })}><Pencil /></Button>
+			</div>
 
-		<Tabs.Root value="lyrics" class="flex flex-col min-h-0 flex-1">
-			<Tabs.List>
-				<Tabs.Trigger value="lyrics">Lyrics</Tabs.Trigger>
-				<Tabs.Trigger value="tags">Tags</Tabs.Trigger>
-				<Tabs.Trigger value="credits">Credits</Tabs.Trigger>
-				<Tabs.Trigger value="explore">Featured On</Tabs.Trigger>
-			</Tabs.List>
+			<Tabs.Root value="lyrics" class="flex flex-col min-h-0 flex-1">
+				<Tabs.List>
+					<Tabs.Trigger value="lyrics">Lyrics</Tabs.Trigger>
+					<Tabs.Trigger value="tags">Tags</Tabs.Trigger>
+					<Tabs.Trigger value="credits">Credits</Tabs.Trigger>
+					<Tabs.Trigger value="explore">Featured On</Tabs.Trigger>
+				</Tabs.List>
 
-			<Tabs.Content value="lyrics" class="flex-1 overflow-y-auto mt-2">
-				{#if lyrics?.instrumental}
-					<p class="text-muted-foreground text-sm">This track is instrumental.</p>
-				{:else if lyrics?.plain}
-					<pre class="text-sm whitespace-pre-wrap font-sans leading-relaxed">{lyrics.plain}</pre>
-				{:else}
-					<p class="text-muted-foreground text-sm">No lyrics available.</p>
-				{/if}
-			</Tabs.Content>
+				<Tabs.Content value="lyrics" class="flex-1 overflow-y-auto mt-2">
+					{#if lyrics?.instrumental}
+						<p class="text-muted-foreground text-sm">This track is instrumental.</p>
+					{:else if lyrics?.plain}
+						<pre class="text-sm whitespace-pre-wrap font-sans leading-relaxed">{lyrics.plain}</pre>
+					{:else}
+						<p class="text-muted-foreground text-sm">No lyrics available.</p>
+					{/if}
+				</Tabs.Content>
 
-			<Tabs.Content value="tags" class="flex-1 overflow-y-auto mt-2">
-				{#if tags}
-					<TagList tags={tags} canEdit={true} />
-				{:else}
-					<p class="text-muted-foreground text-sm">Track has no tags.</p>
-				{/if}
-			</Tabs.Content>
+				<Tabs.Content value="tags" class="flex-1 overflow-y-auto mt-2">
+					{#if tags}
+						<TagList tags={tags} canEdit={true} />
+					{:else}
+						<p class="text-muted-foreground text-sm">Track has no tags.</p>
+					{/if}
+				</Tabs.Content>
 
-			<Tabs.Content value="credits" class="flex-1 overflow-y-auto mt-2">
-				{#if track.credits}
-					<pre class="text-sm whitespace-pre-wrap font-sans">{track.credits}</pre>
-					// featured artists, credits list
-				{:else}
-					<p class="text-muted-foreground text-sm">No credits available.</p>
-				{/if}
-			</Tabs.Content>
+				<Tabs.Content value="credits" class="flex-1 overflow-y-auto mt-2">
+					{#if track.credits}
+						<pre class="text-sm whitespace-pre-wrap font-sans">{track.credits}</pre>
+						// featured artists, credits list
+					{:else}
+						<p class="text-muted-foreground text-sm">No credits available.</p>
+					{/if}
+				</Tabs.Content>
 
-			<Tabs.Content value="explore" class="flex-1 overflow-y-auto mt-2">
-				<p class="text-muted-foreground text-sm">Nothing here yet.</p>
-			</Tabs.Content>
-		</Tabs.Root>
-	{:else}
-		<span class="text-muted-foreground text-sm">Loading...</span>
-	{/if}
-
+				<Tabs.Content value="explore" class="flex-1 overflow-y-auto mt-2">
+					<p class="text-muted-foreground text-sm">Nothing here yet.</p>
+				</Tabs.Content>
+			</Tabs.Root>
+		{:else}
+			<span class="text-muted-foreground text-sm">Loading...</span>
+		{/if}
 </div>

@@ -99,11 +99,11 @@
 	aria-label="Playlist"
 	role="region"
 >
-	{#if playlist}
 	<ScrollArea class="min-h-0 min-w-0">	
 		<div class="flex flex-col gap-4 pb-4 pr-4">
 			<NavButtons />
 			
+			{#if playlist}
 			<div class="flex gap-4 items-end p-0">
 				<ArtworkDisplay uid={playlist.uid} size={160} type="playlist">
 					<DefultPlaylistArt tracks={tracks} />
@@ -174,12 +174,12 @@
 				<Button variant="ghost" onclick={() => showSearch = true}>Find More</Button>
 			{/if}
 			</div>
+			{:else}
+				<span class="text-muted-foreground text-sm">Loading...</span>
+			{/if}
 
 		</div>
 	</ScrollArea>
 
-	{:else}
-		<span class="text-muted-foreground text-sm">Loading...</span>
-	{/if}
 
 </div>

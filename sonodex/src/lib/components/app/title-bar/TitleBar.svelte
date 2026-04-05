@@ -6,7 +6,7 @@
 
 	// COMPONENTS
   import { CircleSmall, CircleDashed, Minus, X } from 'lucide-svelte';
-  import WindowContext from '$lib/components/app-ui/context-menus/WindowContext.svelte';
+  import WindowContext from '$lib/components/app/title-bar/WindowContext.svelte';
   
 	// VARIABLES
   const appWindow = getCurrentWindow();

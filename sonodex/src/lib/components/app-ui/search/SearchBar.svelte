@@ -20,5 +20,5 @@
 			<X class="cursor-pointer" onclick={() => (search = "")} />
 		</InputGroup.Addon>
 	</InputGroup.Root>
-  <Button type="submit" variant="outline"><Funnel/></Button>
+  <!-- <Button type="submit" variant="outline"><Funnel/></Button> -->
 </div>

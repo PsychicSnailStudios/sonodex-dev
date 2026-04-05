@@ -103,6 +103,7 @@
 			</Tabs.Content>
 		</Tabs.Root>
 	{:else}
+		<NavButtons />
 		<span class="text-muted-foreground text-sm p-4">Loading...</span>
 	{/if}
 

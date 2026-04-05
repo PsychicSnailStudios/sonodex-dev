@@ -64,11 +64,11 @@
 
 <div class="flex flex-col gap-4 p-4 border-2 h-full w-full overflow-hidden rounded-md" style="background: linear-gradient(180deg, {color} 0%, transparent 80%)">
 
-	{#if album}
 	<ScrollArea class="min-h-0 min-w-0 h-full">
 	<div class="flex flex-col gap-4 pb-4 pr-4">
 		<NavButtons />
-
+			
+		{#if album}
 		<div class="flex gap-4 items-end">
 			<ArtworkDisplay uid={album.uid} size={160} type="album" />
 
@@ -121,11 +121,11 @@
 				</div>
 			</ScrollArea>
 		</div>
+		{:else}
+			<span class="text-muted-foreground text-sm">Loading...</span>
+		{/if}
 
 	</div>
 	</ScrollArea>
-	{:else}
-		<span class="text-muted-foreground text-sm">Loading...</span>
-	{/if}
 
 </div>
