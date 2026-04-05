@@ -2,11 +2,13 @@
 	import * as ContextMenu from "$lib/components/ui/context-menu/index.js";
 	import AudioCard from "$lib/components/app-ui/AudioCard.svelte";
 	import PlaylistContext from "$lib/components/app-ui/context-menus/PlaylistContext.svelte";
+   import DefultPlaylistArt from "$lib/components/app-ui/playlist/DefultPlaylistArt.svelte";
+	
+	import { getPlaylistTracks } from "$lib/ts/library.svelte";
+   import type { Playlist } from "$lib/ts/util/types";
 
 	type Props = {
-		uid: string;
-		title: string;
-		owner: string;
+		playlist: Playlist;
 		isDraggingThis: boolean;
 		isReorderBefore: boolean;
 		isReorderAfter: boolean;
@@ -19,9 +21,7 @@
 	};
 
 	let {
-		uid,
-		title,
-		owner,
+		playlist,
 		isDraggingThis,
 		isReorderBefore,
 		isReorderAfter,
@@ -57,9 +57,11 @@
 				role="region"
 				aria-label="Playlist"
 			>
-				<AudioCard {title} subTitle={owner} artworkUid={uid} type="playlist" />
+				<AudioCard title={playlist.title} subTitle={playlist.owner} artworkUid={playlist.uid} type="playlist">
+					<DefultPlaylistArt tracks={getPlaylistTracks(playlist.uid)} />
+				</AudioCard>
 			</div>
 		</div>
 	</ContextMenu.Trigger>
-	<PlaylistContext folderPaths={allFolderPaths} {uid} />
+	<PlaylistContext folderPaths={allFolderPaths} uid={playlist.uid} />
 </ContextMenu.Root>

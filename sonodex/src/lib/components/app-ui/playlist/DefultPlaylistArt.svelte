@@ -14,8 +14,8 @@
 	let { tracks } = $props<{ tracks: Track[] }>();
 
 	// VARIABLES
-	let colorA = $state("rgb(30, 30, 30)")
-	let colorB = $state("rgb(30, 30, 30)")
+	let colorA = $state("var(--muted)")
+	let colorB = $state("var(--muted)")
 
 
 	// APP FUNCTIONS
@@ -23,8 +23,8 @@
 		if (!tracks) return;
 
 		if (tracks.length < 1) {
-			colorA = "rgb(30, 30, 30)"
-			colorB = "rgb(30, 30, 30)"
+			colorA = "var(--muted)"
+			colorB = "var(--muted)"
 			return;
 		}
 

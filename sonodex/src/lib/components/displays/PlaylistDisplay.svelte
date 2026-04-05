@@ -14,7 +14,7 @@
 	import TrackTableSettings from "$lib/components/app-ui/track-table/TrackTableSettings.svelte"
 	import ArtworkDisplay from "$lib/components/app-ui/ArtworkDisplay.svelte";
 	import TrackTable from "$lib/components/app-ui/track-table/TrackTable.svelte";
-   import DefultPlaylistArt from "$lib/components/app-ui/DefultPlaylistArt.svelte";
+   import DefultPlaylistArt from "$lib/components/app-ui/playlist/DefultPlaylistArt.svelte";
 	import NavButtons from "$lib/components/app-ui/NavButtons.svelte";
 	import SearchBar from "$lib/components/app-ui/search/SearchBar.svelte";
 

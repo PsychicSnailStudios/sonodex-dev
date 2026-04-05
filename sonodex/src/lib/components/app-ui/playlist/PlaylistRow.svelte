@@ -2,7 +2,7 @@
 	import { Play } from "lucide-svelte";
 	import Button from "$lib/components/ui/button/button.svelte";
 	import ArtworkDisplay from "$lib/components/app-ui/ArtworkDisplay.svelte";
-	import DefultPlaylistArt from "$lib/components/app-ui/DefultPlaylistArt.svelte";
+	import DefultPlaylistArt from "$lib/components/app-ui/playlist/DefultPlaylistArt.svelte";
 
 	import { setSelection } from "$lib/ts/app-states/state_session.svelte";
 	import { queueTracksByObject } from "$lib/ts/audio/audioManager.svelte";

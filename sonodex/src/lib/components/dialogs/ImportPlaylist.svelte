@@ -12,6 +12,7 @@
 	import { library } from "$lib/ts/library.svelte";
 	import { createStubTrack } from "$lib/ts/dbManager";
 	import { profileState } from "$lib/ts/profiles.svelte";
+	import { createPlaylist } from "$lib/ts/audio/playlistManager.svelte";
 	import type { Track, ParsedTrack, ImportState } from "$lib/ts/util/types";
 
 	// PROPS
@@ -295,127 +296,112 @@
 				playlistTrackEntries.push({ uid, name: parsed.title, order: i + 1 });
 			}
 
-			await invoke("create_playlist_entry", {
-				playlist: {
-					uid: `p-${crypto.randomUUID()}`,
-					title: playlistName.trim(),
-					description: null,
-					owner: profileState.active?.name ?? null,
-					tracks: JSON.stringify(playlistTrackEntries),
-					artwork_blob: null,
-					artwork_path: null,
-					folder: folder ?? null,
-				},
-			});
+			await createPlaylist(playlistName.trim(), profileState.active?.name ?? null, folder, playlistTrackEntries);
 
 			await library.loadLibrary?.();
 
 			state = "done";
+			
+			reset();
+			
 		} catch (e: any) {
 			importError = e.message ?? String(e);
 			state = "error";
 		}
 	}
 
-	function handleCancel() {
-		reset();
-		open = false;
-	}
-
-	function handleDone() {
-		reset();
-		open = false;
-	}
-
 </script>
 
+<div class="flex flex-col h-full justify-between">
+<div>
+	<AlertDialog.Header>
+		<AlertDialog.Title class="mt-4">Import CSV</AlertDialog.Title>
+	</AlertDialog.Header>
 
-<AlertDialog.Header>
-	<AlertDialog.Title class="mt-4">Import Playlist</AlertDialog.Title>
-</AlertDialog.Header>
+	<div class="flex flex-col gap-4 py-2 mt-2">
+		{#if state === "idle" || state === "error"}
+			<div class="flex flex-col gap-2">
+				<Label for="playlist-name">Playlist Name</Label>
+				<Input
+					id="playlist-name"
+					bind:value={playlistName}
+					placeholder="My Playlist"
+				/>
+			</div>
 
-<div class="flex flex-col gap-4 py-2">
-	{#if state === "idle" || state === "error"}
-		<div class="flex flex-col gap-2">
-			<Label for="playlist-name">Playlist Name</Label>
-			<Input
-				id="playlist-name"
-				bind:value={playlistName}
-				placeholder="My Playlist"
-			/>
-		</div>
+			<div class="flex flex-col gap-2">
+				<Label for="csv-file">CSV File</Label>
+				<input
+					id="csv-file"
+					type="file"
+					accept=".csv,.txt"
+					class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+					bind:this={fileInput}
+					onchange={handleFileChange}
+				/>
+				<p class="text-xs text-muted-foreground">
+					Supports Spotify, iTunes/Apple Music exports, and generic CSVs with Title/Artist/Album columns.
+				</p>
+			</div>
 
-		<div class="flex flex-col gap-2">
-			<Label for="csv-file">CSV File</Label>
-			<input
-				id="csv-file"
-				type="file"
-				accept=".csv,.txt"
-				class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-				bind:this={fileInput}
-				onchange={handleFileChange}
-			/>
-			<p class="text-xs text-muted-foreground">
-				Supports Spotify, iTunes/Apple Music exports, and generic CSVs with Title/Artist/Album columns.
-			</p>
-		</div>
-
-		{#if parseError}
-			<p class="text-sm text-destructive">{parseError}</p>
+			{#if parseError}
+				<p class="text-sm text-destructive">{parseError}</p>
+			{/if}
 		{/if}
-	{/if}
 
-	{#if state === "parsed"}
-		<div class="rounded-md border border-border bg-muted/40 px-4 py-3 flex flex-col gap-1">
-			<p class="text-sm font-medium">Ready to import</p>
-			<p class="text-sm text-muted-foreground">{parsedTracks.length} tracks found in <span class="font-mono text-xs">{fileName}</span></p>
-		</div>
+		{#if state === "parsed"}
+			<div class="rounded-md border border-border bg-muted/40 px-4 py-3 flex flex-col gap-1">
+				<p class="text-sm font-medium">Ready to import</p>
+				<p class="text-sm text-muted-foreground">{parsedTracks.length} tracks found in <span class="font-mono text-xs">{fileName}</span></p>
+			</div>
 
-		<div class="flex flex-col gap-2">
-			<Label for="playlist-name-confirm">Playlist Name</Label>
-			<Input
-				id="playlist-name-confirm"
-				bind:value={playlistName}
-				placeholder="My Playlist"
-			/>
-		</div>
+			<div class="flex flex-col gap-2">
+				<Label for="playlist-name-confirm">Playlist Name</Label>
+				<Input
+					id="playlist-name-confirm"
+					bind:value={playlistName}
+					placeholder="My Playlist"
+				/>
+			</div>
 
-		<p class="text-xs text-muted-foreground">
-			Tracks already in your library will be matched. Unrecognised tracks will be created as stubs — they won't play until the file is scanned into your library.
-		</p>
-	{/if}
+			<p class="text-xs text-muted-foreground">
+				Tracks already in your library will be matched. Unrecognised tracks will be created as stubs — they won't play until the file is scanned into your library.
+			</p>
+		{/if}
 
-	{#if state === "importing"}
-		<div class="rounded-md border border-border bg-muted/40 px-4 py-3">
-			<p class="text-sm text-muted-foreground">Importing tracks…</p>
-		</div>
-	{/if}
+		{#if state === "importing"}
+			<div class="rounded-md border border-border bg-muted/40 px-4 py-3">
+				<p class="text-sm text-muted-foreground">Importing tracks…</p>
+			</div>
+		{/if}
 
-	{#if state === "done"}
-		<div class="rounded-md border border-border bg-muted/40 px-4 py-3 flex flex-col gap-1">
-			<p class="text-sm font-medium">Import complete</p>
-			<p class="text-sm text-muted-foreground">{matchedCount} matched from library</p>
-			<p class="text-sm text-muted-foreground">{createdCount} stub tracks created</p>
-		</div>
-	{/if}
+		{#if state === "done"}
+			<div class="rounded-md border border-border bg-muted/40 px-4 py-3 flex flex-col gap-1">
+				<p class="text-sm font-medium">Import complete</p>
+				<p class="text-sm text-muted-foreground">{matchedCount} matched from library</p>
+				<p class="text-sm text-muted-foreground">{createdCount} stub tracks created</p>
+			</div>
+		{/if}
 
-	{#if importError}
-		<p class="text-sm text-destructive">{importError}</p>
-	{/if}
+		{#if importError}
+			<p class="text-sm text-destructive">{importError}</p>
+		{/if}
+	</div>
 </div>
 
-<AlertDialog.Footer>
-	{#if state === "done"}
-		<AlertDialog.Action onclick={handleDone}>Done</AlertDialog.Action>
-	{:else}
-		<AlertDialog.Cancel onclick={handleCancel}>Cancel</AlertDialog.Cancel>
-		{#if state === "parsed"}
-			<AlertDialog.Action
-				onclick={handleImportPlaylist}
-				disabled={!playlistName.trim()}
-			>
-				Import {parsedTracks.length} Tracks
-			</AlertDialog.Action>
+	<AlertDialog.Footer>
+		{#if state === "done"}
+			<AlertDialog.Action onclick={reset}>Done</AlertDialog.Action>
+		{:else}
+			<AlertDialog.Cancel onclick={reset}>Cancel</AlertDialog.Cancel>
+			{#if state === "parsed"}
+				<AlertDialog.Action
+					onclick={handleImportPlaylist}
+					disabled={!playlistName.trim()}
+				>
+					Import {parsedTracks.length} Tracks
+				</AlertDialog.Action>
+			{/if}
 		{/if}
-	{/if}
-</AlertDialog.Footer>
+	</AlertDialog.Footer>
+</div>

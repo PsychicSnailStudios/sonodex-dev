@@ -105,14 +105,14 @@ export async function reorderPlaylistTracks(playlistUid: string, orderedUids: st
 	await refreshPlaylists()
 }
 
-export async function createPlaylist(name: string, owner: string | null = null, folder: string | null = null) {
+export async function createPlaylist(name: string, owner: string | null = null, folder: string | null = null, tracks: TrackEntry[] | null = null) {
 	await invoke("create_playlist_entry", {
 		playlist: {
 			uid: "p-" + crypto.randomUUID(),
 			title: name.trim(),
 			description: null,
 			owner: owner,
-			tracks: null,
+			tracks: JSON.stringify(tracks),
 			artwork_path: null,
 			folder: folder,
 		},

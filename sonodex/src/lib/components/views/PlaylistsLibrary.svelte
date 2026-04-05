@@ -450,7 +450,7 @@
 												<div class="absolute -right-2 top-0 bottom-0 w-0.5 bg-primary rounded-full z-10 pointer-events-none"></div>
 											{/if}
 											<button
-												class="flex flex-col gap-1 w-full text-left cursor-grab rounded-md"
+												class="flex flex-col gap-1 w-full text-left rounded-md bg-muted"
 												class:ring-2={isMoveTarget}
 												class:ring-primary={isMoveTarget}
 												draggable="true"
@@ -471,9 +471,7 @@
 		
 							{#each filteredDirect as p, pi (p.uid)}
 								<PlaylistGridCard
-									uid={p.uid}
-									title={p.title}
-									owner={(p as any).owner ?? ""}
+									playlist={p}
 									isDraggingThis={draggingPlaylistUid === p.uid}
 									isReorderBefore={gridDropTarget?.kind === "playlist" && gridDropTarget.index === pi && gridDropTarget.side === "before"}
 									isReorderAfter={gridDropTarget?.kind === "playlist" && gridDropTarget.index === pi && gridDropTarget.side === "after"}
