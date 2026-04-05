@@ -5,6 +5,10 @@ import { isDraggingFolderType } from "$lib/ts/drag-n-drop/dragdrop";
 import { registerFolder, removeFolder } from "$lib/ts/app/folderSelection.svelte";
 import { addTracksToPlaylist } from "$lib/ts/audio/playlistManager.svelte";
 import { movePlaylists } from "$lib/ts/drag-n-drop/dragdrop_playlists";
+import { getSortedFolders, getDirectPlaylists, compactFolderRows } from "$lib/ts/app/playlistLibrary.svelte";
+import { playlistOrder } from "$lib/ts/app/playlistOrderStore.svelte";
+import type { Playlist } from "$lib/ts/util/types";
+import type { PlaylistSortField } from "$lib/ts/app/playlistLibrary.svelte";
 
 let _folderHoverTimer: ReturnType<typeof setTimeout> | null = null;
 let _folderHoverKey: string | null = null;
@@ -106,10 +110,40 @@ export async function moveFolderToRoot(draggedPath: string) {
 	library.playlists = await invoke("get_playlists");
 }
 
+export async function deleteFolder(
+	folderPath: string,
+	playlists: Playlist[],
+	sortField: PlaylistSortField,
+	sortDir: "asc" | "desc"
+) {
+	const parentPath = folderPath.includes("/")
+		? folderPath.split("/").slice(0, -1).join("/")
+		: null;
+
+	// move all direct playlists to parent
+	const direct = getDirectPlaylists(playlists, folderPath, sortField, sortDir);
+	if (direct.length > 0) {
+		await movePlaylists(direct.map((p) => p.uid), parentPath);
+	}
+
+	// move all immediate subfolders to parent
+	const subfolders = getSortedFolders(playlists, folderPath, sortField, sortDir);
+	for (const sub of subfolders) {
+		const subName = sub.split("/").at(-1)!;
+		const newPath = parentPath !== null ? `${parentPath}/${subName}` : subName;
+		await invoke("rename_playlist_folder", { oldPath: sub, newPath });
+		removeFolder(sub);
+		registerFolder(newPath);
+	}
+
+	removeFolder(folderPath);
+	library.playlists = await invoke("get_playlists");
+}
+
 export async function dropOnFolder(
 	e: DragEvent,
 	targetPath: string,
-	getDirectPlaylists: (folder: string) => { uid: string }[]
+	getDirectPlaylistsFn: (folder: string) => { uid: string }[]
 ) {
 	e.preventDefault();
 	e.stopPropagation();
@@ -124,7 +158,7 @@ export async function dropOnFolder(
 		if (uids.every((u) => u.startsWith("p-"))) {
 			await movePlaylists(uids, targetPath);
 		} else {
-			const first = getDirectPlaylists(targetPath)[0];
+			const first = getDirectPlaylistsFn(targetPath)[0];
 			if (first) await addTracksToPlaylist(first.uid, uids);
 		}
 	}
@@ -145,4 +179,81 @@ export async function dropOnRoot(e: DragEvent) {
 		}
 	}
 	endDrag();
+}
+
+export async function doFolderReorder(
+	draggedPath: string,
+	targetIndex: number,
+	side: "before" | "after",
+	playlists: Playlist[],
+	currentPath: string | null,
+	sortField: PlaylistSortField,
+	sortDir: "asc" | "desc"
+) {
+	const current = getSortedFolders(playlists, currentPath, sortField, sortDir);
+	const fromIndex = current.indexOf(draggedPath);
+	if (fromIndex === -1) {
+		await nestFolder(draggedPath, currentPath ?? draggedPath.split("/").slice(0, -1).join("/"));
+		const updated = getSortedFolders(playlists, currentPath, sortField, sortDir);
+		const newFrom = updated.indexOf(draggedPath);
+		if (newFrom === -1) return;
+		const insertAt = side === "before" ? targetIndex : targetIndex + 1;
+		const without = updated.filter((_, i) => i !== newFrom);
+		const adjusted = newFrom < insertAt ? insertAt - 1 : insertAt;
+		without.splice(Math.max(0, Math.min(adjusted, without.length)), 0, draggedPath);
+		playlistOrder.setFolders(currentPath, without);
+		return;
+	}
+	const insertAt = side === "before" ? targetIndex : targetIndex + 1;
+	const without = current.filter((_, i) => i !== fromIndex);
+	const adjusted = fromIndex < insertAt ? insertAt - 1 : insertAt;
+	without.splice(Math.max(0, Math.min(adjusted, without.length)), 0, draggedPath);
+	playlistOrder.setFolders(currentPath, without);
+}
+
+export async function doCompactFolderReorder(
+	draggedPath: string,
+	targetRi: number,
+	side: "before" | "after",
+	playlists: Playlist[],
+	currentPath: string | null,
+	sortField: PlaylistSortField,
+	sortDir: "asc" | "desc",
+	expandedFolders: Set<string>
+) {
+	const rows = compactFolderRows(playlists, currentPath, sortField, sortDir, expandedFolders);
+	const targetRow = rows[targetRi];
+	if (!targetRow) return;
+
+	const targetParent = targetRow.path.includes("/")
+		? targetRow.path.split("/").slice(0, -1).join("/")
+		: null;
+
+	const draggedParent = draggedPath.includes("/")
+		? draggedPath.split("/").slice(0, -1).join("/")
+		: null;
+
+	const draggedName = draggedPath.split("/").at(-1)!;
+	const newDraggedPath = targetParent !== null
+		? `${targetParent}/${draggedName}`
+		: draggedName;
+
+	if (draggedParent !== targetParent) {
+		if (targetParent !== null) {
+			await nestFolder(draggedPath, targetParent);
+		} else {
+			await moveFolderToRoot(draggedPath);
+		}
+	}
+
+	const current = getSortedFolders(playlists, targetParent, sortField, sortDir);
+	const fromIndex = current.indexOf(newDraggedPath);
+	const toIndex = current.indexOf(targetRow.path);
+	if (fromIndex === -1 || toIndex === -1) return;
+
+	const insertAt = side === "before" ? toIndex : toIndex + 1;
+	const without = current.filter((_, i) => i !== fromIndex);
+	const adjusted = fromIndex < insertAt ? insertAt - 1 : insertAt;
+	without.splice(Math.max(0, Math.min(adjusted, without.length)), 0, newDraggedPath);
+	playlistOrder.setFolders(targetParent, without);
 }

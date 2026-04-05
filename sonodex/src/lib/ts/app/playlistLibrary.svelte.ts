@@ -1,9 +1,12 @@
 import { folderSelection } from "$lib/ts/app/folderSelection.svelte";
 import { playlistOrder, applyCustomOrder } from "$lib/ts/app/playlistOrderStore.svelte";
-import { library } from "$lib/ts/library.svelte";
 import type { Playlist } from "$lib/ts/util/types";
 
 export type PlaylistSortField = "title" | "date_created" | "custom";
+
+export type CompactRow =
+	| { kind: "folder"; path: string; depth: number }
+	| { kind: "playlist"; playlist: Playlist; depth: number; folderPath: string };
 
 export function folderOf(p: Playlist): string | null {
 	const f = (p as any).folder;
@@ -88,4 +91,43 @@ export function getFolderArtworkUids(playlists: Playlist[], folderPath: string):
 		})
 		.map((p) => p.uid)
 		.slice(0, 4);
+}
+
+export function compactRows(
+	playlists: Playlist[],
+	parentPath: string | null,
+	sortField: PlaylistSortField,
+	sortDir: "asc" | "desc",
+	expandedFolders: Set<string>,
+	depth: number = 0
+): CompactRow[] {
+	const result: CompactRow[] = [];
+	for (const fp of getSortedFolders(playlists, parentPath, sortField, sortDir)) {
+		result.push({ kind: "folder", path: fp, depth });
+		if (expandedFolders.has(fp)) {
+			result.push(...compactRows(playlists, fp, sortField, sortDir, expandedFolders, depth + 1));
+			for (const p of getDirectPlaylists(playlists, fp, sortField, sortDir)) {
+				result.push({ kind: "playlist", playlist: p, depth: depth + 1, folderPath: fp });
+			}
+		}
+	}
+	return result;
+}
+
+export function compactFolderRows(
+	playlists: Playlist[],
+	parentPath: string | null,
+	sortField: PlaylistSortField,
+	sortDir: "asc" | "desc",
+	expandedFolders: Set<string>,
+	depth: number = 0
+): { path: string; depth: number }[] {
+	const result: { path: string; depth: number }[] = [];
+	for (const fp of getSortedFolders(playlists, parentPath, sortField, sortDir)) {
+		result.push({ path: fp, depth });
+		if (expandedFolders.has(fp)) {
+			result.push(...compactFolderRows(playlists, fp, sortField, sortDir, expandedFolders, depth + 1));
+		}
+	}
+	return result;
 }

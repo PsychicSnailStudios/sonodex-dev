@@ -1,8 +1,15 @@
 <script lang="ts">
 	import * as ContextMenu from "$lib/components/ui/context-menu/index.js";
 	import { movePlaylists } from "$lib/ts/drag-n-drop/dragdrop_playlists";
+	import { invoke } from "@tauri-apps/api/core";
+	import { library } from "$lib/ts/library.svelte";
 
 	let { folderPaths, uid } = $props<{ folderPaths: string[]; uid: string }>();
+
+	async function deletePlaylist() {
+		await invoke("delete_playlist_entry", { uid });
+		library.playlists = await invoke("get_playlists");
+	}
 </script>
 
 <ContextMenu.Content>
@@ -22,4 +29,8 @@
 			{/if}
 		</ContextMenu.SubContent>
 	</ContextMenu.Sub>
+	<ContextMenu.Separator />
+	<ContextMenu.Item class="text-destructive" onclick={deletePlaylist}>
+		Delete
+	</ContextMenu.Item>
 </ContextMenu.Content>
