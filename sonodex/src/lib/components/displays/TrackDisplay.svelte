@@ -29,6 +29,8 @@
 	let track = $derived(library.tracks.find(t => t.uid === selection.uid) ?? null);
 	let lyrics: Lyrics | null = $state(null);
 	let tags: string[] | null = $state(null);
+
+	let artistUID = getArtistUidFromName(track?.album_artist ?? "Unknown Artist");
 	
 	// APP FUNCTIONS
 	onMount(async () => {
@@ -76,7 +78,7 @@
 				<Button variant="ghost" size="icon" onclick={() => openEditModal({ type: "track", uid: track!.uid })}><Pencil /></Button>
 			</div>
 
-			<Tabs.Root value="lyrics" class="flex flex-col min-h-0 flex-1">
+			<Tabs.Root value="credits" class="flex flex-col min-h-0 flex-1">
 				<Tabs.List>
 					<Tabs.Trigger value="lyrics">Lyrics</Tabs.Trigger>
 					<Tabs.Trigger value="tags">Tags</Tabs.Trigger>
@@ -103,9 +105,36 @@
 				</Tabs.Content>
 
 				<Tabs.Content value="credits" class="flex-1 overflow-y-auto mt-2">
+					<h4 class="text-foreground text-lg">Main Artist</h4>
+
+					{#if track.album_artist}
+						<button
+							onclick={() => setSelection(artistUID, "artist")}
+							class="flex items-center gap-2 flex-row cursor-pointer p-2 rounded-md bg-muted/50 hover:bg-muted">
+
+							<ArtworkDisplay uid={artistUID} type="artist" size={40} />
+							{track.album_artist}
+						</button>
+					{:else}
+						<p class="text-muted-foreground text-sm">No album artist available.</p>
+					{/if}
+
+					<h4 class="text-foreground text-lg mt-4">Featured Artists</h4>
+					{#if track.artists}
+						<!-- {#each track.artists as artist}
+							<button
+								onclick={() => setSelection(artistUID, "artist")}
+								class="flex items-center gap-2 flex-row cursor-pointer p-2 rounded-md bg-muted/50 hover:bg-muted">
+
+								<ArtworkDisplay uid={artistUID} type="artist" size={40} />
+								{artist}
+							</button>
+						{/each} -->
+					{/if}
+
+					<h4 class="text-foreground text-lg mt-4">Credits</h4>
 					{#if track.credits}
 						<pre class="text-sm whitespace-pre-wrap font-sans">{track.credits}</pre>
-						// featured artists, credits list
 					{:else}
 						<p class="text-muted-foreground text-sm">No credits available.</p>
 					{/if}
