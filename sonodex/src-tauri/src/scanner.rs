@@ -67,13 +67,16 @@ fn normalize_rating(raw: &str) -> Option<f32> {
 fn resolve_field(
 	tag_value: Option<String>,
 	filename_value: Option<String>,
+	folder_value: Option<String>,
 	priority: &str,
 ) -> Option<String> {
 	let tag_value = tag_value.filter(|s| !s.trim().is_empty());
 	let filename_value = filename_value.filter(|s| !s.trim().is_empty());
+	let folder_value = folder_value.filter(|s| !s.trim().is_empty());
 	match priority {
-		"filename" => filename_value.or(tag_value),
-		_ => tag_value.or(filename_value),
+		"filename" => filename_value.or(tag_value).or(folder_value),
+		"folder" => folder_value.or(tag_value).or(filename_value),
+		_ => tag_value.or(filename_value).or(folder_value),
 	}
 }
 
@@ -277,9 +280,6 @@ pub fn read_track(path: &Path) -> Option<Track> {
 		"tag",
 		"tag",
 		"",
-		false,
-		false,
-		false,
 		ARTIST_TAG_DELIMITERS,
 		ARTIST_FILENAME_DELIMITERS,
 		GENRE_DELIMITERS,
@@ -293,9 +293,6 @@ pub fn read_track_with_settings(
 	priority_album: &str,
 	priority_year: &str,
 	custom_pattern: &str,
-	folder_fallback_artist: bool,
-	folder_fallback_album: bool,
-	folder_fallback_year: bool,
 	artist_tag_delimiters: &[&str],
 	artist_filename_delimiters: &[&str],
 	genre_delimiters: &[&str],
@@ -370,7 +367,7 @@ pub fn read_track_with_settings(
 	let tag_album = tag_album.filter(|s| !s.trim().is_empty());
 	let tag_album_artist = tag_album_artist.filter(|s| !s.trim().is_empty());
 
-	let title = resolve_field(tag_title, filename_meta.title, priority_title);
+	let title = resolve_field(tag_title, filename_meta.title, None, priority_title);
 
 	let tag_artists: Option<Vec<String>> = tag_artist
 		.map(|s| split_on_delimiters(&s, artist_tag_delimiters));
@@ -381,18 +378,15 @@ pub fn read_track_with_settings(
 		.filter(|s| !s.trim().is_empty())
 		.map(|s| split_on_delimiters(&s, artist_filename_delimiters));
 
-	let folder_artists: Option<Vec<String>> = if folder_fallback_artist {
-		folder_meta
-			.artist
-			.clone()
-			.filter(|s| !s.trim().is_empty())
-			.map(|s| split_on_delimiters(&s, artist_tag_delimiters))
-	} else {
-		None
-	};
+	let folder_artists: Option<Vec<String>> = folder_meta
+		.artist
+		.clone()
+		.filter(|s| !s.trim().is_empty())
+		.map(|s| split_on_delimiters(&s, artist_tag_delimiters));
 
 	let resolved_artists = match priority_artist {
 		"filename" => filename_artists.or(tag_artists).or(folder_artists),
+		"folder" => folder_artists.or(tag_artists).or(filename_artists),
 		_ => tag_artists.or(filename_artists).or(folder_artists),
 	};
 
@@ -406,16 +400,14 @@ pub fn read_track_with_settings(
 			.and_then(|v| v.first().cloned())
 	});
 
-	let tag_album_name = resolve_field(tag_album, filename_meta.album, priority_album);
+	let tag_album_name = resolve_field(
+		tag_album,
+		filename_meta.album,
+		folder_meta.album.clone(),
+		priority_album,
+	);
 
-	let folder_album_name = if folder_fallback_album {
-		folder_meta
-			.album
-			.clone()
-			.filter(|s| !s.trim().is_empty())
-	} else {
-		None
-	};
+	let folder_album_name = folder_meta.album.clone().filter(|s| !s.trim().is_empty());
 
 	let mut album_entries: Vec<serde_json::Value> = Vec::new();
 
@@ -451,13 +443,12 @@ pub fn read_track_with_settings(
 		serde_json::to_string(&parts).unwrap_or_else(|_| "[]".to_string())
 	});
 
-	let year = resolve_field(tag_year, filename_meta.year, priority_year).or_else(|| {
-		if folder_fallback_year {
-			folder_meta.year.clone()
-		} else {
-			None
-		}
-	});
+	let year = resolve_field(
+		tag_year,
+		filename_meta.year,
+		folder_meta.year.clone(),
+		priority_year,
+	);
 
 	Some(Track {
 		id: None,
@@ -641,21 +632,6 @@ pub fn scan_directory_with_progress(conn: &Connection, dir: &str, app: &AppHandl
 		.ok()
 		.flatten()
 		.unwrap_or_default();
-	let folder_fallback_artist = get_setting(conn, "folder_fallback_artist")
-		.ok()
-		.flatten()
-		.map(|v| v == "true")
-		.unwrap_or(false);
-	let folder_fallback_album = get_setting(conn, "folder_fallback_album")
-		.ok()
-		.flatten()
-		.map(|v| v == "true")
-		.unwrap_or(false);
-	let folder_fallback_year = get_setting(conn, "folder_fallback_year")
-		.ok()
-		.flatten()
-		.map(|v| v == "true")
-		.unwrap_or(false);
 
 	let artist_tag_delimiters_owned: Vec<String> = get_setting(conn, "artist_tag_delimiters")
 		.ok()
@@ -745,9 +721,6 @@ pub fn scan_directory_with_progress(conn: &Connection, dir: &str, app: &AppHandl
 			&priority_album,
 			&priority_year,
 			&custom_pattern,
-			folder_fallback_artist,
-			folder_fallback_album,
-			folder_fallback_year,
 			&artist_tag_delimiters,
 			&artist_filename_delimiters,
 			&genre_delimiters,

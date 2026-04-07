@@ -22,12 +22,8 @@ pub fn add_library_path(conn: &Connection, path: &str) -> Result<()> {
 }
 
 pub fn remove_library_path(conn: &Connection, path: &str) -> Result<()> {
-    conn.execute("DELETE FROM library_paths WHERE path = ?1", params![path])?;
-    conn.execute(
-        "DELETE FROM tracks WHERE path LIKE ?1",
-        params![format!("{}%", path)],
-    )?;
-    Ok(())
+	conn.execute("DELETE FROM library_paths WHERE path = ?1", params![path])?;
+	Ok(())
 }
 
 pub fn get_library_paths(conn: &Connection) -> Result<Vec<LibraryPath>> {

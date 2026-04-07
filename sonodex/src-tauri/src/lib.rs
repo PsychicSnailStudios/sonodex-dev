@@ -110,14 +110,15 @@ fn create_profile_cmd(
 
 	let mut registry = read_registry();
 	let is_first = registry.profiles.is_empty();
+	let is_only = registry.profiles.iter().all(|p| p.uid == state.get_uid()) && registry.profiles.len() <= 1;
 	registry.profiles.push(profile.clone());
-	if is_first {
+	if is_first || is_only {
 		registry.active = profile.uid.clone();
+		state.set_uid(profile.uid.clone());
 	}
 	write_registry(&registry);
 
 	if is_first {
-		state.set_uid(profile.uid.clone());
 		app.emit("profile:ready", ()).ok();
 	}
 
@@ -151,6 +152,8 @@ fn delete_profile_cmd(uid: String, state: State<AppState>) -> Result<(), String>
 	let mut registry = read_registry();
 	registry.profiles.retain(|p| p.uid != uid);
 	write_registry(&registry);
+	let profile_dir = crate::profiles::get_profile_dir(&uid);
+	std::fs::remove_dir_all(profile_dir).ok();
 	Ok(())
 }
 
@@ -171,8 +174,13 @@ fn switch_profile(uid: String, state: State<AppState>) -> Result<(), String> {
 // LIBRARY PATHS
 // ─────────────────────────────────────────────
 
+fn normalize_path(path: &str) -> String {
+	path.replace('\\', "/")
+}
+
 #[tauri::command]
 fn add_path(app: AppHandle, state: State<AppState>, path: String) -> Result<(), String> {
+	let path = normalize_path(&path);
 	let uid = state.get_uid();
 	let settings_conn = open_settings_conn(&uid);
 	add_library_path(&settings_conn, &path).map_err(|e| e.to_string())?;
@@ -197,14 +205,36 @@ fn add_path(app: AppHandle, state: State<AppState>, path: String) -> Result<(), 
 
 #[tauri::command]
 fn remove_path(state: State<AppState>, path: String) -> Result<(), String> {
+	let path = normalize_path(&path);
 	let uid = state.get_uid();
 	let settings_conn = open_settings_conn(&uid);
-	let lib_conn = open_lib_conn(&uid);
 	remove_library_path(&settings_conn, &path).map_err(|e| e.to_string())?;
+	let lib_conn = Connection::open(get_lib_db_path(&uid)).map_err(|e| e.to_string())?;
 	lib_conn
 		.execute(
 			"DELETE FROM tracks WHERE path LIKE ?1",
 			rusqlite::params![format!("{}%", path)],
+		)
+		.map_err(|e| e.to_string())?;
+	lib_conn
+		.execute(
+			"DELETE FROM albums WHERE uid NOT IN (
+				SELECT DISTINCT json_each.value
+				FROM tracks, json_each(tracks.albums, '$[*].uid')
+				WHERE json_each.value != ''
+			)",
+			[],
+		)
+		.map_err(|e| e.to_string())?;
+	lib_conn
+		.execute(
+			"DELETE FROM artists WHERE name NOT IN (
+				SELECT DISTINCT json_each.value
+				FROM tracks, json_each(tracks.artists)
+			) AND name NOT IN (
+				SELECT DISTINCT album_artist FROM tracks WHERE album_artist IS NOT NULL
+			)",
+			[],
 		)
 		.map_err(|e| e.to_string())?;
 	Ok(())

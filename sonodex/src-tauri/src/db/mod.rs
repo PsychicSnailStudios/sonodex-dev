@@ -59,9 +59,9 @@ pub fn init_settings_db(conn: &Connection) -> Result<()> {
 			('filename_priority_album', 'tag'),
 			('filename_priority_year', 'tag'),
 			('filename_custom_pattern', ''),
-			('folder_fallback_artist', 'false'),
-			('folder_fallback_album', 'false'),
-			('folder_fallback_year', 'false');
+			('folder_fallback_artist', 'true'),
+			('folder_fallback_album', 'true'),
+			('folder_fallback_year', 'true');
 		INSERT OR IGNORE INTO settings (key, value) VALUES
 			('enrich_primary_api', 'musicbrainz'),
 			('enrich_priority_title', 'local'),
