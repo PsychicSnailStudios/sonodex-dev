@@ -611,6 +611,103 @@ fn find_or_create_artist(conn: &Connection, name: &str) -> Option<(i64, String)>
 	Some((created_artist.id?, uid))
 }
 
+/// Shared post-upsert logic: creates/updates albums and artists for a track.
+/// Used by both the full scanner and the file watcher.
+pub fn process_track(conn: &Connection, track: &Track) {
+	let track_uid = track.uid.clone();
+	let track_title = track.title.as_deref();
+
+	let create_artists = get_setting(conn, "scan_create_artists")
+		.ok()
+		.flatten()
+		.map(|v| v == "true")
+		.unwrap_or(true);
+
+	let create_albums = get_setting(conn, "scan_create_albums")
+		.ok()
+		.flatten()
+		.map(|v| v == "true")
+		.unwrap_or(true);
+
+	if create_albums {
+		if let Some(albums_json) = &track.albums {
+			if let Ok(albums_arr) = serde_json::from_str::<Vec<serde_json::Value>>(albums_json) {
+				let mut updated_album_entries: Vec<serde_json::Value> = Vec::new();
+
+				for album_entry in &albums_arr {
+					if let Some(album_name) =
+						album_entry["name"].as_str().filter(|s| !s.is_empty())
+					{
+						let track_number =
+							album_entry["track_number"].as_u64().map(|n| n as u32);
+
+						if let Some((_album_id, album_uid)) = find_or_create_album(
+							conn,
+							album_name,
+							track.album_artist.as_deref(),
+							track.year.as_deref(),
+							track.genres.as_deref(),
+							track.artwork_blob.clone(),
+							&track_uid,
+							track_title,
+							track_number,
+						) {
+							updated_album_entries.push(serde_json::json!({
+								"uid": album_uid,
+								"name": album_name,
+								"track_number": track_number
+							}));
+						}
+					}
+				}
+
+				if !updated_album_entries.is_empty() {
+					if let Ok(patched_albums) = serde_json::to_string(&updated_album_entries) {
+						let _ = update_track_metadata_by_uid(
+							conn,
+							&track_uid,
+							&MetadataUpdate {
+								title: None,
+								artists: None,
+								album_artist: None,
+								albums: Some(patched_albums),
+								year: None,
+								genres: None,
+								bpm: None,
+								rating: None,
+								tags: None,
+								key: None,
+								user_options: None,
+								credits: None,
+								label: None,
+								artwork_blob: None,
+								artwork_path: None,
+							},
+						);
+					}
+				}
+			}
+		}
+	}
+
+	if create_artists {
+		if let Some(artists_json) = &track.artists {
+			if let Ok(artist_names) = serde_json::from_str::<Vec<String>>(artists_json) {
+				for name in artist_names {
+					if !name.is_empty() {
+						find_or_create_artist(conn, &name);
+					}
+				}
+			}
+		}
+		if let Some(album_artist) = &track.album_artist {
+			if !album_artist.is_empty() {
+				find_or_create_artist(conn, album_artist);
+			}
+		}
+	}
+}
+
 pub fn scan_directory_with_progress(conn: &Connection, dir: &str, app: &AppHandle) {
 	let priority_title = get_setting(conn, "filename_priority_title")
 		.ok()
@@ -686,17 +783,6 @@ pub fn scan_directory_with_progress(conn: &Connection, dir: &str, app: &AppHandl
 		.unwrap_or_else(|| GENRE_DELIMITERS.iter().map(|s| s.to_string()).collect());
 	let genre_delimiters: Vec<&str> = genre_delimiters_owned.iter().map(|s| s.as_str()).collect();
 
-	let create_artists = get_setting(conn, "scan_create_artists")
-		.ok()
-		.flatten()
-		.map(|v| v == "true")
-		.unwrap_or(true);
-	let create_albums = get_setting(conn, "scan_create_albums")
-		.ok()
-		.flatten()
-		.map(|v| v == "true")
-		.unwrap_or(true);
-
 	let all_files: Vec<_> = WalkDir::new(dir)
 		.follow_links(true)
 		.into_iter()
@@ -725,92 +811,8 @@ pub fn scan_directory_with_progress(conn: &Connection, dir: &str, app: &AppHandl
 			&artist_filename_delimiters,
 			&genre_delimiters,
 		) {
-			let track_uid = track.uid.clone();
-			let track_title = track.title.as_deref();
-
 			if upsert_track(conn, &track).is_ok() {
-				if create_albums {
-					if let Some(albums_json) = &track.albums {
-						if let Ok(albums_arr) =
-							serde_json::from_str::<Vec<serde_json::Value>>(albums_json)
-						{
-							let mut updated_album_entries: Vec<serde_json::Value> = Vec::new();
-
-							for album_entry in &albums_arr {
-								if let Some(album_name) =
-									album_entry["name"].as_str().filter(|s| !s.is_empty())
-								{
-									let track_number =
-										album_entry["track_number"].as_u64().map(|n| n as u32);
-
-									if let Some((_album_id, album_uid)) = find_or_create_album(
-										conn,
-										album_name,
-										track.album_artist.as_deref(),
-										track.year.as_deref(),
-										track.genres.as_deref(),
-										track.artwork_blob.clone(),
-										&track_uid,
-										track_title,
-										track_number,
-									) {
-										updated_album_entries.push(serde_json::json!({
-											"uid": album_uid,
-											"name": album_name,
-											"track_number": track_number
-										}));
-									}
-								}
-							}
-
-							if !updated_album_entries.is_empty() {
-								if let Ok(patched_albums) =
-									serde_json::to_string(&updated_album_entries)
-								{
-									let _ = update_track_metadata_by_uid(
-										conn,
-										&track_uid,
-										&MetadataUpdate {
-											title: None,
-											artists: None,
-											album_artist: None,
-											albums: Some(patched_albums),
-											year: None,
-											genres: None,
-											bpm: None,
-											rating: None,
-											tags: None,
-											key: None,
-											user_options: None,
-											credits: None,
-											label: None,
-											artwork_blob: None,
-											artwork_path: None,
-										},
-									);
-								}
-							}
-						}
-					}
-				}
-
-				if create_artists {
-					if let Some(artists_json) = &track.artists {
-						if let Ok(artist_names) = serde_json::from_str::<Vec<String>>(artists_json)
-						{
-							for name in artist_names {
-								if !name.is_empty() {
-									find_or_create_artist(conn, &name);
-								}
-							}
-						}
-					}
-					if let Some(album_artist) = &track.album_artist {
-						if !album_artist.is_empty() {
-							find_or_create_artist(conn, album_artist);
-						}
-					}
-				}
+				process_track(conn, &track);
 			}
 		}
 
