@@ -1,7 +1,6 @@
 use crate::db::delete_track;
 use crate::profiles::get_lib_db_path;
 use notify::{Config, Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
-use notify::event::{CreateKind, ModifyKind, RemoveKind};
 use rusqlite::Connection;
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -41,7 +40,7 @@ pub fn start_watcher(app: AppHandle, profile_uid: String, paths: Vec<String>) {
         loop {
             match rx.recv_timeout(Duration::from_secs(1)) {
                 Ok(Ok(event)) => {
-                    eprintln!("[watcher] Event: {:?}", event); // <-- remove after debugging
+                    eprintln!("[watcher] Event: {:?}", event);
 
                     let now = std::time::Instant::now();
 
@@ -64,7 +63,10 @@ pub fn start_watcher(app: AppHandle, profile_uid: String, paths: Vec<String>) {
                         let lib_path = get_lib_db_path(&profile_uid);
                         let conn = match Connection::open(&lib_path) {
                             Ok(c) => c,
-                            Err(e) => { eprintln!("[watcher] DB open error: {e}"); continue; }
+                            Err(e) => {
+                                eprintln!("[watcher] DB open error: {e}");
+                                continue;
+                            }
                         };
 
                         match event.kind {
@@ -79,11 +81,15 @@ pub fn start_watcher(app: AppHandle, profile_uid: String, paths: Vec<String>) {
 
                                 match crate::scanner::read_track(path) {
                                     Some(track) => {
-                                        if let Err(e) = crate::db::upsert_track(&conn, &track) {
-                                            eprintln!("[watcher] upsert_track error: {e}");
-                                        } else {
-                                            eprintln!("[watcher] Upserted: {:?}", path);
-                                            app.emit("library:updated", ()).ok();
+                                        match crate::db::upsert_track(&conn, &track) {
+                                            Ok(_) => {
+                                                crate::scanner::process_track(&conn, &track);
+                                                eprintln!("[watcher] Upserted + processed: {:?}", path);
+                                                app.emit("library:updated", ()).ok();
+                                            }
+                                            Err(e) => {
+                                                eprintln!("[watcher] upsert_track error: {e}");
+                                            }
                                         }
                                     }
                                     None => {
@@ -95,6 +101,7 @@ pub fn start_watcher(app: AppHandle, profile_uid: String, paths: Vec<String>) {
                                 let path_str = path.to_string_lossy().to_string();
                                 delete_track(&conn, &path_str).ok();
                                 app.emit("library:updated", ()).ok();
+                                eprintln!("[watcher] Deleted: {:?}", path);
                             }
                             _ => {}
                         }
