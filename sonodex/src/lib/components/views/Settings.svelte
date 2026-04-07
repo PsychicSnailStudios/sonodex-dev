@@ -122,6 +122,7 @@
 	async function removePath(path: string) {
 		await invoke("remove_path", { path });
 		await loadPaths();
+		await loadLibrary();
 		scanState.status = `Removed ${path}`;
 	}
 

@@ -140,6 +140,30 @@ export async function deleteFolder(
 	library.playlists = await invoke("get_playlists");
 }
 
+async function _deleteFolderRecursive(folderPath: string) {
+	const current = library.playlists ?? [];
+	const direct = current.filter((p: any) => (p.folder ?? "") === folderPath);
+	for (const p of direct) {
+		await invoke("delete_playlist_entry", { uid: p.uid });
+	}
+	const subfolders = [...new Set(
+		current
+			.map((p: any) => p.folder ?? "")
+			.filter((f: string) => f.startsWith(folderPath + "/"))
+			.map((f: string) => f.slice(folderPath.length + 1).split("/")[0])
+			.map((name: string) => `${folderPath}/${name}`)
+	)];
+	for (const sub of subfolders) {
+		await _deleteFolderRecursive(sub);
+	}
+	removeFolder(folderPath);
+}
+
+export async function deleteFolderAndContents(folderPath: string) {
+	await _deleteFolderRecursive(folderPath);
+	library.playlists = await invoke("get_playlists");
+}
+
 export async function dropOnFolder(
 	e: DragEvent,
 	targetPath: string,

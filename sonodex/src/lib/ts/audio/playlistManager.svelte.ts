@@ -105,18 +105,25 @@ export async function reorderPlaylistTracks(playlistUid: string, orderedUids: st
 	await refreshPlaylists()
 }
 
-export async function createPlaylist(name: string, owner: string | null = null, folder: string | null = null, tracks: TrackEntry[] | null = null) {
+export async function createPlaylist(
+	name: string,
+	owner: string | null = null,
+	folder: string | null = null,
+	tracks: TrackEntry[] | null = null): Promise<string>
+{
+	let uid = "p-" + crypto.randomUUID();
 	await invoke("create_playlist_entry", {
 		playlist: {
-			uid: "p-" + crypto.randomUUID(),
+			uid: uid,
 			title: name.trim(),
 			description: null,
 			owner: owner,
-			tracks: JSON.stringify(tracks),
+			tracks: tracks ? JSON.stringify(tracks) : null,
 			artwork_path: null,
 			folder: folder,
 		},
 	})
 
 	await refreshPlaylists()
+	return uid;
 }

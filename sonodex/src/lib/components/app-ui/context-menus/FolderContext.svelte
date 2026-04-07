@@ -1,7 +1,7 @@
 <script lang="ts">
 	import * as ContextMenu from "$lib/components/ui/context-menu/index.js";
-	
-	import { nestFolder, moveFolderToRoot, deleteFolder } from "$lib/ts/drag-n-drop/dragdrop_folders";
+
+	import { nestFolder, moveFolderToRoot, deleteFolder, deleteFolderAndContents } from "$lib/ts/drag-n-drop/dragdrop_folders";
 	import { library } from "$lib/ts/library.svelte";
 	import type { PlaylistSortField } from "$lib/ts/app/playlistLibrary.svelte";
 
@@ -33,7 +33,7 @@
 	}
 
 	async function handleDeleteAll() {
-		await deleteFolder(path, playlists, sortField, sortDir);
+		await deleteFolderAndContents(path);
 	}
 
 	async function handleMoveTo(targetPath: string | null) {

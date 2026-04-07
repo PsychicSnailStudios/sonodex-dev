@@ -7,15 +7,18 @@
 	
 	import { createPlaylist } from "$lib/ts/audio/playlistManager.svelte";
 	import { profileState } from "$lib/ts/profiles.svelte";
+    import { setSelection } from "$lib/ts/app-states/state_session.svelte";
 
 	let { open = $bindable(false), folder = null } = $props<{ open: boolean; folder?: string | null }>();
 
-	let nameInput = $state("");
+	let nameInput = $state("New Playlist");
 
 	async function handleCreatePlaylist() {
 		if (!nameInput.trim()) return;
-		await createPlaylist(nameInput.trim(), profileState.active?.name ?? null, folder);
+		let uid = await createPlaylist(nameInput.trim(), profileState.active?.name ?? null, folder);
 		nameInput = "";
+
+		setSelection(uid, "playlist");
 		open = false;
 	}
 </script>
