@@ -2,6 +2,7 @@
 
 	// APP
    import { invoke } from "@tauri-apps/api/core";
+   import { onMount } from "svelte";
 	
 	// COMPONENTS
 	import { Rows4, BadgePlus, Square } from "lucide-svelte";
@@ -22,9 +23,11 @@
 	import { getArtistUidFromName } from "$lib/ts/library.svelte";
 	import { currentlyPlaying, player } from "$lib/ts/audio/audioManager.svelte";
 	import { getArtworkColor, parseArtists } from "$lib/ts/util/helpers";
+   import type { Lyrics } from "$lib/ts/util/types";
 
 	// VARIABLES
 	let showQueue = $state(false);
+	let lyrics: Lyrics | null = $state(null);
 
 	let color = $state("rgb(30, 30, 30)");
 
@@ -37,6 +40,10 @@
 			if (bytes) getArtworkColor(bytes as number[], 0.3).then((c) => color = c);
 		});
 	});
+
+	async function updateLyrics() {
+		lyrics = await invoke("get_track_lyrics", { uid: currentlyPlaying.track.uid });
+	}
 
 </script>
 
@@ -53,7 +60,13 @@
 			<RecentlyPlayed />
 			<Tabs.Content value="lyrics">
 				<ScrollArea class="min-h-0 min-w-0 h-[200px]">
-					<p>no lyrics</p>
+					{#if lyrics?.instrumental}
+						<p class="text-muted-foreground text-sm">This track is instrumental.</p>
+					{:else if lyrics?.plain}
+						<pre class="text-sm whitespace-pre-wrap font-sans leading-relaxed">{lyrics.plain}</pre>
+					{:else}
+						<p class="text-muted-foreground text-sm">No lyrics available.</p>
+					{/if}
 				</ScrollArea>
 			</Tabs.Content>
 		</Tabs.Root>

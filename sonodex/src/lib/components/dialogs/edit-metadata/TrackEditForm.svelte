@@ -21,7 +21,7 @@
 	import { closeEditModal } from "$lib/ts/app/editModal.svelte";
 	import { loadLibrary, reloadLibrary } from "$lib/ts/library.svelte";
 	import { syncAlbums, removeTrackFromOldAlbums, syncArtists } from "$lib/ts/dbManager";
-	import { enrichTrack } from "$lib/ts/app/enrichment";
+	import { enrichTrack, fetchLyrics } from "$lib/ts/app/enrichment";
 	import type { AlbumEntry } from "$lib/ts/dbManager";
 
 	// PROPS
@@ -45,12 +45,15 @@
 	let artworkPath = $state<string | null>(null);
 	let saving = $state(false);
 	let writeToFile = $state(false);
+	let hasLyrics = $state(false);
 
 	onMount(async () => {
 		const tracks = await invoke<any[]>("get_tracks");
+		const lyrics = await invoke("get_track_lyrics", { uid: uid });
 		const track = tracks.find((t) => t.uid === uid);
 		if (!track) return;
 
+		hasLyrics = lyrics != null;
 		title = track.title ?? "";
 		albumArtist = track.album_artist ?? "";
 		year = track.year ?? "";
@@ -105,6 +108,11 @@
 		const next = [...albums];
 		[next[index], next[index + 1]] = [next[index + 1], next[index]];
 		albums = next;
+	}
+
+	function getLyrics() {
+		fetchLyrics(uid);
+		reloadLibrary("tracks");
 	}
 
 	async function save() {
@@ -299,6 +307,7 @@
 		Write tags to file
 	</label>
 	<div class="flex gap-2">
+		<Button variant="outline" disabled={hasLyrics} onclick={getLyrics}>Get Lyrics</Button>
 		<Button variant="outline" onclick={() => enrichTrack(uid)}>Enrich</Button>
 		<Button variant="outline" onclick={closeEditModal}>Cancel</Button>
 		<Button onclick={save} disabled={saving}>
