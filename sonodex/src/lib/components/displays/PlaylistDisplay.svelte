@@ -4,7 +4,7 @@
 	import { invoke } from "@tauri-apps/api/core";
 
 	// COMPONENTS
-	import { CirclePlus, Pencil } from "lucide-svelte";
+	import { CirclePlus, Pencil, X } from "lucide-svelte";
 
 	import { Button } from "$lib/components/ui/button/index.js";
 	import { ScrollArea } from "$lib/components/ui/scroll-area/index.js";
@@ -29,7 +29,6 @@
 	import { createPersistedViewState } from "$lib/ts/app-states/state_session.svelte";
 
 	import type { Track } from "$lib/ts/util/types";
-    import X from "@lucide/svelte/icons/x";
 
 	// VARIABLES
 	let search = $state("");

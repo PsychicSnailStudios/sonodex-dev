@@ -17,10 +17,12 @@
 
 	// SCRIPTS
 	import { closeEditModal } from "$lib/ts/app/editModal.svelte";
-	import { loadLibrary } from "$lib/ts/library.svelte";
+	import { loadLibrary, library } from "$lib/ts/library.svelte";
+   import { enrichArtist } from "$lib/ts/app/enrichment";
 
 	// PROPS
 	let { uid } = $props<{ uid: string }>();
+	let artist = $derived(library.artists.find(a => a.uid === uid) ?? null);
 
 	// VARIABLES
 	let name = $state("");
@@ -35,7 +37,15 @@
 
 	// APP FUNCTIONS
 	onMount(async () => {
-		const artist = await invoke<any | null>("get_artist", { uid });
+		updateFields();
+	});
+
+	// FUNCTIONS
+	function splitList(val: string) {
+		return val.split(",").map((s) => s.trim()).filter(Boolean);
+	}
+
+	function updateFields() {
 		if (!artist) return;
 
 		name = artist.name ?? "";
@@ -47,11 +57,6 @@
 		try { tags = (artist.tags ? JSON.parse(artist.tags) : []).join(", "); } catch { tags = ""; }
 		try { websites = (artist.websites ? JSON.parse(artist.websites) : []).join(", "); } catch { websites = ""; }
 		try { members = (artist.members ? JSON.parse(artist.members) : []).join(", "); } catch { members = ""; }
-	});
-
-	// FUNCTIONS
-	function splitList(val: string) {
-		return val.split(",").map((s) => s.trim()).filter(Boolean);
 	}
 
 	async function save() {
@@ -73,6 +78,7 @@
 			closeEditModal();
 		} finally {
 			saving = false;
+			closeEditModal();
 		}
 	}
 </script>
@@ -131,6 +137,7 @@
 <Separator class="my-4" />
 
 <div class="flex justify-end gap-2">
+	<Button variant="outline" onclick={() => enrichArtist(uid)}>Enrich</Button>
 	<Button variant="outline" onclick={closeEditModal}>Cancel</Button>
 	<Button onclick={save} disabled={saving}>{saving ? "Saving…" : "Save"}</Button>
 </div>

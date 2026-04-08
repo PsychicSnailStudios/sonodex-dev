@@ -52,9 +52,9 @@
 
 			await invoke("update_playlist_entry", { uid, update });
 			await loadLibrary();
-			closeEditModal();
 		} finally {
 			saving = false;
+			closeEditModal();
 		}
 	}
 

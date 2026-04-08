@@ -33,7 +33,7 @@
 		colPreset: "album",
 	});
 
-	let album: Album | null = $state(null);
+	let album = $derived(library.albums.find(a => a.uid === selection.uid) ?? null);
 	let color = $state("rgb(30, 30, 30)");
 
 	let tracks: Track[] = $derived.by(() => {

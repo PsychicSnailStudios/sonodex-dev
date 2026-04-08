@@ -294,6 +294,21 @@
 				onchange={(e) => saveSetting("filename_custom_pattern", (e.target as HTMLInputElement).value)}
 			/>
 			</div>
+
+			<div class="space-y-2">
+			<h2 class="text-sm font-semibold">Folder Path Fallback</h2>
+			<p class="text-xs text-muted-foreground">If a field is missing from tags and filename, infer it from the folder structure (e.g. /Artist/Album/track).</p>
+			{#each [
+				{ key: "folder_fallback_artist", label: "Artist" },
+				{ key: "folder_fallback_album", label: "Album" },
+				{ key: "folder_fallback_year", label: "Year" },
+			] as { key, label }}
+				<div class="flex items-center justify-between gap-4">
+				<label class="text-sm">{label}</label>
+				<Switch checked={settings[key] === "true"} onCheckedChange={(checked) => saveSetting(key, checked ? "true" : "false")} />
+				</div>
+			{/each}
+			</div>
 		</div>
 
 		<h3 class="font-semibold">Connected Accounts</h3>

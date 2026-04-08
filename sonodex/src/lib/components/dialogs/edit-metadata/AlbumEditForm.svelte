@@ -18,6 +18,7 @@
 	// SCRIPTS
 	import { closeEditModal } from "$lib/ts/app/editModal.svelte";
 	import { loadLibrary } from "$lib/ts/library.svelte";
+	import { enrichAlbum } from "$lib/ts/app/enrichment";
 
 	// PROPS
 	let { uid } = $props<{ uid: string }>();
@@ -86,9 +87,9 @@
 
 			await invoke("update_album_entry", { uid, update });
 			await loadLibrary();
-			closeEditModal();
 		} finally {
 			saving = false;
+			closeEditModal();
 		}
 	}
 </script>
@@ -162,6 +163,7 @@
 <Separator class="my-4" />
 
 <div class="flex justify-end gap-2">
+	<Button variant="outline" onclick={() => enrichAlbum(uid)}>Enrich</Button>
 	<Button variant="outline" onclick={closeEditModal}>Cancel</Button>
 	<Button onclick={save} disabled={saving}>{saving ? "Saving…" : "Save"}</Button>
 </div>

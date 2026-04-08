@@ -21,6 +21,7 @@
 	import { closeEditModal } from "$lib/ts/app/editModal.svelte";
 	import { loadLibrary } from "$lib/ts/library.svelte";
 	import { syncAlbums, removeTrackFromOldAlbums, syncArtists } from "$lib/ts/dbManager";
+	import { enrichTrack } from "$lib/ts/app/enrichment";
 	import type { AlbumEntry } from "$lib/ts/dbManager";
 
 	// PROPS
@@ -154,14 +155,10 @@
 			await invoke("enrich_track", { uid });
 
 			await loadLibrary();
-			closeEditModal();
 		} finally {
 			saving = false;
+			closeEditModal();
 		}
-	}
-
-	async function enrichTrack() {
-		await invoke("enrich_track", { uid });
 	}
 </script>
 

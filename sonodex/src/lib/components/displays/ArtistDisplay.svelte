@@ -23,7 +23,7 @@
     import TopTracks from "../app-ui/TopTracks.svelte";
 
 	// VARIABLES
-	let artist: Artist | null = $state(null);
+	let artist = $derived(library.artists.find(a => a.uid === selection.uid) ?? null);
 	
 	let artistAlbums: Album[] = $derived.by(() => {
 		if (!artist) return [];
