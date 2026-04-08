@@ -28,14 +28,14 @@
 	// VARIABLES
 	let track = $derived(library.tracks.find(t => t.uid === selection.uid) ?? null);
 	let lyrics: Lyrics | null = $state(null);
-	let tags: string[] | null = $state(null);
+	let genres = $derived(track?.genres ? parseTags(track.genres) : null);
+	let tags = $derived(track?.tags ? parseTags(track.tags) : null);
 
 	let artistUID = getArtistUidFromName(track?.album_artist ?? "Unknown Artist");
 	
 	// APP FUNCTIONS
 	onMount(async () => {
 		lyrics = await invoke("get_track_lyrics", { uid: selection.uid });
-		tags = track?.tags ? parseTags(track.tags) : null;
 	});
 </script>
 
@@ -98,6 +98,7 @@
 
 				<Tabs.Content value="tags" class="flex-1 overflow-y-auto mt-2">
 					{#if tags}
+						<TagList tags={genres} canEdit={false} />
 						<TagList tags={tags} canEdit={true} />
 					{:else}
 						<p class="text-muted-foreground text-sm">Track has no tags.</p>

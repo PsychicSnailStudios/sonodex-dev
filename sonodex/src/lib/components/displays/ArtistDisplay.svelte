@@ -2,6 +2,7 @@
 
 	// APP
 	import { invoke } from "@tauri-apps/api/core";
+   import { onMount } from "svelte";
 
 	// COMPONENTS
 	import { Pencil } from "lucide-svelte";
@@ -14,16 +15,20 @@
 	import ArtworkDisplay from "$lib/components/app-ui/ArtworkDisplay.svelte";
 	import AudioCard from "$lib/components/app-ui/AudioCard.svelte";
    import NavButtons from "$lib/components/app-ui/NavButtons.svelte";
+   import TopTracks from "$lib/components/app-ui/TopTracks.svelte";
+	import TagList from "$lib/components/app-ui/TagList.svelte";
 
 	// SCRIPTS
 	import { selection } from "$lib/ts/app-states/state_session.svelte";
 	import { library } from "$lib/ts/library.svelte";
 	import { openEditModal } from "$lib/ts/app/editModal.svelte";
 	import type { Artist, Track, Album } from "$lib/ts/util/types";
-    import TopTracks from "../app-ui/TopTracks.svelte";
+   import { parseTags } from "$lib/ts/util/helpers";
 
 	// VARIABLES
 	let artist = $derived(library.artists.find(a => a.uid === selection.uid) ?? null);
+	let genres = $derived(artist?.genres ? parseTags(artist.genres) : null);
+	let tags = $derived(artist?.tags ? parseTags(artist.tags) : null);
 	
 	let artistAlbums: Album[] = $derived.by(() => {
 		if (!artist) return [];
@@ -40,6 +45,7 @@
 			artist = a as Artist;
 		});
 	});
+
 </script>
 
 <div class="flex flex-col gap-4 border-2 h-full w-full overflow-hidden rounded-md">
@@ -95,6 +101,11 @@
 			</Tabs.Content>
 
 			<Tabs.Content value="about" class="flex-1 overflow-y-auto">
+				<h3 class="text-sm font-semibold mb-2 mt-2">TAGS & GENRES</h3>
+				<TagList tags={genres} canEdit={false} />
+				<TagList tags={tags} canEdit={false} />
+				
+				<h3 class="text-sm font-semibold mb-2 mt-2 pt-4">BIO</h3>
 				{#if artist.about}
 					<p class="text-sm leading-relaxed mt-2">{artist.about}</p>
 				{:else}

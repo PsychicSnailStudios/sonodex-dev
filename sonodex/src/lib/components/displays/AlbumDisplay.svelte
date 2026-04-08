@@ -15,13 +15,14 @@
 	import TrackTable from "$lib/components/app-ui/track-table/TrackTable.svelte";
 	import AudioCard from "$lib/components/app-ui/AudioCard.svelte";
 	import NavButtons from "$lib/components/app-ui/NavButtons.svelte";
+	import TagList from "$lib/components/app-ui/TagList.svelte";
 
 	// SCRIPTS
 	import { selection, setSelection } from "$lib/ts/app-states/state_session.svelte";
 	import { getArtistUidFromName, library, getAlbumTracks } from "$lib/ts/library.svelte";
 	import { queueTracksByObject } from "$lib/ts/audio/audioManager.svelte";
 	import { openEditModal } from "$lib/ts/app/editModal.svelte";
-	import { getArtworkColor, totalDuration } from "$lib/ts/util/helpers"
+	import { getArtworkColor, parseTags, totalDuration } from "$lib/ts/util/helpers"
 	import { createPersistedViewState } from "$lib/ts/app-states/state_session.svelte";
 	
 	import type { Album, Track } from "$lib/ts/util/types";
@@ -34,6 +35,9 @@
 	});
 
 	let album = $derived(library.albums.find(a => a.uid === selection.uid) ?? null);
+	let genres = $derived(album?.genres ? parseTags(album.genres) : null);
+	let tags = $derived(album?.tags ? parseTags(album.tags) : null);
+
 	let color = $state("rgb(30, 30, 30)");
 
 	let tracks: Track[] = $derived.by(() => {
@@ -100,6 +104,9 @@
 						<span>{totalDuration(tracks)}</span>
 					{/if}
 				</div>
+
+				<TagList tags={genres} canEdit={false} />
+				<TagList tags={tags} canEdit={true} />
 			</div>
 		</div>
 
