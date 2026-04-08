@@ -9,14 +9,14 @@
 	import { Label } from "$lib/components/ui/label/index.js";
 
 	// SCRIPTS
-	import { library } from "$lib/ts/library.svelte";
+	import { library, reloadLibrary } from "$lib/ts/library.svelte";
 	import { createStubTrack } from "$lib/ts/dbManager";
 	import { profileState } from "$lib/ts/profiles.svelte";
 	import { createPlaylist } from "$lib/ts/audio/playlistManager.svelte";
 	import type { Track, ParsedTrack, ImportState } from "$lib/ts/util/types";
 
 	// PROPS
-	let { folder = null } = $props<{ folder?: string | null }>();
+	let { folder = null, onClose } = $props<{ folder?: string | null; onClose: () => void }>();
 
 	// VARIABLES
 	let state = $state<ImportState>("idle");
@@ -298,16 +298,19 @@
 
 			await createPlaylist(playlistName.trim(), profileState.active?.name ?? null, folder, playlistTrackEntries);
 
-			await library.loadLibrary?.();
+			// await library.loadLibrary?.();
+			await reloadLibrary("playlists");
 
 			state = "done";
 			
-			reset();
 			
 		} catch (e: any) {
 			importError = e.message ?? String(e);
 			state = "error";
 		}
+
+		reset();
+		onClose();
 	}
 
 </script>

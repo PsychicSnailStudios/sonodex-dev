@@ -50,7 +50,7 @@
 				</Tabs.Content>
 				
 				<Tabs.Content value="import">
-					<ImportPlaylist/>
+					<ImportPlaylist folder={folder} onClose={() => { open = false; }} />
 				</Tabs.Content>
 	
 				<Tabs.Content value="url">
