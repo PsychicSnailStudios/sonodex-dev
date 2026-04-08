@@ -286,6 +286,16 @@ fn get_tracks(state: State<AppState>) -> Result<Vec<Track>, String> {
 }
 
 #[tauri::command]
+fn get_track(state: State<AppState>, uid: String) -> Result<Track, String> {
+	let tracks_uid = state.get_uid();
+	let conn = open_lib_conn(&tracks_uid);
+	let track = db::get_track_by_uid(&conn, &uid)
+		.map_err(|e| e.to_string())?
+		.ok_or("Track not found")?;
+	Ok(track)
+}
+
+#[tauri::command]
 fn get_track_artwork(state: State<AppState>, uid: String) -> Result<Option<Vec<u8>>, String> {
 	let profile_uid = state.get_uid();
 	let conn = open_lib_conn(&profile_uid);
@@ -1163,6 +1173,7 @@ pub fn run() {
 			get_paths,
 			rescan,
 			add_track,
+			get_track,
 			get_tracks,
 			get_track_artwork,
 			get_duplicates,

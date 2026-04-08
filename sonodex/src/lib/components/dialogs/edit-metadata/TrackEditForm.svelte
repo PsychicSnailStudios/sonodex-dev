@@ -19,7 +19,7 @@
 	
 	// SCRIPTS
 	import { closeEditModal } from "$lib/ts/app/editModal.svelte";
-	import { loadLibrary } from "$lib/ts/library.svelte";
+	import { loadLibrary, reloadLibrary } from "$lib/ts/library.svelte";
 	import { syncAlbums, removeTrackFromOldAlbums, syncArtists } from "$lib/ts/dbManager";
 	import { enrichTrack } from "$lib/ts/app/enrichment";
 	import type { AlbumEntry } from "$lib/ts/dbManager";
@@ -154,7 +154,7 @@
 
 			await invoke("enrich_track", { uid });
 
-			await loadLibrary();
+			await reloadLibrary("tracks");
 		} finally {
 			saving = false;
 			closeEditModal();
@@ -299,7 +299,7 @@
 		Write tags to file
 	</label>
 	<div class="flex gap-2">
-		<Button variant="outline" onclick={enrichTrack}>Enrich</Button>
+		<Button variant="outline" onclick={() => enrichTrack(uid)}>Enrich</Button>
 		<Button variant="outline" onclick={closeEditModal}>Cancel</Button>
 		<Button onclick={save} disabled={saving}>
 			{saving ? "Saving…" : "Save"}

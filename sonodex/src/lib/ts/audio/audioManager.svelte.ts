@@ -110,6 +110,8 @@ export function loadPlayerState() {
 		if (!raw) return;
 		const saved = JSON.parse(raw);
 		queuedTracks = saved.tracks ?? [];
+		queueIndex = saved.index ?? -1;
+		lastQueuedSet = saved.lastSet ?? [];
 	} catch {}
 }
 
@@ -131,6 +133,8 @@ export function savePlayerState() {
 	try {
 		localStorage.setItem(QUEUE_STORAGE_KEY, JSON.stringify({
 			tracks: queuedTracks,
+			index: queueIndex,
+			lastSet: lastQueuedSet
 		}));
 	} catch {}
 }

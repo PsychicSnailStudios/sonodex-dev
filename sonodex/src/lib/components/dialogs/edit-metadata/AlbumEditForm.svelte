@@ -17,7 +17,7 @@
 
 	// SCRIPTS
 	import { closeEditModal } from "$lib/ts/app/editModal.svelte";
-	import { loadLibrary } from "$lib/ts/library.svelte";
+	import { loadLibrary, reloadLibrary, reloadSingle } from "$lib/ts/library.svelte";
 	import { enrichAlbum } from "$lib/ts/app/enrichment";
 
 	// PROPS
@@ -86,7 +86,7 @@
 			};
 
 			await invoke("update_album_entry", { uid, update });
-			await loadLibrary();
+			await reloadLibrary("albums");
 		} finally {
 			saving = false;
 			closeEditModal();

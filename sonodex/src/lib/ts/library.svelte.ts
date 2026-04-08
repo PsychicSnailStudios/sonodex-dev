@@ -1,6 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import type { Track, Album, Artist, Playlist } from "$lib/ts/util/types";
 import { SortState } from "$lib/ts/app/sortConfig.svelte";
+import { parseUidType } from "$lib/ts/util/helpers";
 
 export const library = $state({
 	tracks: [] as Track[],
@@ -16,6 +17,48 @@ export async function loadLibrary() {
 	library.artists = await invoke("get_artists");
 	library.playlists = await invoke("get_playlists");
 	library.loaded = true;
+}
+
+export async function reloadLibrary(type: "tracks" | "albums" | "artists" | "playlists") {
+
+	switch (type) {
+		case "tracks":
+			library.tracks = await invoke("get_tracks");
+			break;
+		case "albums":
+			library.albums = await invoke("get_albums");
+			break;
+		case "artists":
+			library.artists = await invoke("get_artists");
+			break;
+		case "playlists":
+			library.playlists = await invoke("get_playlists");
+			break;
+	}
+}
+
+export async function reloadSingle(uid: string) {
+
+	let type = parseUidType(uid);
+
+	switch (type) {
+		case "track":
+			let newTrack = await invoke("get_track", { uid });
+			library.tracks.find(a => a.uid === uid) === newTrack;
+			break;
+		case "album":
+			let newAlbum = await invoke("get_album", { uid });
+			library.albums.find(a => a.uid === uid) === newAlbum;
+			break;
+		case "artist":
+			let newArtist = await invoke("get_artist", { uid });
+			library.artists.find(a => a.uid === uid) === newArtist;
+			break;
+		case "playlist":
+			let newPlaylist = await invoke("get_playlist", { uid });
+			library.playlists.find(a => a.uid === uid) === newPlaylist;
+			break;
+	}
 }
 
 export function getArtistUidFromName(name: string): string {

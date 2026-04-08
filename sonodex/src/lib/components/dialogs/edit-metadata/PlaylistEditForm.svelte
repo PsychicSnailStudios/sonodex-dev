@@ -17,7 +17,7 @@
 
 	// SCRIPTS
 	import { closeEditModal } from "$lib/ts/app/editModal.svelte";
-	import { loadLibrary } from "$lib/ts/library.svelte";
+	import { loadLibrary, reloadLibrary } from "$lib/ts/library.svelte";
 
 	// PROPS
 	let { uid } = $props<{ uid: string }>();
@@ -51,7 +51,7 @@
 			};
 
 			await invoke("update_playlist_entry", { uid, update });
-			await loadLibrary();
+			await reloadLibrary("playlists");
 		} finally {
 			saving = false;
 			closeEditModal();
