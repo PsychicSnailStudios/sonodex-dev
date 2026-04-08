@@ -1,5 +1,6 @@
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { flushSync } from "svelte";
+import { toast } from "svelte-sonner";
 import { library } from "$lib/ts/library.svelte";
 import type { Track, AudioCatagories } from "$lib/ts/util/types";
 import { parseTrackNumber, parseUidType } from "../util/helpers";
@@ -196,8 +197,19 @@ function playTrack(track: Track) {
 	if (currentlyPlaying.track) {
 		playedTracks.unshift(currentlyPlaying.track);
 	}
-	scrobbleStart(track);
-	startAudio(track);
+
+	let isGhost = $derived(/^[a-z]+-[0-9a-f-]{36}$/.test(track.path));
+	if (isGhost) {
+		
+		toast.warning("Cannot Play Track, No local file found.");
+		
+		scrobbleStart(track);
+		onTrackEnd(true);
+	}
+	else {
+		scrobbleStart(track);
+		startAudio(track);
+	}
 }
 
 export function playTrackByUid(uid: string) {
@@ -370,8 +382,8 @@ export function togglePlay() {
 	}
 }
 
-function onTrackEnd() {
-	scrobbleEnd(audio!.currentTime)
+function onTrackEnd(skipGhost = false) {
+	if (!skipGhost) scrobbleEnd(audio!.currentTime)
 
 	if (player.loopType === 1) {
 		if (audio) {

@@ -60,6 +60,14 @@
 			if (bytes) getArtworkColor(bytes as number[], 0.3).then((c) => color = c)
 		});
 	});
+	
+	function allTracksAreGhosts(): boolean {
+		for (let track of tracks) {
+			if ((/^[a-z]+-[0-9a-f-]{36}$/.test(track.path)) === false) return false;
+		}
+
+		return true;
+	}
 </script>
 
 <div class="flex flex-col gap-4 p-4 border-2 h-full w-full overflow-hidden rounded-md" style="background: linear-gradient(180deg, {color} 0%, transparent 80%)">
@@ -98,9 +106,9 @@
 		<div class="flex gap-2 justify-between items-center flex-wrap p-2 rounded-md"
 			  style="background: {color};">
 			<div>
-				<Button variant="default" onclick={() => queueTracksByObject(tracks, true)}>{ tracks.length === 1 ? "Play" : "Play All"}</Button>
+				<Button variant="default" disabled={allTracksAreGhosts()} onclick={() => queueTracksByObject(tracks, true)}>{ tracks.length === 1 ? "Play" : "Play All"}</Button>
 				{#if tracks.length > 1}
-					<Button variant="outline" onclick={() => queueTracksByObject(tracks, true, true)}>Shuffle</Button>
+					<Button variant="outline" disabled={allTracksAreGhosts()} onclick={() => queueTracksByObject(tracks, true, true)}>Shuffle</Button>
 				{/if}
 			</div>
 			<div class="flex gap-1 items-center">

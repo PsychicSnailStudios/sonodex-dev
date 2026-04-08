@@ -3,6 +3,7 @@
   import favicon from '$lib/assets/favicon.svg';
   import TitleBar from '$lib/components/app/title-bar/TitleBar.svelte';
   import EditModal from '$lib/components/dialogs/edit-metadata/EditModal.svelte';
+  import { Toaster } from "$lib/components/ui/sonner/index.js";
   import { ModeWatcher } from "mode-watcher";
   let { children } = $props();
 </script>
@@ -15,5 +16,6 @@
   <main class="h-screen overflow-hidden">
     {@render children()}
   </main>
+  <Toaster position="top-center" />
   <EditModal />
 </div>
