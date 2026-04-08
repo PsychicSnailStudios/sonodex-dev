@@ -36,6 +36,13 @@
 		seeking = true;
 	}
 
+	function formatTime(seconds: number): string {
+		if (!seconds || isNaN(seconds)) return "0:00";
+		const m = Math.floor(seconds / 60);
+		const s = Math.floor(seconds % 60);
+		return `${m}:${s.toString().padStart(2, "0")}`;
+	}
+
 </script>
 
 <div class="app-playbar bg-muted grid p-2 gap-1 rounded-md">
@@ -103,7 +110,7 @@
 	</div>
 
 	<div class="app-bar grid gap-2 items-center">
-		<span class="text-xs text-muted-foreground">{formatDuration(player.currentTime)}</span>
+		<span class="text-xs text-muted-foreground">{formatTime(player.currentTime)}</span>
 		
 		<div class="flex-1" onpointerdown={onSliderStart} aria-hidden="true" tabindex="-1">
 			<Slider
@@ -119,7 +126,7 @@
 			/>
 		</div>
 
-		<span class="text-xs text-muted-foreground">{formatDuration(player.duration)}</span>
+		<span class="text-xs text-muted-foreground">{formatTime(player.duration)}</span>
 	</div>
 
 </div>
