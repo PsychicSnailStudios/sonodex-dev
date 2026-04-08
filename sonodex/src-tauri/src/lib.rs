@@ -868,6 +868,168 @@ async fn enrich_all(app: AppHandle, state: State<'_, AppState>) -> Result<(), St
 	Ok(())
 }
 
+#[tauri::command]
+async fn enrich_album(
+	app: AppHandle,
+	state: State<'_, AppState>,
+	uid: String,
+) -> Result<(), String> {
+	let profile_uid = state.get_uid();
+
+	let (album, settings) = {
+		let lib_conn = open_lib_conn(&profile_uid);
+		let settings_conn = open_settings_conn(&profile_uid);
+		let album = get_album_by_uid(&lib_conn, &uid)
+			.map_err(|e| e.to_string())?
+			.ok_or("Album not found")?;
+		let settings = load_enrich_settings(&settings_conn);
+		(album, settings)
+	};
+
+	let artist = album
+		.album_artist
+		.clone()
+		.or_else(|| {
+			album.artists.as_deref().and_then(|a| {
+				serde_json::from_str::<Vec<String>>(a)
+					.ok()
+					.and_then(|v| v.into_iter().next())
+			})
+		})
+		.ok_or("Album has no artist")?;
+
+	let client = enrichment::make_client()?;
+	let result = enrichment::enrich_album_async(&client, &album.title, &artist, &settings).await;
+
+	{
+		let lib_conn = open_lib_conn(&profile_uid);
+		let update = db::AlbumUpdate {
+			title: None,
+			format: result.format,
+			rating: None,
+			artists: None,
+			album_artist: None,
+			release_date: result.release_date,
+			tags: None,
+			genres: result.genres,
+			tracks: None,
+			credits: None,
+			label: result.label,
+			artwork_blob: result.artwork,
+			artwork_path: None,
+		};
+		update_album_by_uid(&lib_conn, &uid, &update).map_err(|e| e.to_string())?;
+	}
+
+	let track_uids: Vec<String> = album
+		.tracks
+		.as_deref()
+		.and_then(|t| serde_json::from_str::<Vec<serde_json::Value>>(t).ok())
+		.unwrap_or_default()
+		.into_iter()
+		.filter_map(|e| e["uid"].as_str().map(|s| s.to_string()))
+		.filter(|s| !s.is_empty())
+		.collect();
+
+	for track_uid in track_uids {
+		let (track_input, numeric_id) = {
+			let lib_conn = open_lib_conn(&profile_uid);
+			let track = match db::get_track_by_uid(&lib_conn, &track_uid) {
+				Ok(Some(t)) => t,
+				_ => continue,
+			};
+			let numeric_id = match track.id {
+				Some(id) => id,
+				None => continue,
+			};
+			let artwork = db::get_track_artwork(&lib_conn, numeric_id).ok().flatten();
+			let input = enrichment::TrackInput {
+				id: numeric_id,
+				title: track.title,
+				artists: track.artists,
+				album_artist: track.album_artist,
+				albums: track.albums,
+				year: track.year,
+				genres: track.genres,
+				bpm: track.bpm,
+				key: track.key,
+				existing_artwork: artwork,
+			};
+			(input, numeric_id)
+		};
+
+		if let Ok(track_result) =
+			enrichment::enrich_track_async(&client, &track_input, &settings).await
+		{
+			let lib_conn = open_lib_conn(&profile_uid);
+			let update = db::MetadataUpdate {
+				title: track_result.title,
+				artists: track_result.artists,
+				album_artist: track_result.album_artist,
+				albums: track_result.albums,
+				year: track_result.year,
+				genres: track_result.genres,
+				bpm: track_result.bpm,
+				rating: None,
+				tags: None,
+				key: track_result.key,
+				credits: None,
+				label: None,
+				artwork_blob: track_result.artwork,
+				artwork_path: None,
+				user_options: None,
+			};
+			db::update_track_metadata(&lib_conn, numeric_id, &update).ok();
+		}
+	}
+
+	app.emit("library:updated", ()).ok();
+	Ok(())
+}
+
+#[tauri::command]
+async fn enrich_artist(
+	app: AppHandle,
+	state: State<'_, AppState>,
+	uid: String,
+) -> Result<(), String> {
+	let profile_uid = state.get_uid();
+
+	let (artist, settings) = {
+		let lib_conn = open_lib_conn(&profile_uid);
+		let settings_conn = open_settings_conn(&profile_uid);
+		let artist = get_artist_by_uid(&lib_conn, &uid)
+			.map_err(|e| e.to_string())?
+			.ok_or("Artist not found")?;
+		let settings = load_enrich_settings(&settings_conn);
+		(artist, settings)
+	};
+
+	let client = enrichment::make_client()?;
+	let result = enrichment::enrich_artist_async(&client, &artist.name, &settings).await;
+
+	{
+		let lib_conn = open_lib_conn(&profile_uid);
+		let update = db::ArtistUpdate {
+			name: None,
+			aka: None,
+			about: result.about,
+			tags: None,
+			genres: result.genres,
+			websites: result.websites,
+			members: None,
+			profile_art_blob: result.profile_art,
+			profile_art_path: None,
+			banner_art_blob: result.banner_art,
+			banner_art_path: None,
+		};
+		update_artist_by_uid(&lib_conn, &uid, &update).map_err(|e| e.to_string())?;
+	}
+
+	app.emit("library:updated", ()).ok();
+	Ok(())
+}
+
 // ─────────────────────────────────────────────
 // ANALYTICS
 // ─────────────────────────────────────────────
@@ -1033,6 +1195,8 @@ pub fn run() {
 			save_setting,
 			enrich_track,
 			enrich_all,
+			enrich_album,
+			enrich_artist,
 			get_track_lyrics,
 			fetch_track_lyrics,
 			delete_track_lyrics,
