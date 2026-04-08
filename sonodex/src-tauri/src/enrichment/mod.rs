@@ -44,6 +44,7 @@ pub struct EnrichedAlbum {
 	pub genres: Option<String>,
 	pub label: Option<String>,
 	pub format: Option<String>,
+	pub description: Option<String>,
 	pub artwork: Option<Vec<u8>>,
 }
 
@@ -95,6 +96,7 @@ pub struct EnrichAlbumResult {
 	pub genres: Option<String>,
 	pub label: Option<String>,
 	pub format: Option<String>,
+	pub description: Option<String>,
 	pub artwork: Option<Vec<u8>>,
 }
 
@@ -266,34 +268,19 @@ pub async fn enrich_album_async(
 ) -> EnrichAlbumResult {
 	let mut merged = EnrichedAlbum::default();
 
-	let all_apis = ["audiodb", "discogs", "lastfm", "musicbrainz"];
-	let ordered: Vec<&str> = std::iter::once(settings.primary_api.as_str())
-		.chain(
-			all_apis
-				.iter()
-				.copied()
-				.filter(|&a| a != settings.primary_api.as_str()),
-		)
-		.collect();
+	let audiodb = audiodb::search_album(client, album_title, artist, &settings.audiodb_key).await;
+	if let Some(r) = audiodb {
+		merged.release_date = r.release_date;
+		merged.genres = r.genres;
+		merged.label = r.label;
+		merged.format = r.format;
+		merged.description = r.description;
+		merged.artwork = r.artwork;
+	}
 
-	for api in ordered {
-		if merged.release_date.is_some()
-			&& merged.genres.is_some()
-			&& merged.label.is_some()
-			&& merged.artwork.is_some()
-		{
-			break;
-		}
-
-		let result: Option<EnrichedMetadata> = match api {
-			"audiodb" => audiodb::search(client, album_title, artist, &settings.audiodb_key).await,
-			"discogs" => discogs::search(client, album_title, artist, &settings.discogs_key).await,
-			"lastfm" => lastfm::search(client, album_title, artist, &settings.lastfm_key).await,
-			"musicbrainz" => musicbrainz::search(client, album_title, artist).await,
-			_ => None,
-		};
-
-		if let Some(r) = result {
+	if merged.artwork.is_none() || merged.genres.is_none() {
+		let discogs = discogs::search(client, album_title, artist, &settings.discogs_key).await;
+		if let Some(r) = discogs {
 			if merged.release_date.is_none() { merged.release_date = r.year; }
 			if merged.genres.is_none() { merged.genres = r.genres; }
 			if merged.label.is_none() { merged.label = r.label; }
@@ -302,11 +289,20 @@ pub async fn enrich_album_async(
 		}
 	}
 
+	if merged.release_date.is_none() || merged.genres.is_none() {
+		let mb = musicbrainz::search(client, album_title, artist).await;
+		if let Some(r) = mb {
+			if merged.release_date.is_none() { merged.release_date = r.year; }
+			if merged.genres.is_none() { merged.genres = r.genres; }
+		}
+	}
+
 	EnrichAlbumResult {
 		release_date: merged.release_date,
 		genres: merged.genres,
 		label: merged.label,
 		format: merged.format,
+		description: merged.description,
 		artwork: merged.artwork,
 	}
 }

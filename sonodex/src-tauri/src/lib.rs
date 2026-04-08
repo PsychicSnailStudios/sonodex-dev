@@ -191,8 +191,35 @@ fn add_path(app: AppHandle, state: State<AppState>, path: String) -> Result<(), 
 	std::thread::spawn(move || {
 		let lib_conn = open_lib_conn(&uid_clone);
 		scanner::scan_directory_with_progress(&lib_conn, &path_clone, &app_clone);
+
 		let settings_conn = open_settings_conn(&uid_clone);
-		let paths = get_library_paths(&settings_conn)
+		let auto_tracks = db::get_setting(&settings_conn, "auto_enrich_tracks")
+			.ok().flatten().map(|v| v == "true").unwrap_or(false);
+		let auto_albums = db::get_setting(&settings_conn, "auto_enrich_albums")
+			.ok().flatten().map(|v| v == "true").unwrap_or(false);
+		let auto_artists = db::get_setting(&settings_conn, "auto_enrich_artists")
+			.ok().flatten().map(|v| v == "true").unwrap_or(false);
+
+		if auto_tracks || auto_albums || auto_artists {
+			let app_enrich = app_clone.clone();
+			let uid_enrich = uid_clone.clone();
+			tauri::async_runtime::spawn(async move {
+				let state = app_enrich.state::<AppState>();
+				if auto_tracks {
+					let _ = enrich_all(app_enrich.clone(), state.clone()).await;
+				}
+				if auto_albums {
+					let _ = enrich_all_albums(app_enrich.clone(), state.clone()).await;
+				}
+				if auto_artists {
+					let _ = enrich_all_artists(app_enrich.clone(), state.clone()).await;
+				}
+				let _ = uid_enrich;
+			});
+		}
+
+		let settings_conn2 = open_settings_conn(&uid_clone);
+		let paths = get_library_paths(&settings_conn2)
 			.unwrap_or_default()
 			.into_iter()
 			.map(|p| p.path)
@@ -923,7 +950,7 @@ async fn enrich_album(
 			tags: None,
 			genres: result.genres,
 			tracks: None,
-			credits: None,
+			credits: result.description,
 			label: result.label,
 			artwork_blob: result.artwork,
 			artwork_path: None,
@@ -1036,6 +1063,125 @@ async fn enrich_artist(
 		update_artist_by_uid(&lib_conn, &uid, &update).map_err(|e| e.to_string())?;
 	}
 
+	app.emit("library:updated", ()).ok();
+	Ok(())
+}
+
+#[tauri::command]
+async fn enrich_all_albums(app: AppHandle, state: State<'_, AppState>) -> Result<(), String> {
+	let profile_uid = state.get_uid();
+
+	let (albums, settings) = {
+		let lib_conn = open_lib_conn(&profile_uid);
+		let settings_conn = open_settings_conn(&profile_uid);
+		let albums = get_all_albums(&lib_conn).map_err(|e| e.to_string())?;
+		let settings = load_enrich_settings(&settings_conn);
+		(albums, settings)
+	};
+
+	let total = albums.len();
+	let mut done = 0usize;
+	let mut errors = 0usize;
+
+	app.emit("enrich:progress", serde_json::json!({ "done": 0, "total": total, "errors": 0 })).ok();
+
+	let client = enrichment::make_client()?;
+
+	for album in &albums {
+		let artist = album
+			.album_artist
+			.clone()
+			.or_else(|| {
+				album.artists.as_deref().and_then(|a| {
+					serde_json::from_str::<Vec<String>>(a)
+						.ok()
+						.and_then(|v| v.into_iter().next())
+				})
+			});
+
+		if let Some(artist) = artist {
+			let result = enrichment::enrich_album_async(&client, &album.title, &artist, &settings).await;
+			let lib_conn = open_lib_conn(&profile_uid);
+			let update = db::AlbumUpdate {
+				title: None,
+				format: result.format,
+				rating: None,
+				artists: None,
+				album_artist: None,
+				release_date: result.release_date,
+				tags: None,
+				genres: result.genres,
+				tracks: None,
+				credits: result.description,
+				label: result.label,
+				artwork_blob: result.artwork,
+				artwork_path: None,
+			};
+			if update_album_by_uid(&lib_conn, &album.uid, &update).is_err() {
+				errors += 1;
+			}
+		} else {
+			errors += 1;
+		}
+
+		done += 1;
+		if done % 5 == 0 || done == total {
+			app.emit("enrich:progress", serde_json::json!({ "done": done, "total": total, "errors": errors })).ok();
+		}
+	}
+
+	app.emit("enrich:done", serde_json::json!({ "total": total, "errors": errors })).ok();
+	app.emit("library:updated", ()).ok();
+	Ok(())
+}
+
+#[tauri::command]
+async fn enrich_all_artists(app: AppHandle, state: State<'_, AppState>) -> Result<(), String> {
+	let profile_uid = state.get_uid();
+
+	let (artists, settings) = {
+		let lib_conn = open_lib_conn(&profile_uid);
+		let settings_conn = open_settings_conn(&profile_uid);
+		let artists = get_all_artists(&lib_conn).map_err(|e| e.to_string())?;
+		let settings = load_enrich_settings(&settings_conn);
+		(artists, settings)
+	};
+
+	let total = artists.len();
+	let mut done = 0usize;
+	let mut errors = 0usize;
+
+	app.emit("enrich:progress", serde_json::json!({ "done": 0, "total": total, "errors": 0 })).ok();
+
+	let client = enrichment::make_client()?;
+
+	for artist in &artists {
+		let result = enrichment::enrich_artist_async(&client, &artist.name, &settings).await;
+		let lib_conn = open_lib_conn(&profile_uid);
+		let update = db::ArtistUpdate {
+			name: None,
+			aka: None,
+			about: result.about,
+			tags: None,
+			genres: result.genres,
+			websites: result.websites,
+			members: None,
+			profile_art_blob: result.profile_art,
+			profile_art_path: None,
+			banner_art_blob: result.banner_art,
+			banner_art_path: None,
+		};
+		if update_artist_by_uid(&lib_conn, &artist.uid, &update).is_err() {
+			errors += 1;
+		}
+
+		done += 1;
+		if done % 5 == 0 || done == total {
+			app.emit("enrich:progress", serde_json::json!({ "done": done, "total": total, "errors": errors })).ok();
+		}
+	}
+
+	app.emit("enrich:done", serde_json::json!({ "total": total, "errors": errors })).ok();
 	app.emit("library:updated", ()).ok();
 	Ok(())
 }
@@ -1208,6 +1354,8 @@ pub fn run() {
 			enrich_all,
 			enrich_album,
 			enrich_artist,
+			enrich_all_albums,
+			enrich_all_artists,
 			get_track_lyrics,
 			fetch_track_lyrics,
 			delete_track_lyrics,

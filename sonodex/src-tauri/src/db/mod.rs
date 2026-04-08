@@ -73,7 +73,10 @@ pub fn init_settings_db(conn: &Connection) -> Result<()> {
 			('enrich_priority_bpm', 'local'),
 			('enrich_priority_key', 'local'),
 			('enrich_priority_artwork', 'local'),
-			('api_audiodb_key', '');
+			('api_audiodb_key', ''),
+			('auto_enrich_tracks', 'false'),
+			('auto_enrich_albums', 'false'),
+			('auto_enrich_artists', 'true');
 		INSERT OR IGNORE INTO settings (key, value) VALUES
 			('api_lastfm_key', ''),
 			('api_discogs_key', '');

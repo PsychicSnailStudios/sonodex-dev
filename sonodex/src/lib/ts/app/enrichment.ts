@@ -15,3 +15,15 @@ export async function enrichArtist(uid: string): Promise<void> {
 export async function fetchLyrics(uid: string): Promise<void> {
 	await invoke("fetch_track_lyrics", { uid });
 }
+
+export async function enrichAllAlbums(): Promise<void> {
+	await invoke("enrich_all_albums");
+}
+
+export async function enrichAllArtists(): Promise<void> {
+	await invoke("enrich_all_artists");
+}
+
+export async function enrichAllTracks(): Promise<void> {
+	await invoke("enrich_all");
+}

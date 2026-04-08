@@ -19,6 +19,7 @@
 	import { scanState } from "$lib/ts/app-states/state_session.svelte";
 	import { eq, EQ_BANDS, EQ_PRESETS, loadEqSettings, setEqEnabled, setEqBandGain, applyEqPreset,	} from "$lib/ts/app/eqStore.svelte";
 	import { applyEqToGraph } from "$lib/ts/audio/audioManager.svelte";
+    import { enrichAlbum, enrichAllAlbums, enrichAllArtists, enrichAllTracks } from "$lib/ts/app/enrichment";
 	
 	// VARIABLES
 	let paths: { id: number; path: string }[] = [];
@@ -140,7 +141,9 @@
 		scanState.enrichTotal = 0;
 		scanState.enrichErrors = 0;
 		try {
-			await invoke("enrich_all");
+			enrichAllTracks();
+			// enrichAllAlbums();
+			enrichAllArtists();
 		} catch (e) {
 			scanState.status = `Enrich error: ${e}`;
 			scanState.enriching = false;

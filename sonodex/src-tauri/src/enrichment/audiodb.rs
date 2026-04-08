@@ -1,4 +1,4 @@
-use super::{EnrichedArtist, EnrichedMetadata};
+use super::{EnrichedAlbum, EnrichedArtist, EnrichedMetadata};
 use reqwest::Client;
 use serde::Deserialize;
 
@@ -188,5 +188,76 @@ pub async fn search_artist(
 		websites,
 		profile_art,
 		banner_art,
+	})
+}
+
+#[derive(Debug, Deserialize)]
+struct AudioDbAlbumResponse {
+	album: Option<Vec<AudioDbAlbum>>,
+}
+
+#[derive(Debug, Deserialize)]
+struct AudioDbAlbum {
+	#[serde(rename = "strAlbum")]
+	str_album: Option<String>,
+	#[serde(rename = "strArtist")]
+	str_artist: Option<String>,
+	#[serde(rename = "intYearReleased")]
+	int_year_released: Option<String>,
+	#[serde(rename = "strGenre")]
+	str_genre: Option<String>,
+	#[serde(rename = "strLabel")]
+	str_label: Option<String>,
+	#[serde(rename = "strReleaseFormat")]
+	str_release_format: Option<String>,
+	#[serde(rename = "strDescriptionEN")]
+	str_description_en: Option<String>,
+	#[serde(rename = "strAlbumThumb")]
+	str_album_thumb: Option<String>,
+	#[serde(rename = "strAlbumThumbHQ")]
+	str_album_thumb_hq: Option<String>,
+}
+
+pub async fn search_album(
+	client: &Client,
+	album: &str,
+	artist: &str,
+	api_key: &str,
+) -> Option<EnrichedAlbum> {
+	let key = if api_key.is_empty() { "2" } else { api_key };
+	let url = format!(
+		"{}/{}/searchalbum.php?s={}&a={}",
+		AUDIODB_BASE,
+		key,
+		urlencoding::encode(artist),
+		urlencoding::encode(album)
+	);
+
+	let resp = client.get(&url).send().await.ok()?;
+	if !resp.status().is_success() {
+		return None;
+	}
+
+	let data: AudioDbAlbumResponse = resp.json().await.ok()?;
+	let a = data.album?.into_iter().next()?;
+
+	let genres = a.str_genre.as_deref().map(|g| {
+		let parts: Vec<String> = g.split('/').map(|s| s.trim().to_string()).collect();
+		serde_json::to_string(&parts).unwrap_or_else(|_| "[]".to_string())
+	});
+
+	let artwork_url = a.str_album_thumb_hq.or(a.str_album_thumb);
+	let artwork = match artwork_url {
+		Some(ref url) => fetch_image(client, url).await,
+		None => None,
+	};
+
+	Some(EnrichedAlbum {
+		release_date: a.int_year_released,
+		genres,
+		label: a.str_label,
+		format: a.str_release_format,
+		description: a.str_description_en,
+		artwork,
 	})
 }
