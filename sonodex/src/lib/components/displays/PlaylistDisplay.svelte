@@ -64,6 +64,9 @@
 	$effect(() => {
 		const uid = selection.uid;
 		if (!uid) return;
+
+		color = "rgb(30, 30, 30)";
+
 		invoke("get_playlist_artwork", { uid }).then((bytes) => {
 			if (bytes) {
 				getArtworkColor(bytes as number[], 0.3).then((c) => color = c);
