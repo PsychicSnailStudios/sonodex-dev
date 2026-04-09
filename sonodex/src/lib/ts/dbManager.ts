@@ -6,6 +6,85 @@ export type AlbumEntry = {
 	track_number: number | null;
 };
 
+// ─── Internal helpers ─────────────────────────────────────────────────────────
+
+function parseJsonArray(val: string | null | undefined): any[] {
+	if (!val) return [];
+	try {
+		const parsed = JSON.parse(val);
+		return Array.isArray(parsed) ? parsed : [];
+	} catch {
+		return [];
+	}
+}
+
+// ─── Artist sync ──────────────────────────────────────────────────────────────
+
+export async function syncArtists(artistNames: string[]): Promise<void> {
+	if (artistNames.length === 0) return;
+
+	const allArtists = await invoke<any[]>("get_artists");
+
+	for (const name of artistNames) {
+		const nameLower = name.toLowerCase();
+		const exists = allArtists.some((a) => (a.name ?? "").toLowerCase() === nameLower);
+		if (!exists) {
+			await invoke("create_artist_entry", {
+				artist: {
+					uid: `ar-${crypto.randomUUID()}`,
+					name,
+					aka: null,
+					about: null,
+					tags: JSON.stringify([]),
+					genres: JSON.stringify([]),
+					websites: null,
+					members: null,
+					profile_art_blob: null,
+					profile_art_path: null,
+					banner_art_blob: null,
+					banner_art_path: null,
+				},
+			});
+		}
+	}
+}
+
+/**
+ * Delete artist records for any name in `removedNames` that is no longer
+ * referenced by any track (artists, album_artist) or album (artists, album_artist).
+ */
+export async function pruneArtists(removedNames: string[]): Promise<void> {
+	if (removedNames.length === 0) return;
+
+	const [allArtists, allTracks, allAlbums] = await Promise.all([
+		invoke<any[]>("get_artists"),
+		invoke<any[]>("get_tracks"),
+		invoke<any[]>("get_albums"),
+	]);
+
+	const usedNames = new Set<string>();
+	for (const t of allTracks) {
+		parseJsonArray(t.artists).forEach((n: string) => usedNames.add(n.toLowerCase()));
+		if (t.album_artist) usedNames.add((t.album_artist as string).toLowerCase());
+	}
+	for (const a of allAlbums) {
+		parseJsonArray(a.artists).forEach((n: string) => usedNames.add(n.toLowerCase()));
+		if (a.album_artist) usedNames.add((a.album_artist as string).toLowerCase());
+	}
+
+	const nameToUid = new Map(allArtists.map((a) => [a.name.toLowerCase(), a.uid as string]));
+
+	for (const name of removedNames) {
+		const lower = name.toLowerCase();
+		if (!usedNames.has(lower)) {
+			const uid = nameToUid.get(lower);
+			if (uid) await invoke("delete_artist_entry", { uid });
+		}
+	}
+}
+
+// ─── Album sync ───────────────────────────────────────────────────────────────
+
 export async function syncAlbums(
 	cleanedAlbums: AlbumEntry[],
 	trackUid: string,
@@ -26,10 +105,9 @@ export async function syncAlbums(
 		});
 
 		if (match) {
-			let existingTracks: any[] = [];
-			try { existingTracks = match.tracks ? JSON.parse(match.tracks) : []; } catch { existingTracks = []; }
-
+			const existingTracks = parseJsonArray(match.tracks);
 			const alreadyIn = existingTracks.some((t: any) => t.uid === trackUid);
+
 			if (alreadyIn) {
 				const updated = existingTracks.map((t: any) =>
 					t.uid === trackUid ? { ...t, track_number: entry.track_number ?? null } : t
@@ -78,51 +156,29 @@ export async function syncAlbums(
 	return finalAlbumEntries;
 }
 
+/**
+ * Remove this track from albums it was previously on.
+ * If an album ends up with zero tracks after removal, delete the album record entirely.
+ */
 export async function removeTrackFromOldAlbums(
 	trackUid: string,
-	originalAlbumUids: string[]
+	removedAlbumUids: string[]
 ): Promise<void> {
-	const allAlbums = await invoke<any[]>("get_albums");
-	for (const removedUid of originalAlbumUids) {
-		const albumRecord = allAlbums.find((a) => a.uid === removedUid);
-		if (!albumRecord) continue;
+	for (const albumUid of removedAlbumUids) {
+		const album = await invoke<any | null>("get_album", { uid: albumUid });
+		if (!album) continue;
 
-		let existingTracks: any[] = [];
-		try { existingTracks = albumRecord.tracks ? JSON.parse(albumRecord.tracks) : []; } catch { existingTracks = []; }
+		const remaining = parseJsonArray(album.tracks).filter((t: any) => t.uid !== trackUid);
 
-		const filtered = existingTracks.filter((t: any) => t.uid !== trackUid);
-		await invoke("update_album_entry", { uid: removedUid, update: { tracks: JSON.stringify(filtered) } });
-	}
-}
-
-export async function syncArtists(artistNames: string[]): Promise<void> {
-	if (artistNames.length === 0) return;
-
-	const allArtists = await invoke<any[]>("get_artists");
-
-	for (const name of artistNames) {
-		const nameLower = name.toLowerCase();
-		const exists = allArtists.some((a) => (a.name ?? "").toLowerCase() === nameLower);
-		if (!exists) {
-			await invoke("create_artist_entry", {
-				artist: {
-					uid: `ar-${crypto.randomUUID()}`,
-					name,
-					aka: null,
-					about: null,
-					tags: JSON.stringify([]),
-					genres: JSON.stringify([]),
-					websites: null,
-					members: null,
-					profile_art_blob: null,
-					profile_art_path: null,
-					banner_art_blob: null,
-					banner_art_path: null,
-				},
-			});
+		if (remaining.length === 0) {
+			await invoke("delete_album_entry", { uid: albumUid });
+		} else {
+			await invoke("update_album_entry", { uid: albumUid, update: { tracks: JSON.stringify(remaining) } });
 		}
 	}
 }
+
+// ─── Stub track creation ──────────────────────────────────────────────────────
 
 export async function createStubTrack(
 	title: string,

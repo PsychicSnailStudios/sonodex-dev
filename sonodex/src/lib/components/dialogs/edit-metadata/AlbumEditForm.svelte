@@ -17,7 +17,8 @@
 
 	// SCRIPTS
 	import { closeEditModal } from "$lib/ts/app/editModal.svelte";
-	import { loadLibrary, reloadLibrary, reloadSingle } from "$lib/ts/library.svelte";
+	import { reloadLibrary } from "$lib/ts/library.svelte";
+	import { syncArtists, pruneArtists } from "$lib/ts/dbManager";
 	import { enrichAlbum } from "$lib/ts/app/enrichment";
 
 	// PROPS
@@ -37,6 +38,10 @@
 	let artworkPath = $state<string | null>(null);
 	let saving = $state(false);
 
+	// Track originals for pruning on save
+	let originalArtists = $state<string[]>([]);
+	let originalAlbumArtist = $state("");
+
 	// APP FUNCTIONS
 	onMount(async () => {
 		const album = await invoke<any | null>("get_album", { uid });
@@ -44,6 +49,7 @@
 
 		title = album.title ?? "";
 		albumArtist = album.album_artist ?? "";
+		originalAlbumArtist = albumArtist;
 		releaseDate = album.release_date ?? "";
 		format = album.format ?? "";
 		label = album.label ?? "";
@@ -54,7 +60,8 @@
 		try {
 			const arr = album.artists ? JSON.parse(album.artists) : [];
 			artists = arr.join(", ");
-		} catch { artists = ""; }
+			originalArtists = arr;
+		} catch { artists = ""; originalArtists = []; }
 
 		try {
 			const arr = album.genres ? JSON.parse(album.genres) : [];
@@ -71,10 +78,23 @@
 	async function save() {
 		saving = true;
 		try {
+			const artistArr = artists.split(",").map((s) => s.trim()).filter(Boolean);
+			const allNewNames = [...artistArr, ...(albumArtist ? [albumArtist] : [])];
+
+			// Create any newly added artist records
+			await syncArtists(allNewNames);
+
+			// Delete artist records that are no longer referenced anywhere
+			const removedArtists = [
+				...originalArtists.filter((n) => !artistArr.map((x) => x.toLowerCase()).includes(n.toLowerCase())),
+				...(originalAlbumArtist && originalAlbumArtist !== albumArtist ? [originalAlbumArtist] : []),
+			];
+			await pruneArtists(removedArtists);
+
 			const update: Record<string, any> = {
 				title: title || null,
 				album_artist: albumArtist || null,
-				artists: artists ? JSON.stringify(artists.split(",").map((s) => s.trim()).filter(Boolean)) : null,
+				artists: artistArr.length ? JSON.stringify(artistArr) : null,
 				release_date: releaseDate || null,
 				format: format || null,
 				genres: genres ? JSON.stringify(genres.split(",").map((s) => s.trim()).filter(Boolean)) : null,
@@ -87,6 +107,7 @@
 
 			await invoke("update_album_entry", { uid, update });
 			await reloadLibrary("albums");
+			await reloadLibrary("artists");
 		} finally {
 			saving = false;
 			closeEditModal();

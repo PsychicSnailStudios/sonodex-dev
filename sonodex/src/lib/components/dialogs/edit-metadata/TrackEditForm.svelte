@@ -19,10 +19,15 @@
 	
 	// SCRIPTS
 	import { closeEditModal } from "$lib/ts/app/editModal.svelte";
-	import { loadLibrary, reloadLibrary } from "$lib/ts/library.svelte";
-	import { syncAlbums, removeTrackFromOldAlbums, syncArtists } from "$lib/ts/dbManager";
+	import { reloadLibrary } from "$lib/ts/library.svelte";
+	import {
+		syncAlbums,
+		removeTrackFromOldAlbums,
+		syncArtists,
+		pruneArtists,
+		type AlbumEntry,
+	} from "$lib/ts/dbManager";
 	import { enrichTrack, fetchLyrics } from "$lib/ts/app/enrichment";
-	import type { AlbumEntry } from "$lib/ts/dbManager";
 
 	// PROPS
 	let { uid } = $props<{ uid: string }>();
@@ -33,6 +38,8 @@
 	let albumArtist = $state("");
 	let albums = $state<AlbumEntry[]>([]);
 	let originalAlbumUids = $state<string[]>([]);
+	let originalArtists = $state<string[]>([]);
+	let originalAlbumArtist = $state("");
 	let year = $state("");
 	let genres = $state("");
 	let bpm = $state<string>("");
@@ -49,13 +56,14 @@
 
 	onMount(async () => {
 		const tracks = await invoke<any[]>("get_tracks");
-		const lyrics = await invoke("get_track_lyrics", { uid: uid });
+		const lyrics = await invoke("get_track_lyrics", { uid });
 		const track = tracks.find((t) => t.uid === uid);
 		if (!track) return;
 
 		hasLyrics = lyrics != null;
 		title = track.title ?? "";
 		albumArtist = track.album_artist ?? "";
+		originalAlbumArtist = albumArtist;
 		year = track.year ?? "";
 		bpm = track.bpm != null ? String(track.bpm) : "";
 		key = track.key ?? "";
@@ -68,7 +76,8 @@
 		try {
 			const artistArr = track.artists ? JSON.parse(track.artists) : [];
 			artists = artistArr.join(", ");
-		} catch { artists = ""; }
+			originalArtists = artistArr;
+		} catch { artists = ""; originalArtists = []; }
 
 		try {
 			const parsed = track.albums ? JSON.parse(track.albums) : [];
@@ -130,13 +139,23 @@
 					track_number: a.track_number != null && !isNaN(Number(a.track_number)) ? Number(a.track_number) : null,
 				}));
 
+			// Sync albums — creates new ones, updates existing, returns resolved entries with uids
 			const finalAlbumEntries = await syncAlbums(cleanedAlbums, uid, title, albumArtist);
 
-			const currentUids = new Set(finalAlbumEntries.map((e) => e.uid).filter(Boolean));
-			const removedUids = originalAlbumUids.filter((u) => !currentUids.has(u));
-			await removeTrackFromOldAlbums(uid, removedUids);
+			// Remove track from albums it was on before but isn't now; delete album if empty
+			const currentAlbumUids = new Set(finalAlbumEntries.map((e) => e.uid).filter(Boolean));
+			const removedAlbumUids = originalAlbumUids.filter((u) => !currentAlbumUids.has(u));
+			await removeTrackFromOldAlbums(uid, removedAlbumUids);
 
-			await syncArtists(artistArr);
+			// Sync artists — create any new names
+			await syncArtists([...artistArr, ...(albumArtist ? [albumArtist] : [])]);
+
+			// Prune artists that are no longer referenced anywhere
+			const removedArtists = [
+				...originalArtists.filter((n) => !artistArr.map((x) => x.toLowerCase()).includes(n.toLowerCase())),
+				...(originalAlbumArtist && originalAlbumArtist !== albumArtist ? [originalAlbumArtist] : []),
+			];
+			await pruneArtists(removedArtists);
 
 			const update: Record<string, any> = {
 				title: title || null,
@@ -160,9 +179,9 @@
 				await invoke("update_track_metadata", { uid, update });
 			}
 
-			await invoke("enrich_track", { uid });
-
 			await reloadLibrary("tracks");
+			await reloadLibrary("albums");
+			await reloadLibrary("artists");
 		} finally {
 			saving = false;
 			closeEditModal();
