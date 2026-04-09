@@ -51,35 +51,79 @@ pub struct MetadataUpdate {
 }
 
 pub fn upsert_track(conn: &Connection, track: &Track) -> Result<()> {
-	conn.execute(
-		"INSERT INTO tracks (uid, path, last_modified, title, artists, album_artist, albums, genres, year, rating, duration_ms, bpm, key, credits, label, artwork_blob, artwork_path, user_options)
-		 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18)
-		 ON CONFLICT(path) DO UPDATE SET
-			last_modified = excluded.last_modified,
-			title = excluded.title,
-			artists = excluded.artists,
-			album_artist = excluded.album_artist,
-			albums = excluded.albums,
-			genres = excluded.genres,
-			year = excluded.year,
-			rating = excluded.rating,
-			duration_ms = excluded.duration_ms,
-			bpm = excluded.bpm,
-			key = excluded.key,
-			credits = excluded.credits,
-			label = excluded.label,
-			artwork_blob = excluded.artwork_blob,
-			artwork_path = excluded.artwork_path",
-		params![
-			track.uid, track.path, track.last_modified, track.title, track.artists,
-			track.album_artist, track.albums, track.genres, track.year,
-			track.rating, track.duration_ms, track.bpm, track.key,
-			track.credits, track.label,
-			track.artwork_blob, track.artwork_path,
-			track.user_options
-		],
-	)?;
-	Ok(())
+    // If a row with this uid already exists, update it directly.
+    // This handles stubs (where path may be empty or non-unique).
+    let uid_exists: bool = conn
+        .query_row(
+            "SELECT COUNT(*) FROM tracks WHERE uid = ?1",
+            params![&track.uid],
+            |row| row.get::<_, i64>(0),
+        )
+        .unwrap_or(0)
+        > 0;
+
+    if uid_exists {
+        conn.execute(
+            "UPDATE tracks SET
+                path          = ?2,
+                last_modified = ?3,
+                title         = ?4,
+                artists       = ?5,
+                album_artist  = ?6,
+                albums        = ?7,
+                genres        = ?8,
+                year          = ?9,
+                rating        = ?10,
+                duration_ms   = ?11,
+                bpm           = ?12,
+                key           = ?13,
+                credits       = ?14,
+                label         = ?15,
+                artwork_blob  = COALESCE(?16, artwork_blob),
+                artwork_path  = ?17,
+                user_options  = ?18
+            WHERE uid = ?1",
+            params![
+                track.uid, track.path, track.last_modified, track.title, track.artists,
+                track.album_artist, track.albums, track.genres, track.year,
+                track.rating, track.duration_ms, track.bpm, track.key,
+                track.credits, track.label,
+                track.artwork_blob, track.artwork_path,
+                track.user_options
+            ],
+        )?;
+    } else {
+        conn.execute(
+            "INSERT INTO tracks (uid, path, last_modified, title, artists, album_artist, albums, genres, year, rating, duration_ms, bpm, key, credits, label, artwork_blob, artwork_path, user_options)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18)
+             ON CONFLICT(path) DO UPDATE SET
+                last_modified = excluded.last_modified,
+                title         = excluded.title,
+                artists       = excluded.artists,
+                album_artist  = excluded.album_artist,
+                albums        = excluded.albums,
+                genres        = excluded.genres,
+                year          = excluded.year,
+                rating        = excluded.rating,
+                duration_ms   = excluded.duration_ms,
+                bpm           = excluded.bpm,
+                key           = excluded.key,
+                credits       = excluded.credits,
+                label         = excluded.label,
+                artwork_blob  = excluded.artwork_blob,
+                artwork_path  = excluded.artwork_path",
+            params![
+                track.uid, track.path, track.last_modified, track.title, track.artists,
+                track.album_artist, track.albums, track.genres, track.year,
+                track.rating, track.duration_ms, track.bpm, track.key,
+                track.credits, track.label,
+                track.artwork_blob, track.artwork_path,
+                track.user_options
+            ],
+        )?;
+    }
+
+    Ok(())
 }
 
 pub fn delete_track(conn: &Connection, path: &str) -> Result<()> {
