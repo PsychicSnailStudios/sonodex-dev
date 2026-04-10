@@ -1,12 +1,18 @@
 <script lang="ts">
 
+	import { invoke } from "@tauri-apps/api/core";
 	import X from "@lucide/svelte/icons/x";
 	import { Badge } from "$lib/components/ui/badge/index.js";
 
-	let { tags, canEdit = false } = $props<{ tags: string[], canEdit?: boolean }>();
+	let { tags, uid, canEdit = false }: { tags: string[], uid: string, canEdit?: boolean } = $props();
 
-	function removeTag(tag: string) {
-		tags = tags.filter(t => t !== tag);
+	async function removeTag(tag: string) {
+		const new_tags = tags.filter(t => t !== tag);
+		tags = new_tags;
+		await invoke("update_track_metadata", {
+			uid,
+			update: { tags: JSON.stringify(new_tags) },
+		});
 	}
 
 </script>

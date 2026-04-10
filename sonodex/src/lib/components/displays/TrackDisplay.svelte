@@ -67,7 +67,7 @@
 						<span>{formatDuration(track.duration_ms)}</span>
 					</div>
 					<div>
-						<TrackRating uid={track.uid} rating={track.rating} />
+						<TrackRating uid={track.uid} rating={track.rating} tags={track.tags} />
 					</div>
 				</div>
 			</div>
@@ -98,8 +98,8 @@
 
 				<Tabs.Content value="tags" class="flex-1 overflow-y-auto mt-2">
 					{#if tags}
-						<TagList tags={genres} canEdit={false} />
-						<TagList tags={tags} canEdit={true} />
+						<TagList uid={track.uid} tags={genres} canEdit={false} />
+						<TagList uid={track.uid} tags={tags} canEdit={true} />
 					{:else}
 						<p class="text-muted-foreground text-sm">Track has no tags.</p>
 					{/if}
