@@ -20,13 +20,10 @@
 
 	// APP FUNCTIONS
 	$effect(() => {
+		colorA = "var(--muted)"
+		colorB = "var(--muted)"
+		
 		if (!tracks) return;
-
-		if (tracks.length < 1) {
-			colorA = "var(--muted)"
-			colorB = "var(--muted)"
-			return;
-		}
 
 		const uidA = tracks[0].uid;
 		const uidB = tracks[tracks.length - 1].uid;

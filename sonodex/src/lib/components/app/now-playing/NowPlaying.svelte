@@ -1,7 +1,7 @@
 <script lang="ts">
 
 	// APP
-   import { invoke } from "@tauri-apps/api/core";
+   import { checkPermissions, invoke } from "@tauri-apps/api/core";
    import { onMount } from "svelte";
 	
 	// COMPONENTS
@@ -29,10 +29,12 @@
 	let showQueue = $state(false);
 	let lyrics: Lyrics | null = $state(null);
 
-	let color = $state("rgb(30, 30, 30)");
+	let color = $state("var(--muted)");
 
 	// APP FUNCTIONS
 	$effect(() => {
+		color = "var(--muted)";
+
 		const track = player.track;
 		if (!track?.uid) return;
 

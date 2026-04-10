@@ -65,13 +65,13 @@
 		const uid = selection.uid;
 		if (!uid) return;
 
-		color = "rgb(30, 30, 30)";
+		const firstTrack = tracks[0];
+		color = "var(--muted)";
 
 		invoke("get_playlist_artwork", { uid }).then((bytes) => {
 			if (bytes) {
 				getArtworkColor(bytes as number[], 0.3).then((c) => color = c);
 			} else {
-				const firstTrack = tracks[0];
 				if (!firstTrack) return;
 				invoke("get_track_artwork", { uid: firstTrack.uid }).then((trackBytes) => {
 					if (trackBytes) getArtworkColor(trackBytes as number[], 0.3).then((c) => color = c);
@@ -110,14 +110,16 @@
 	role="region"
 >
 	<ScrollArea class="min-h-0 min-w-0">	
-		<div class="flex flex-col gap-4 pb-4 pr-4">
+		<div class="flex flex-col gap-4 pb-4 pr-4 pl-1">
 			<NavButtons />
 			
 			{#if playlist}
 			<div class="flex gap-4 items-end p-0">
-				<ArtworkDisplay uid={playlist.uid} size={160} type="playlist">
-					<DefultPlaylistArt tracks={tracks} />
-				</ArtworkDisplay>
+				<div class="drop-shadow-md">
+					<ArtworkDisplay uid={playlist.uid} size={160} type="playlist">
+						<DefultPlaylistArt tracks={tracks} />
+					</ArtworkDisplay>
+				</div>
 
 				<div class="flex flex-col gap-2">
 					<span class="text-xs text-muted-foreground">Playlist</span>
