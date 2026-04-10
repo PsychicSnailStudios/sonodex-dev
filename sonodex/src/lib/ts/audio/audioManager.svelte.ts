@@ -1,4 +1,4 @@
-import { convertFileSrc } from "@tauri-apps/api/core";
+import { convertFileSrc, invoke } from "@tauri-apps/api/core";
 import { flushSync } from "svelte";
 import { toast } from "svelte-sonner";
 import { library } from "$lib/ts/library.svelte";
@@ -159,6 +159,28 @@ function bindEvents(el: HTMLAudioElement) {
 	el.addEventListener("pause", () => {
 		player.isPlaying = false;
 	});
+
+	el.addEventListener("error", () => {
+		const err = el.error;
+		if (err && err.code === 4) {
+			console.error(err);
+			handleMissingPath();
+		}
+	});
+}
+
+async function handleMissingPath() {
+	toast.warning("Cannot Play Track, No local file found.");
+
+	// set track as ghost
+	let uid = player.track!.uid;
+	await invoke("update_track_metadata", {
+		uid,
+		update: { path: "" },
+	});
+
+	// skip track
+	onTrackEnd(true);
 }
 
 function startAudio(track: Track, play: boolean = true) {
@@ -174,7 +196,6 @@ function startAudio(track: Track, play: boolean = true) {
 	currentlyPlaying.uid = track.uid;
 	currentlyPlaying.track = track;
 
-	//const el = new Audio(convertFileSrc(track.path));
 	const el = new Audio();
 	el.crossOrigin = "anonymous";
 	el.src = convertFileSrc(track.path);

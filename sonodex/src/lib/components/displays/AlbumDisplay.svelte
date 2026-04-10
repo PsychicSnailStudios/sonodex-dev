@@ -66,8 +66,8 @@
 	});
 	
 	function allTracksAreGhosts(): boolean {
-		for (let track of tracks) {
-			if ((/^[a-z]+-[0-9a-f-]{36}$/.test(track.path)) === false) return false;
+		for (let track of tracks) {;
+			if (/^[a-z]+-[0-9a-f-]{36}$/.test(track.path) === false || track.path != "") return false;
 		}
 
 		return true;

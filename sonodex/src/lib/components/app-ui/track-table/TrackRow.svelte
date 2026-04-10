@@ -56,7 +56,7 @@
 	}>();
 
 	// VARIABLES
-	const isGhosted = $derived(/^[a-z]+-[0-9a-f-]{36}$/.test(track.path));
+	const isGhosted = $derived(track.path === "" || /^[a-z]+-[0-9a-f-]{36}$/.test(track.path));
 	let isSelected = $derived(trackSelection.isSelected(track.uid));
 	
 	// FUNCTIONS
@@ -200,7 +200,7 @@
 	{/if}
 
 	{#if showRating}
-		<TrackRating uid={track.uid} rating={track.rating} />
+		<TrackRating uid={track.uid} rating={track.rating} tags={track.tags} />
 	{/if}
 
 	{#if showDuration}
