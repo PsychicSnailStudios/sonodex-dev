@@ -15,16 +15,25 @@
 	import { Label } from "$lib/components/ui/label/index.js";
 
 	// SCRIPTS
-	import { loadLibrary } from "$lib/ts/library.svelte";
+	import { loadLibrary, reloadLibrary } from "$lib/ts/library.svelte";
 	import { scanState } from "$lib/ts/app-states/state_session.svelte";
 	import { eq, EQ_BANDS, EQ_PRESETS, loadEqSettings, setEqEnabled, setEqBandGain, applyEqPreset,	} from "$lib/ts/app/eqStore.svelte";
 	import { applyEqToGraph } from "$lib/ts/audio/audioManager.svelte";
-    import { enrichAlbum, enrichAllAlbums, enrichAllArtists, enrichAllTracks } from "$lib/ts/app/enrichment";
+	import { connectLastfm, disconnectLastfm, lastfmIsConnected, onLastfmConnected, } from "$lib/ts/connections/lastfm";
+	import { connectSpotify, disconnectSpotify, spotifyIsConnected, getSpotifyPlaylists, importSpotifyPlaylist, onSpotifyConnected, type SpotifyPlaylistSummary, } from "$lib/ts/connections/spotify";
+	import { enrichAlbum, enrichAllAlbums, enrichAllArtists, enrichAllTracks } from "$lib/ts/app/enrichment";
 	
+
 	// VARIABLES
 	let paths: { id: number; path: string }[] = [];
 	let newPath = "";
 	let settings: Record<string, string> = {};
+
+	let lastfmConnected = $state(false);
+	let spotifyConnected = $state(false);
+	let spotifyPlaylists = $state<SpotifyPlaylistSummary[]>([]);
+	let spotifyPlaylistsLoading = $state(false);
+	let spotifyImporting = $state<string | null>(null); // playlist id currently importing
 
 	let themeOptions = [
 		{ value: "system", label: "System" },
@@ -82,6 +91,22 @@
 			scanState.status = `Scan error: ${event.payload}`;
 			scanState.loading = false;
 		});
+
+		lastfmConnected = await lastfmIsConnected();
+		spotifyConnected = await spotifyIsConnected();
+
+		const unlistenLastfm = await onLastfmConnected(async () => {
+			lastfmConnected = true;
+		});
+
+		const unlistenSpotify = await onSpotifyConnected(async () => {
+			spotifyConnected = true;
+		});
+
+		return () => {
+			unlistenLastfm();
+			unlistenSpotify();
+		};
 	});
 
 	// FUNCTIONS
@@ -165,7 +190,51 @@
 		applyEqToGraph();
 	}
 
+	async function handleLastfmConnect() {
+    await connectLastfm();
+    // Auth completes via deep-link → onLastfmConnected listener above fires
+}
+
+	async function handleLastfmDisconnect() {
+		await disconnectLastfm();
+		lastfmConnected = false;
+	}
+
+	async function handleSpotifyConnect() {
+		await connectSpotify();
+	}
+
+	async function handleSpotifyDisconnect() {
+		await disconnectSpotify();
+		spotifyConnected = false;
+		spotifyPlaylists = [];
+	}
+
+	async function loadSpotifyPlaylists() {
+		spotifyPlaylistsLoading = true;
+		try {
+			spotifyPlaylists = await getSpotifyPlaylists();
+		} catch (e) {
+			console.error("Failed to load Spotify playlists:", e);
+		} finally {
+			spotifyPlaylistsLoading = false;
+		}
+	}
+
+	async function handleImportPlaylist(pl: SpotifyPlaylistSummary) {
+		spotifyImporting = pl.id;
+		try {
+			await importSpotifyPlaylist(pl.id, pl.name, pl.owner);
+			await reloadLibrary("playlists");
+		} catch (e) {
+			console.error("Failed to import playlist:", e);
+		} finally {
+			spotifyImporting = null;
+		}
+	}
+
 </script>
+
 
 <ScrollArea class="h-full w-full">
 	<div class="flex flex-col gap-4 p-2 pr-4">
@@ -315,8 +384,116 @@
 		</div>
 
 		<h3 class="font-semibold">Connected Accounts</h3>
-		<div class="flex flex-col gap-2 p-2 bg-muted rounded-md">
-			
+		<div class="flex flex-col gap-4 p-2 bg-muted rounded-md">
+
+			<!-- Last.fm -->
+			<div class="flex items-center justify-between gap-4">
+				<div class="flex flex-col gap-0.5">
+						<p class="text-sm font-semibold">Last.fm</p>
+						<p class="text-xs text-muted-foreground">
+							{#if lastfmConnected}
+								Connected — scrobbles will be sent automatically.
+							{:else}
+								Connect to enable scrobbling. Requires an API key in Metadata APIs below.
+							{/if}
+						</p>
+				</div>
+				{#if lastfmConnected}
+						<Button variant="outline" onclick={handleLastfmDisconnect}>Disconnect</Button>
+				{:else}
+						<Button onclick={handleLastfmConnect}>Connect</Button>
+				{/if}
+			</div>
+
+			<!-- Last.fm secret key field — only needed for auth, can be hidden once connected -->
+			{#if !lastfmConnected}
+			<div class="space-y-1">
+				<label class="text-sm font-medium">Last.fm Shared Secret</label>
+				<p class="text-xs text-muted-foreground">Required alongside your API key to complete authentication.</p>
+				<input
+						class="w-full border rounded px-3 py-2 text-sm bg-background"
+						placeholder="Your Last.fm shared secret"
+						type="password"
+						value={settings["api_lastfm_secret"] ?? ""}
+						onchange={(e) => saveSetting("api_lastfm_secret", (e.target as HTMLInputElement).value)}
+				/>
+			</div>
+			{/if}
+
+			<div class="border-t border-border" />
+
+			<!-- Spotify -->
+			<div class="flex items-center justify-between gap-4">
+				<div class="flex flex-col gap-0.5">
+						<p class="text-sm font-semibold">Spotify</p>
+						<p class="text-xs text-muted-foreground">
+							{#if spotifyConnected}
+								Connected — playlists can be imported and metadata enriched.
+							{:else}
+								Connect to import playlists and use Spotify for metadata enrichment.
+							{/if}
+						</p>
+				</div>
+				{#if spotifyConnected}
+						<Button variant="outline" onclick={handleSpotifyDisconnect}>Disconnect</Button>
+				{:else}
+						<Button onclick={handleSpotifyConnect}>Connect</Button>
+				{/if}
+			</div>
+
+			<!-- Spotify client ID input — shown when not connected -->
+			{#if !spotifyConnected}
+			<div class="space-y-1">
+				<label class="text-sm font-medium">Spotify Client ID</label>
+				<p class="text-xs text-muted-foreground">
+						Get this from your app at
+						<a href="https://developer.spotify.com/dashboard" target="_blank" class="underline underline-offset-2">developer.spotify.com/dashboard</a>.
+						Set <code>sonodex://spotify-callback</code> as a Redirect URI in your app settings.
+				</p>
+				<input
+						class="w-full border rounded px-3 py-2 text-sm bg-background"
+						placeholder="Your Spotify client ID"
+						value={settings["spotify_client_id"] ?? ""}
+						onchange={(e) => saveSetting("spotify_client_id", (e.target as HTMLInputElement).value)}
+				/>
+			</div>
+			{/if}
+
+			<!-- Spotify playlists (shown when connected) -->
+			{#if spotifyConnected}
+			<div class="space-y-2">
+				<div class="flex items-center justify-between">
+						<h4 class="text-sm font-semibold">Import Spotify Playlists</h4>
+						<Button variant="outline" onclick={loadSpotifyPlaylists} disabled={spotifyPlaylistsLoading}>
+							{spotifyPlaylistsLoading ? "Loading..." : "Load Playlists"}
+						</Button>
+				</div>
+
+				{#if spotifyPlaylists.length > 0}
+				<div class="flex flex-col gap-1 max-h-64 overflow-y-auto">
+						{#each spotifyPlaylists as pl}
+						<div class="flex items-center justify-between border rounded px-3 py-2 text-sm">
+							<div class="flex flex-col min-w-0">
+								<span class="font-medium truncate">{pl.name}</span>
+								<span class="text-xs text-muted-foreground">{pl.track_count} tracks · {pl.owner}</span>
+							</div>
+							<Button
+								variant="outline"
+								class="shrink-0 ml-2"
+								onclick={() => handleImportPlaylist(pl)}
+								disabled={spotifyImporting === pl.id}
+							>
+								{spotifyImporting === pl.id ? "Importing..." : "Import"}
+							</Button>
+						</div>
+						{/each}
+				</div>
+				{:else if !spotifyPlaylistsLoading}
+				<p class="text-xs text-muted-foreground">Click "Load Playlists" to see your Spotify playlists.</p>
+				{/if}
+			</div>
+			{/if}
+
 		</div>
 
 		<h3 class="font-semibold">Metadata API's</h3>

@@ -52,6 +52,12 @@
 			"endpoints": [
 				"https://github.com/PsychicSnailStudios/sonodex-dev/releases/latest/download/latest.json"
 			]
-		}
+		},
+    "deep-link": {
+      "mobile": [],
+      "desktop": {
+          "schemes": ["sonodex"]
+      }
+    }
 	}
 }

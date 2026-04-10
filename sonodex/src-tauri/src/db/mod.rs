@@ -61,8 +61,7 @@ pub fn init_settings_db(conn: &Connection) -> Result<()> {
 			('filename_custom_pattern', ''),
 			('folder_fallback_artist', 'true'),
 			('folder_fallback_album', 'true'),
-			('folder_fallback_year', 'true');
-		INSERT OR IGNORE INTO settings (key, value) VALUES
+			('folder_fallback_year', 'true'),
 			('enrich_primary_api', 'musicbrainz'),
 			('enrich_priority_title', 'local'),
 			('enrich_priority_artists', 'local'),
@@ -76,11 +75,15 @@ pub fn init_settings_db(conn: &Connection) -> Result<()> {
 			('api_audiodb_key', ''),
 			('auto_enrich_tracks', 'false'),
 			('auto_enrich_albums', 'false'),
-			('auto_enrich_artists', 'true');
-		INSERT OR IGNORE INTO settings (key, value) VALUES
+			('auto_enrich_artists', 'true'),
 			('api_lastfm_key', ''),
-			('api_discogs_key', '');
-		INSERT OR IGNORE INTO settings (key, value) VALUES
+			('api_discogs_key', ''),
+			('api_lastfm_secret',     ''),
+			('lastfm_session_key',    ''),
+			('spotify_client_id',     '3d32b50657484297a6e1069a085c5d83'),
+			('spotify_access_token',  ''),
+			('spotify_refresh_token', ''),
+			('spotify_token_expiry',  '0'),
 			('artist_tag_delimiters', ' / | ; '),
 			('artist_filename_delimiters', ' / | ; | feat. | ft. | featuring '),
 			('genre_delimiters', ' / | ; | , '),

@@ -4,6 +4,7 @@ mod profiles;
 mod scanner;
 mod state;
 mod watcher;
+mod connections;
 
 use db::{
 	add_library_path, create_album, create_artist, create_playlist, delete_album_by_uid,
@@ -13,6 +14,10 @@ use db::{
 	update_album_by_uid, update_artist_by_uid, update_playlist_by_uid, upsert_track, upsert_lyrics, Album,
 	AlbumUpdate, Artist, ArtistUpdate, LibraryPath, Lyrics, Playlist, PlaylistUpdate, Track,
 };
+
+use crate::connections::lastfm_auth;
+use crate::connections::spotify_auth;
+
 use profiles::{
 	create_profile as new_profile, get_lib_db_path, get_settings_db_path, read_registry,
 	write_registry, Profile,
@@ -20,19 +25,20 @@ use profiles::{
 use rusqlite::Connection;
 use state::AppState;
 use tauri::{AppHandle, Emitter, Manager, State};
+use tauri_plugin_deep_link::DeepLinkExt;
 
-fn open_settings_conn(uid: &str) -> Connection {
+pub fn open_settings_conn(uid: &str) -> Connection {
 	Connection::open(get_settings_db_path(uid)).expect("Failed to open settings database")
 }
 
-fn open_analytics_conn(uid: &str) -> Result<Connection, rusqlite::Error> {
+pub fn open_analytics_conn(uid: &str) -> Result<Connection, rusqlite::Error> {
 	let path = crate::profiles::get_profile_dir(uid).join("analytics.db");
 	let conn = Connection::open(path)?;
 	db::analytics_manager::init_analytics_db(&conn)?;
 	Ok(conn)
 }
 
-fn open_lib_conn(uid: &str) -> Connection {
+pub fn open_lib_conn(uid: &str) -> Connection {
 	let conn = Connection::open(get_lib_db_path(uid)).expect("Failed to open lib database");
 	let settings_path = get_settings_db_path(uid);
 	conn.execute_batch(&format!(
@@ -300,9 +306,9 @@ fn rescan(app: AppHandle, state: State<AppState>) -> Result<(), String> {
 
 #[tauri::command]
 fn add_track(state: State<AppState>, track: Track) -> Result<(), String> {
-    let uid = state.get_uid();
-    let conn = open_lib_conn(&uid);
-    upsert_track(&conn, &track).map_err(|e| e.to_string())
+	let uid = state.get_uid();
+	let conn = open_lib_conn(&uid);
+	upsert_track(&conn, &track).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -637,7 +643,7 @@ fn get_track_lyrics(state: State<AppState>, uid: String) -> Result<Option<Lyrics
 		.map_err(|e| e.to_string())?
 		.ok_or("Track not found")?;
 	let track_id = track.id.ok_or("Track has no id")?;
-	get_lyrics(&conn, track_id).map_err(|e: rusqlite::Error| e.to_string())
+	get_lyrics(&conn, track_id).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -692,7 +698,7 @@ async fn fetch_track_lyrics(
 				instrumental: lyrics.instrumental,
 			},
 		)
-		.map_err(|e: rusqlite::Error| e.to_string())?;
+		.map_err(|e| e.to_string())?;
 		app.emit("lyrics:updated", uid).ok();
 	}
 
@@ -707,7 +713,7 @@ fn delete_track_lyrics(state: State<AppState>, uid: String) -> Result<(), String
 		.map_err(|e| e.to_string())?
 		.ok_or("Track not found")?;
 	let track_id = track.id.ok_or("Track has no id")?;
-	delete_lyrics(&conn, track_id).map_err(|e: rusqlite::Error| e.to_string())
+	delete_lyrics(&conn, track_id).map_err(|e| e.to_string())
 }
 
 // ─────────────────────────────────────────────
@@ -1254,8 +1260,283 @@ fn delete_scrobble(state: State<AppState>, uid: String) -> Result<(), String> {
 }
 
 // ─────────────────────────────────────────────
+// LAST FM
+// ─────────────────────────────────────────────
+
+#[tauri::command]
+async fn lastfm_get_auth_url(state: State<'_, AppState>) -> Result<String, String> {
+	let uid = state.get_uid();
+	let conn = open_settings_conn(&uid);
+	let api_key = db::settings_manager::get_setting(&conn, "api_lastfm_key")
+		.map_err(|e| e.to_string())?
+		.unwrap_or_default();
+	if api_key.is_empty() {
+		return Err("Last.fm API key not configured. Add it in Settings → Metadata APIs.".into());
+	}
+	Ok(lastfm_auth::lastfm_auth_url(&api_key))
+}
+
+#[tauri::command]
+async fn lastfm_exchange_token_cmd(
+	token: String,
+	state: State<'_, AppState>,
+) -> Result<(), String> {
+	let uid = state.get_uid();
+	lastfm_auth::lastfm_exchange_token(&uid, &token).await
+}
+
+#[tauri::command]
+fn lastfm_disconnect_cmd(state: State<'_, AppState>) -> Result<(), String> {
+	let uid = state.get_uid();
+	lastfm_auth::lastfm_disconnect(&uid)
+}
+
+#[tauri::command]
+fn lastfm_connection_status(state: State<'_, AppState>) -> Result<bool, String> {
+	let uid = state.get_uid();
+	let conn = open_settings_conn(&uid);
+	Ok(lastfm_auth::lastfm_is_connected(&conn))
+}
+
+#[tauri::command]
+async fn scrobble_track(
+	uid: String,
+	state: State<'_, AppState>,
+) -> Result<(), String> {
+	let profile_uid = state.get_uid();
+	lastfm_auth::scrobble_track(&profile_uid, &uid).await
+}
+
+#[tauri::command]
+async fn update_now_playing(
+	uid: String,
+	state: State<'_, AppState>,
+) -> Result<(), String> {
+	let profile_uid = state.get_uid();
+	lastfm_auth::update_now_playing(&profile_uid, &uid).await
+}
+
+// ─────────────────────────────────────────────
+// SPOTIFY
+// ─────────────────────────────────────────────
+
+#[tauri::command]
+fn spotify_get_auth_url(state: State<'_, AppState>) -> Result<(String, String), String> {
+	let uid = state.get_uid();
+	let conn = open_settings_conn(&uid);
+	let client_id = db::settings_manager::get_setting(&conn, "spotify_client_id")
+		.map_err(|e| e.to_string())?
+		.unwrap_or_default();
+	if client_id.is_empty() {
+		return Err("Spotify client ID not configured. Add it in Settings → Connected Accounts.".into());
+	}
+	let (url, verifier): (String, String) = spotify_auth::spotify_auth_url(&client_id);
+	state.set_spotify_verifier(verifier.clone());
+	Ok((url, verifier))
+}
+
+#[tauri::command]
+async fn spotify_exchange_code_cmd(
+	code: String,
+	verifier: String,
+	state: State<'_, AppState>,
+) -> Result<(), String> {
+	let uid = state.get_uid();
+	spotify_auth::spotify_exchange_code(&uid, &code, &verifier).await
+}
+
+#[tauri::command]
+fn spotify_disconnect_cmd(state: State<'_, AppState>) -> Result<(), String> {
+	let uid = state.get_uid();
+	spotify_auth::spotify_disconnect(&uid)
+}
+
+#[tauri::command]
+fn spotify_connection_status(state: State<'_, AppState>) -> Result<bool, String> {
+	let uid = state.get_uid();
+	let conn = open_settings_conn(&uid);
+	Ok(spotify_auth::spotify_is_connected(&conn))
+}
+
+#[tauri::command]
+async fn spotify_get_playlists_cmd(
+	state: State<'_, AppState>,
+) -> Result<Vec<spotify_auth::SpotifyPlaylistSummary>, String> {
+	let uid = state.get_uid();
+	spotify_auth::spotify_get_playlists(&uid).await
+}
+
+#[tauri::command]
+async fn spotify_import_playlist_cmd(
+	spotify_playlist_id: String,
+	playlist_name: String,
+	owner: Option<String>,
+	state: State<'_, AppState>,
+) -> Result<String, String> {
+	let uid = state.get_uid();
+	spotify_auth::spotify_import_playlist(&uid, &spotify_playlist_id, &playlist_name, owner).await
+}
+
+#[tauri::command]
+async fn spotify_enrich_track_cmd(
+	uid: String,
+	state: State<'_, AppState>,
+) -> Result<(), String> {
+	let profile_uid = state.get_uid();
+	let lib_conn = open_lib_conn(&profile_uid);
+	let track = db::track_manager::get_track_by_uid(&lib_conn, &uid)
+		.map_err(|e| e.to_string())?
+		.ok_or_else(|| format!("Track not found: {}", uid))?;
+
+	let title = track.title.as_deref().unwrap_or("");
+	let artist = track
+		.artists
+		.as_deref()
+		.and_then(|s| serde_json::from_str::<Vec<String>>(s).ok())
+		.and_then(|v| v.into_iter().next())
+		.unwrap_or_default();
+
+	let Some(meta) = spotify_auth::enrich_track(&profile_uid, title, &artist).await? else {
+		return Ok(());
+	};
+
+	let update = db::MetadataUpdate {
+		title: meta.title,
+		artists: meta.artists.as_ref().map(|v| serde_json::to_string(v).unwrap_or_default()),
+		album_artist: None,
+		albums: None,
+		year: meta.year,
+		genres: meta.genres.as_ref().map(|v| serde_json::to_string(v).unwrap_or_default()),
+		bpm: None,
+		rating: None,
+		tags: None,
+		key: None,
+		credits: None,
+		label: None,
+		artwork_blob: None,
+		artwork_path: None,
+		user_options: None,
+	};
+
+	db::track_manager::update_track_metadata_by_uid(&lib_conn, &uid, &update)
+		.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn spotify_enrich_album_cmd(
+	uid: String,
+	state: State<'_, AppState>,
+) -> Result<(), String> {
+	let profile_uid = state.get_uid();
+	let lib_conn = open_lib_conn(&profile_uid);
+	let album = db::album_manager::get_album_by_uid(&lib_conn, &uid)
+		.map_err(|e| e.to_string())?
+		.ok_or_else(|| format!("Album not found: {}", uid))?;
+
+	let artist = album
+		.album_artist
+		.as_deref()
+		.or_else(|| album.artists.as_deref())
+		.unwrap_or("")
+		.to_string();
+
+	let Some(meta) = spotify_auth::enrich_album(&profile_uid, &album.title, &artist).await? else {
+		return Ok(());
+	};
+
+	let update = db::AlbumUpdate {
+		title: None,
+		format: None,
+		rating: None,
+		artists: None,
+		album_artist: None,
+		release_date: meta.release_date,
+		tags: None,
+		genres: meta.genres.as_ref().map(|v| serde_json::to_string(v).unwrap_or_default()),
+		tracks: None,
+		credits: None,
+		label: meta.label,
+		artwork_blob: None,
+		artwork_path: None,
+	};
+
+	db::album_manager::update_album_by_uid(&lib_conn, &uid, &update)
+		.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn spotify_enrich_artist_cmd(
+	uid: String,
+	state: State<'_, AppState>,
+) -> Result<(), String> {
+	let profile_uid = state.get_uid();
+	let lib_conn = open_lib_conn(&profile_uid);
+	let artist = db::artist_manager::get_artist_by_uid(&lib_conn, &uid)
+		.map_err(|e| e.to_string())?
+		.ok_or_else(|| format!("Artist not found: {}", uid))?;
+
+	let Some(meta) = spotify_auth::enrich_artist(&profile_uid, &artist.name).await? else {
+		return Ok(());
+	};
+
+	let update = db::ArtistUpdate {
+		name: None,
+		aka: None,
+		about: None,
+		tags: None,
+		genres: meta.genres.as_ref().map(|v| serde_json::to_string(v).unwrap_or_default()),
+		websites: None,
+		members: None,
+		profile_art_blob: None,
+		profile_art_path: None,
+		banner_art_blob: None,
+		banner_art_path: None,
+	};
+
+	db::artist_manager::update_artist_by_uid(&lib_conn, &uid, &update)
+		.map_err(|e| e.to_string())
+}
+
+// ─────────────────────────────────────────────
 // ENTRY POINT
 // ─────────────────────────────────────────────
+
+pub fn handle_deep_link(app: tauri::AppHandle, url: &str) {
+	use tauri::Manager;
+	eprintln!("[deep-link] received url: {}", url);
+
+	let state = app.state::<crate::state::AppState>();
+	let uid = state.get_uid();
+
+	if let Ok(parsed) = url::Url::parse(url) {
+		eprintln!("[deep-link] host: {:?}", parsed.host_str());
+		match parsed.host_str() {
+			Some("spotify-callback") => {
+				eprintln!("[deep-link] matched spotify-callback");
+				if let Some(code) = parsed
+					.query_pairs()
+					.find(|(k, _)| k == "code")
+					.map(|(_, v)| v.to_string())
+				{
+					eprintln!("[deep-link] got code, exchanging...");
+					let verifier = state.take_spotify_verifier();
+					tauri::async_runtime::spawn(async move {
+						let result = spotify_auth::spotify_exchange_code(&uid, &code, &verifier).await;
+						eprintln!("[deep-link] exchange result: {:?}", result);
+						let _ = app.emit("spotify:connected", ());
+					});
+				} else {
+					eprintln!("[deep-link] no code found in query params");
+				}
+			}
+			_ => {
+				eprintln!("[deep-link] unmatched host");
+			}
+		}
+	} else {
+		eprintln!("[deep-link] failed to parse url");
+	}
+}
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -1281,6 +1562,8 @@ pub fn run() {
 		.plugin(tauri_plugin_log::Builder::new().build())
 		.plugin(tauri_plugin_dialog::init())
 		.plugin(tauri_plugin_os::init())
+		.plugin(tauri_plugin_deep_link::init())
+		.plugin(tauri_plugin_shell::init())
 		.setup(|app| {
 			let handle = app.handle().clone();
 			let uid = app.state::<AppState>().get_uid();
@@ -1292,8 +1575,14 @@ pub fn run() {
 					.into_iter()
 					.map(|p| p.path)
 					.collect();
-				watcher::start_watcher(handle, uid, paths);
+				watcher::start_watcher(handle.clone(), uid, paths);
 			}
+
+			app.deep_link().on_open_url(move |event| {
+				for url in event.urls() {
+					handle_deep_link(handle.clone(), url.as_str());
+				}
+			});
 
 			#[cfg(desktop)]
 			app.handle().plugin(tauri_plugin_updater::Builder::new().build())?;
@@ -1359,6 +1648,21 @@ pub fn run() {
 			get_track_lyrics,
 			fetch_track_lyrics,
 			delete_track_lyrics,
+			lastfm_get_auth_url,
+			lastfm_exchange_token_cmd,
+			lastfm_disconnect_cmd,
+			lastfm_connection_status,
+			scrobble_track,
+			update_now_playing,
+			spotify_get_auth_url,
+			spotify_exchange_code_cmd,
+			spotify_disconnect_cmd,
+			spotify_connection_status,
+			spotify_get_playlists_cmd,
+			spotify_import_playlist_cmd,
+			spotify_enrich_track_cmd,
+			spotify_enrich_album_cmd,
+			spotify_enrich_artist_cmd,
 		])
 		.run(tauri::generate_context!())
 		.expect("error while running tauri application");

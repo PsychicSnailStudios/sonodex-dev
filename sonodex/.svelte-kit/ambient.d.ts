@@ -98,6 +98,7 @@ declare module '$env/static/private' {
 	export const SystemDrive: string;
 	export const SystemRoot: string;
 	export const TAURI_CLI_VERBOSITY: string;
+	export const TAURI_DEEP_LINK_PLUGIN_CONFIG: string;
 	export const TAURI_ENV_ARCH: string;
 	export const TAURI_ENV_DEBUG: string;
 	export const TAURI_ENV_FAMILY: string;
@@ -268,6 +269,7 @@ declare module '$env/dynamic/private' {
 		SystemDrive: string;
 		SystemRoot: string;
 		TAURI_CLI_VERBOSITY: string;
+		TAURI_DEEP_LINK_PLUGIN_CONFIG: string;
 		TAURI_ENV_ARCH: string;
 		TAURI_ENV_DEBUG: string;
 		TAURI_ENV_FAMILY: string;
