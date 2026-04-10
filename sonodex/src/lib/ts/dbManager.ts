@@ -198,7 +198,7 @@ export async function createStubTrack(
 	await invoke("add_track", {
 		track: {
 			uid,
-			path: uid,
+			path: "",
 			last_modified: 0,
 			title,
 			artists: JSON.stringify([artist]),

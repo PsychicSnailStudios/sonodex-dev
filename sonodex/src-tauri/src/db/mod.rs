@@ -99,7 +99,7 @@ pub fn init_lib_db(conn: &Connection) -> Result<()> {
 		CREATE TABLE IF NOT EXISTS tracks (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			uid TEXT NOT NULL UNIQUE,
-			path TEXT NOT NULL UNIQUE,
+			path TEXT NOT NULL,
 			last_modified INTEGER NOT NULL,
 			title TEXT,
 			artists TEXT,

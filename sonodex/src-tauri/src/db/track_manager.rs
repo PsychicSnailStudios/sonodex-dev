@@ -96,7 +96,7 @@ pub fn upsert_track(conn: &Connection, track: &Track) -> Result<()> {
         conn.execute(
             "INSERT INTO tracks (uid, path, last_modified, title, artists, album_artist, albums, genres, year, rating, duration_ms, bpm, key, credits, label, artwork_blob, artwork_path, user_options)
              VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18)
-             ON CONFLICT(path) DO UPDATE SET
+             ON CONFLICT(uid) DO UPDATE SET
                 last_modified = excluded.last_modified,
                 title         = excluded.title,
                 artists       = excluded.artists,

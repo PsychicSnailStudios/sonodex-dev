@@ -9,7 +9,7 @@
 	import { Label } from "$lib/components/ui/label/index.js";
 
 	// SCRIPTS
-	import { library, reloadLibrary } from "$lib/ts/library.svelte";
+	import { library, loadLibrary, reloadLibrary } from "$lib/ts/library.svelte";
 	import { createStubTrack } from "$lib/ts/dbManager";
 	import { profileState } from "$lib/ts/profiles.svelte";
 	import { createPlaylist } from "$lib/ts/audio/playlistManager.svelte";
@@ -298,19 +298,20 @@
 
 			await createPlaylist(playlistName.trim(), profileState.active?.name ?? null, folder, playlistTrackEntries);
 
-			// await library.loadLibrary?.();
-			await reloadLibrary("playlists");
-
-			state = "done";
-			
-			
 		} catch (e: any) {
 			importError = e.message ?? String(e);
 			state = "error";
+			console.error("Failed to import playlist:", e);
+		} finally {
+			// await library.loadLibrary?.();
+			await loadLibrary();
+
+			state = "done";
+			
+			reset();
+			onClose();
 		}
 
-		reset();
-		onClose();
 	}
 
 </script>
