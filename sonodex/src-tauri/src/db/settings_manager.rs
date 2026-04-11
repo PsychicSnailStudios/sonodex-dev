@@ -14,11 +14,12 @@ pub struct Setting {
 }
 
 pub fn add_library_path(conn: &Connection, path: &str) -> Result<()> {
-    conn.execute(
-        "INSERT OR IGNORE INTO library_paths (path) VALUES (?1)",
-        params![path],
-    )?;
-    Ok(())
+	let normalized = path.replace('\\', "/");
+	conn.execute(
+		"INSERT OR IGNORE INTO library_paths (path) VALUES (?1)",
+		params![normalized],
+	)?;
+	Ok(())
 }
 
 pub fn remove_library_path(conn: &Connection, path: &str) -> Result<()> {
@@ -27,16 +28,16 @@ pub fn remove_library_path(conn: &Connection, path: &str) -> Result<()> {
 }
 
 pub fn get_library_paths(conn: &Connection) -> Result<Vec<LibraryPath>> {
-    let mut stmt = conn.prepare("SELECT id, path FROM library_paths")?;
-    let paths = stmt
-        .query_map([], |row| {
-            Ok(LibraryPath {
-                id: row.get(0)?,
-                path: row.get(1)?,
-            })
-        })?
-        .collect::<Result<Vec<_>>>()?;
-    Ok(paths)
+	let mut stmt = conn.prepare("SELECT id, path FROM library_paths")?;
+	let paths = stmt
+		.query_map([], |row| {
+			Ok(LibraryPath {
+				id: row.get(0)?,
+				path: row.get::<_, String>(1)?.replace('\\', "/"),
+			})
+		})?
+		.collect::<Result<Vec<_>>>()?;
+	Ok(paths)
 }
 
 pub fn get_setting(conn: &Connection, key: &str) -> Result<Option<String>> {

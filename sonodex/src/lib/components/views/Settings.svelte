@@ -25,7 +25,7 @@
 	
 
 	// VARIABLES
-	let paths: { id: number; path: string }[] = [];
+	let paths = $state<{ id: number; path: string }[]>([]);
 	let newPath = "";
 	let settings: Record<string, string> = {};
 
@@ -56,56 +56,61 @@
 	};
 
 	// APP FUNCTIONS
-	onMount(async () => {
-		await loadPaths();
-		await loadSettings();
-		await loadEqSettings();
+	onMount(() => {
+		let cleanupLastfm: (() => void) | undefined;
+		let cleanupSpotify: (() => void) | undefined;
 
-		await listen("enrich:progress", (event: any) => {
-			scanState.enrichDone = event.payload.done;
-			scanState.enrichTotal = event.payload.total;
-			scanState.enrichErrors = event.payload.errors;
-		});
+		(async () => {
+			await loadPaths();
+			await loadSettings();
+			await loadEqSettings();
 
-		await listen("enrich:done", (event: any) => {
-			scanState.enriching = false;
-			scanState.enrichErrors = event.payload.errors;
-			scanState.status = `Enrichment done. ${event.payload.total - event.payload.errors} updated, ${event.payload.errors} not found.`;
-		});
+			await listen("enrich:progress", (event: any) => {
+				scanState.enrichDone = event.payload.done;
+				scanState.enrichTotal = event.payload.total;
+				scanState.enrichErrors = event.payload.errors;
+			});
 
-		await listen("scan:progress", async (event: any) => {
-			scanState.progress = event.payload.scanned;
-			scanState.total = event.payload.total;
-			scanState.status = `Scanning... ${scanState.progress} / ${scanState.total}`;
-		});
+			await listen("enrich:done", (event: any) => {
+				scanState.enriching = false;
+				scanState.enrichErrors = event.payload.errors;
+				scanState.status = `Enrichment done. ${event.payload.total - event.payload.errors} updated, ${event.payload.errors} not found.`;
+			});
 
-		await listen("scan:done", async () => {
-			scanState.status = "Scan done.";
-			scanState.loading = false;
-			scanState.progress = 0;
-			scanState.total = 0;
-			await loadLibrary();
-		});
+			await listen("scan:progress", async (event: any) => {
+				scanState.progress = event.payload.scanned;
+				scanState.total = event.payload.total;
+				scanState.status = `Scanning... ${scanState.progress} / ${scanState.total}`;
+			});
 
-		await listen("scan:error", (event: any) => {
-			scanState.status = `Scan error: ${event.payload}`;
-			scanState.loading = false;
-		});
+			await listen("scan:done", async () => {
+				scanState.status = "Scan done.";
+				scanState.loading = false;
+				scanState.progress = 0;
+				scanState.total = 0;
+				await loadLibrary();
+			});
 
-		lastfmConnected = await lastfmIsConnected();
-		spotifyConnected = await spotifyIsConnected();
+			await listen("scan:error", (event: any) => {
+				scanState.status = `Scan error: ${event.payload}`;
+				scanState.loading = false;
+			});
 
-		const unlistenLastfm = await onLastfmConnected(async () => {
-			lastfmConnected = true;
-		});
+			lastfmConnected = await lastfmIsConnected();
+			spotifyConnected = await spotifyIsConnected();
 
-		const unlistenSpotify = await onSpotifyConnected(async () => {
-			spotifyConnected = true;
-		});
+			cleanupLastfm = await onLastfmConnected(async () => {
+				lastfmConnected = true;
+			});
+
+			cleanupSpotify = await onSpotifyConnected(async () => {
+				spotifyConnected = true;
+			});
+		})();
 
 		return () => {
-			unlistenLastfm();
-			unlistenSpotify();
+			cleanupLastfm?.();
+			cleanupSpotify?.();
 		};
 	});
 
@@ -116,7 +121,8 @@
 	}
 
 	async function loadPaths() {
-		paths = await invoke("get_paths");
+		const result = await invoke("get_paths");
+		paths = result as { id: number; path: string }[];
 	}
 
 	async function loadSettings() {
