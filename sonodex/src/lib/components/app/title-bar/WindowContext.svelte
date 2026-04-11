@@ -4,7 +4,10 @@
 	import { Ellipsis } from "lucide-svelte";
 
 	import * as DropdownMenu from "$lib/components/ui/dropdown-menu/index.js";
-  
+	
+	// SCRIPTS
+   import { setView } from "$lib/ts/app-states/state_session.svelte";
+	
 	// VARIABLES
   
 	// APP FUNCTIONS
@@ -20,7 +23,8 @@
 
 	<DropdownMenu.Content>
 		<DropdownMenu.Group>
-			<DropdownMenu.Item>Settings</DropdownMenu.Item>
+			<DropdownMenu.Item onclick={() => {setView("settings");}}>Settings</DropdownMenu.Item>
+			<DropdownMenu.Item onclick={() => {setView("manage");}}>Manage Library</DropdownMenu.Item>
 		</DropdownMenu.Group>
 	</DropdownMenu.Content>
 </DropdownMenu.Root>

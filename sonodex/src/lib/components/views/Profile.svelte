@@ -4,7 +4,7 @@
 	import { onMount } from "svelte";
 	
 	// COMPONENTS
-	import { Pencil, User } from "lucide-svelte";
+	import { Pencil, User, Settings } from "lucide-svelte";
 
 	import * as Tabs from "$lib/components/ui/tabs/index.js";
 	import ScrollArea from "$lib/components/ui/scroll-area/scroll-area.svelte";
@@ -12,13 +12,13 @@
 	
 	// CUSTOM COMPONENTS
 	import TopTracks from "$lib/components/app-ui/TopTracks.svelte";
-	import Settings from "$lib/components/views/Settings.svelte";
 	import AddProfile from "$lib/components/dialogs/profile/AddProfile.svelte";
 	import EditProfile from "$lib/components/dialogs/profile/EditProfile.svelte";
 	import SwichProfile from "$lib/components/dialogs/profile/SwichProfile.svelte";
 	
 	// SCRIPTS
 	import { profileState, loadProfiles, getProfileAvatar, } from "$lib/ts/profiles.svelte";
+   import { setView } from "$lib/ts/app-states/state_session.svelte";
 
 	// VARIABLES
 	let swichOpen = $state(false);
@@ -49,7 +49,7 @@
 <SwichProfile bind:open={swichOpen} bind:openAdd={newOpen} />
 <AddProfile bind:open={newOpen} />
 
-<div class="flex flex-col gap-2 p-2 border-2 rounded-md h-full w-full overflow-hidden">
+<div class="flex flex-col gap-4 p-2 border-2 rounded-md h-full w-full overflow-hidden">
 
 	<div class="flex items-center justify-between">
 		<div class="flex gap-2 items-center">
@@ -70,27 +70,23 @@
 			<Button variant="ghost" size="sm" onclick={() => editOpen = true}>
 				<Pencil />
 			</Button>
+			<Button variant="ghost" size="sm" onclick={() => setView("settings")}>
+				<Settings />
+			</Button>
 		</div>
 	</div>
 
-	<Tabs.Root value="statistics" class="flex flex-col min-h-0 flex-1">
+	<ScrollArea class="min-h-0 min-w-0">
+		<TopTracks />
+	</ScrollArea>
+
+	<!-- <Tabs.Root value="statistics" class="flex flex-col min-h-0 flex-1">
 		<Tabs.List class="w-full">
 			<Tabs.Trigger value="statistics" class="flex-1">Stats</Tabs.Trigger>
-			<!-- <Tabs.Trigger value="feed" class="flex-1">Feed</Tabs.Trigger> -->
+			<Tabs.Trigger value="feed" class="flex-1">Feed</Tabs.Trigger>
 			<Tabs.Trigger value="manager" class="flex-1">Library</Tabs.Trigger>
 			<Tabs.Trigger value="settings" class="flex-1">Settings</Tabs.Trigger>
 		</Tabs.List>
-
-		<Tabs.Content value="statistics" class="space-y-3 mt-4 flex-1 min-h-0">
-			<ScrollArea class="min-h-0 min-w-0">
-				<TopTracks />
-			</ScrollArea>
-		</Tabs.Content>
-
-		<Tabs.Content value="settings" class="mt-4 flex-1 min-h-0">
-			<Settings />
-		</Tabs.Content>
-
-	</Tabs.Root>
+	</Tabs.Root> -->
 
 </div>

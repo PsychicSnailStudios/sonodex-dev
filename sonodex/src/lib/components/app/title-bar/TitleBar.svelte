@@ -51,7 +51,7 @@
   tabindex="-1"
   onmousedown={startDrag}>
 
-  <!-- <WindowContext /> -->
+  <WindowContext />
   <span></span>
 
   <div class="flex items-center gap-2" role="presentation" onmousedown={(e) => e.stopPropagation()}>

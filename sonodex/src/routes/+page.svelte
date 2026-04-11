@@ -18,6 +18,8 @@
 	import TracksView from "$lib/components/views/TrackLibrary.svelte";
 	import AlbumsView from "$lib/components/views/AlbumLibrary.svelte";
 	import ArtistsView from "$lib/components/views/ArtistLibrary.svelte";
+	import Settings from "$lib/components/views/Settings.svelte";
+	import LibraryManager from "$lib/components/views/LibraryManager.svelte";
 
 	import AlbumDisplay from "$lib/components/displays/AlbumDisplay.svelte";
 	import ArtistDisplay from "$lib/components/displays/ArtistDisplay.svelte";
@@ -172,6 +174,10 @@
 						<ArtistsView />
 					{:else if activeView.id === "playlists"}
 						<PlaylistsView />
+					{:else if activeView.id === "settings"}
+						<Settings />
+					{:else if activeView.id === "manage"}
+						<LibraryManager />
 					{/if}
 				</Resizable.Pane>
 
