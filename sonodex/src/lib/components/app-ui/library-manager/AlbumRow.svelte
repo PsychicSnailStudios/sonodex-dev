@@ -5,6 +5,8 @@
 	import ArtworkDisplay from "$lib/components/app-ui/ArtworkDisplay.svelte";
 	import { openEditModal } from "$lib/ts/app/editModal.svelte";
 	import { removeAlbum, enrichAlbumTracks } from "$lib/ts/app/libraryManager";
+	import { setSelection } from "$lib/ts/app-states/state_session.svelte";
+	import { getArtistUidFromName } from "$lib/ts/library.svelte";
 	import type { Album } from "$lib/ts/types";
 
 	let { album }: { album: Album } = $props();
@@ -17,6 +19,14 @@
 			return 0;
 		}
 	});
+
+	const artistList = $derived.by<string[]>(() => {
+		try {
+			return album.artists ? JSON.parse(album.artists as string) : [];
+		} catch {
+			return [];
+		}
+	});
 </script>
 
 <div class="flex gap-2 p-2 border-2 rounded-md justify-between items-center">
@@ -25,10 +35,26 @@
 		<div class="min-w-0 grid">
 			<span class="text-sm truncate">{album.title}</span>
 			<div class="text-xs text-muted-foreground truncate">
-				{album.album_artist ?? "—"}
-				{#if album.release_date}
-					{" · "}{album.release_date}
+				{#if artistList.length > 0}
+					{#each artistList as artist, i}
+						<button
+							onclick={() => setSelection(getArtistUidFromName(artist), "artist")}
+							class="text-xs cursor-pointer hover:underline"
+						>
+							{artist}{i < artistList.length - 1 ? "," : ""}
+						</button>
+					{/each}
+				{:else if album.album_artist}
+					<button
+						onclick={() => setSelection(getArtistUidFromName(album.album_artist!), "artist")}
+						class="text-xs cursor-pointer hover:underline"
+					>
+						{album.album_artist}
+					</button>
+				{:else}
+					—
 				{/if}
+				{#if album.release_date}{" · "}{album.release_date}{/if}
 				{" · "}{trackCount} {trackCount === 1 ? "track" : "tracks"}
 			</div>
 		</div>

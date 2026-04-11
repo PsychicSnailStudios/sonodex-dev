@@ -1,9 +1,13 @@
 <script lang="ts">
 	import { onMount } from "svelte";
 
+	import { Trash, CloudDownload } from "lucide-svelte";
+
 	import * as Tabs from "$lib/components/ui/tabs/index.js";
+	import * as Tooltip from "$lib/components/ui/tooltip/index.js";
+	import { Checkbox } from "$lib/components/ui/checkbox/index.js";
 	import { ScrollArea } from "$lib/components/ui/scroll-area/index.js";
-	import { Button } from "$lib/components/ui/button/index.js";
+	import { Button, buttonVariants } from "$lib/components/ui/button/index.js";
 
 	import SearchBar from "$lib/components/app-ui/search/SearchBar.svelte";
 	import TrackRow from "$lib/components/app-ui/library-manager/TrackRow.svelte";
@@ -11,6 +15,7 @@
 	import ArtistRow from "$lib/components/app-ui/library-manager/ArtistRow.svelte";
 	import DuplicateGroupCard from "$lib/components/app-ui/library-manager/DuplicateGroupCard.svelte";
 
+	import { removeTrackFromLibrary, enrichTrack } from "$lib/ts/app/libraryManager";
 	import { library } from "$lib/ts/library.svelte";
 	import { getDuplicates } from "$lib/ts/app/libraryManager";
 	import type { DuplicateGroup } from "$lib/ts/types";
@@ -22,17 +27,21 @@
 
 	let duplicates = $state<DuplicateGroup[]>([]);
 	let duplicatesLoaded = $state(false);
+	let trackSelections = $state<Record<string, boolean>>({});
 
-	async function loadDuplicates() {
-		duplicatesLoaded = false;
-		duplicates = await getDuplicates();
-		duplicatesLoaded = true;
-	}
+	$effect(() => {
+		filteredTracks.forEach(t => {
+			if (!(t.uid in trackSelections)) trackSelections[t.uid] = false;
+		});
+	});
 
-	function onDuplicateResolved() {
-		loadDuplicates();
-	}
+	const selectedUids = $derived(
+		Object.entries(trackSelections)
+			.filter(([, v]) => v)
+			.map(([k]) => k)
+	);
 
+	
 	const filteredTracks = $derived(
 		trackSearch.trim() === ""
 			? library.tracks.filter((t) => {
@@ -68,6 +77,34 @@
 			? library.artists
 			: library.artists.filter((a) => a.name?.toLowerCase().includes(artistSearch.toLowerCase()))
 	);
+
+	const anySelected = $derived(selectedUids.length > 0);
+	const allSelected = $derived(
+		filteredTracks.length > 0 && filteredTracks.every(t => trackSelections[t.uid])
+	);
+
+	async function bulkRemove() {
+		for (const uid of selectedUids) {
+			await removeTrackFromLibrary(uid);
+		}
+		trackSelections = {};
+	}
+
+	async function bulkEnrich() {
+		for (const uid of selectedUids) {
+			await enrichTrack(uid);
+		}
+	}
+
+	async function loadDuplicates() {
+		duplicatesLoaded = false;
+		duplicates = await getDuplicates();
+		duplicatesLoaded = true;
+	}
+
+	function onDuplicateResolved() {
+		loadDuplicates();
+	}
 </script>
 
 <div class="flex flex-col gap-2 p-2 border-2 rounded-md h-full w-full overflow-hidden">
@@ -95,14 +132,53 @@
 									size="sm"
 									onclick={() => (ghosts = !ghosts)}
 								>
-									Missing only
+									Ghosts only
 								</Button>
 								<SearchBar bind:search={trackSearch} searchCount={filteredTracks.length} />
 							</div>
 						</div>
+						<div class="flex gap-2 justify-between items-center">
+							{#if anySelected}
+								<div class="flex gap-2">
+									<Checkbox
+										checked={allSelected}
+										onCheckedChange={(v) => {
+											const next: Record<string, boolean> = {};
+											filteredTracks.forEach(t => next[t.uid] = !!v);
+											trackSelections = next;
+										}}
+									/>
+									<span class="text-xs text-muted-foreground">{selectedUids.length} selected</span>
+								</div>
+								<div>
+									<Tooltip.Root>
+										<Tooltip.Trigger
+											class={buttonVariants({ variant: "destructive", size: "sm" })}
+											onclick={bulkRemove}
+										>
+											<Trash class="w-4 h-4 mr-1" /> Remove
+										</Tooltip.Trigger>
+										<Tooltip.Content><p>Remove selected from library</p></Tooltip.Content>
+									</Tooltip.Root>
+									<Tooltip.Root>
+										<Tooltip.Trigger
+											class={buttonVariants({ variant: "outline", size: "sm" })}
+											onclick={bulkEnrich}
+										>
+											<CloudDownload class="w-4 h-4 mr-1" /> Enrich
+										</Tooltip.Trigger>
+										<Tooltip.Content><p>Fetch metadata for selected</p></Tooltip.Content>
+									</Tooltip.Root>
+								</div>
+							{/if}
+						</div>
 						<div class="flex flex-col gap-2">
 							{#each filteredTracks as track (track.uid)}
-								<TrackRow {track} />
+								<TrackRow
+									{track}
+									selected={trackSelections[track.uid] ?? false}
+									onToggle={() => trackSelections[track.uid] = !(trackSelections[track.uid] ?? false)}
+								/>
 							{/each}
 						</div>
 					</div>

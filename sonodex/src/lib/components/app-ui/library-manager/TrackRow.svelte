@@ -14,16 +14,21 @@
 		replaceTrackPath,
 		openTrackInExplorer,
 	} from "$lib/ts/app/libraryManager";
-	import type { Track } from "$lib/ts/types";
-    import ScrollingText from "../ScrollingText.svelte";
+	import type { Track } from "$lib/ts/util/types";
+	import ScrollingText from "../ScrollingText.svelte";
+	import { Checkbox } from "$lib/components/ui/checkbox/index.js";
 
-	let { track }: { track: Track } = $props();
+	let { track, selected = false, onToggle }: { track: Track; selected?: boolean; onToggle?: () => void } = $props();
 
 	const albumList = $derived(parseAlbumEntries(track.albums));
 </script>
 
-<div class="flex gap-2 p-2 border-2 rounded-md justify-between items-center">
-	<div class="flex gap-2 min-w-0 flex-1">
+<div
+	class="flex gap-2 p-2 border-2 rounded-md justify-between items-center"
+	class:border-primary={selected}
+>
+	<div class="flex gap-2 items-center min-w-0 flex-1">
+		<Checkbox checked={selected} onCheckedChange={() => onToggle?.()} />
 		<ArtworkDisplay uid={track.uid} size={40} type="track" />
 		<div class="min-w-0 grid">
 			{#if track.path != ""}
@@ -58,57 +63,59 @@
 		</div>
 	</div>
 
-	<div class="flex gap-2 shrink-0">
-		<Tooltip.Root>
-			<Tooltip.Trigger
-				class={buttonVariants({ variant: "destructive", size: "icon" })}
-				onclick={() => removeTrackFromLibrary(track.uid)}
-			>
-				<Trash />
-			</Tooltip.Trigger>
-			<Tooltip.Content><p>Remove from library</p></Tooltip.Content>
-		</Tooltip.Root>
+	{#if !selected}
+		<div class="flex gap-2 shrink-0">
+			<Tooltip.Root>
+				<Tooltip.Trigger
+					class={buttonVariants({ variant: "destructive", size: "icon" })}
+					onclick={() => removeTrackFromLibrary(track.uid)}
+				>
+					<Trash />
+				</Tooltip.Trigger>
+				<Tooltip.Content><p>Remove from library</p></Tooltip.Content>
+			</Tooltip.Root>
 
-		<Tooltip.Root>
-			<Tooltip.Trigger
-				class={buttonVariants({ variant: "outline", size: "icon" })}
-				onclick={() => enrichTrack(track.uid)}
-			>
-				<CloudDownload />
-			</Tooltip.Trigger>
-			<Tooltip.Content><p>Fetch metadata via API</p></Tooltip.Content>
-		</Tooltip.Root>
-
-		<Tooltip.Root>
-			<Tooltip.Trigger
-				class={buttonVariants({ variant: "outline", size: "icon" })}
-				onclick={() => replaceTrackPath(track.uid)}
-			>
-				<Paperclip />
-			</Tooltip.Trigger>
-			<Tooltip.Content><p>Replace file path</p></Tooltip.Content>
-		</Tooltip.Root>
-
-		{#if track.path != ""}
 			<Tooltip.Root>
 				<Tooltip.Trigger
 					class={buttonVariants({ variant: "outline", size: "icon" })}
-					onclick={() => openTrackInExplorer(track.path)}
+					onclick={() => enrichTrack(track.uid)}
 				>
-					<FolderOpen />
+					<CloudDownload />
 				</Tooltip.Trigger>
-				<Tooltip.Content><p>Show in file explorer</p></Tooltip.Content>
+				<Tooltip.Content><p>Fetch metadata via API</p></Tooltip.Content>
 			</Tooltip.Root>
-		{/if}
 
-		<Tooltip.Root>
-			<Tooltip.Trigger
-				class={buttonVariants({ variant: "outline", size: "icon" })}
-				onclick={() => openEditModal({ type: "track", uid: track.uid })}
-			>
-				<Pencil />
-			</Tooltip.Trigger>
-			<Tooltip.Content><p>Edit metadata</p></Tooltip.Content>
-		</Tooltip.Root>
-	</div>
+			<Tooltip.Root>
+				<Tooltip.Trigger
+					class={buttonVariants({ variant: "outline", size: "icon" })}
+					onclick={() => replaceTrackPath(track.uid)}
+				>
+					<Paperclip />
+				</Tooltip.Trigger>
+				<Tooltip.Content><p>Replace file path</p></Tooltip.Content>
+			</Tooltip.Root>
+
+			{#if track.path != ""}
+				<Tooltip.Root>
+					<Tooltip.Trigger
+						class={buttonVariants({ variant: "outline", size: "icon" })}
+						onclick={() => openTrackInExplorer(track.path)}
+					>
+						<FolderOpen />
+					</Tooltip.Trigger>
+					<Tooltip.Content><p>Show in file explorer</p></Tooltip.Content>
+				</Tooltip.Root>
+			{/if}
+
+			<Tooltip.Root>
+				<Tooltip.Trigger
+					class={buttonVariants({ variant: "outline", size: "icon" })}
+					onclick={() => openEditModal({ type: "track", uid: track.uid })}
+				>
+					<Pencil />
+				</Tooltip.Trigger>
+				<Tooltip.Content><p>Edit metadata</p></Tooltip.Content>
+			</Tooltip.Root>
+		</div>
+	{/if}
 </div>
