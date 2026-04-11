@@ -8,6 +8,7 @@
 	import ArtworkDisplay from "$lib/components/app-ui/ArtworkDisplay.svelte";
 	import TrackTableEditButton from "$lib/components/app-ui/track-table/TrackRowEditButton.svelte";
    import TrackRating from "$lib/components/app-ui/TrackRating.svelte";
+	import ArtistsList from "$lib/components/app-ui/ArtistsList.svelte";
 
 	// SCRIPTS
 	import { setSelection } from "$lib/ts/app-states/state_session.svelte";
@@ -174,7 +175,7 @@
 				</div>
 				<div class="min-w-0 flex items-center">
 					<span role="button" tabindex="0" onclick={() => setSelection(getArtistUidFromName(track.album_artist ?? ""), "artist")} onkeydown={(e) => { if (e.key === 'Enter') setSelection(getArtistUidFromName(track.album_artist ?? ""), "artist"); }} class="text-xs text-muted-foreground truncate cursor-pointer hover:underline">
-						{parseArtists(track.artists)}
+						<ArtistsList artists={track.artists} />
 					</span>
 				</div>
 			</div>
@@ -183,7 +184,7 @@
 
 	{#if showArtist}
 		<span role="button" tabindex="0" onclick={() => setSelection(getAlbumUidFromName(track.album_artist.uid), "artist")} onkeydown={(e) => { if (e.key === 'Enter') setSelection(getAlbumUidFromName(track.album_artist.uid), "artist"); }} class="text-sm truncate cursor-pointer hover:underline">
-			{parseArtists(track.artists)}
+			<ArtistsList artists={track.artists} />
 		</span>
 	{/if}
 

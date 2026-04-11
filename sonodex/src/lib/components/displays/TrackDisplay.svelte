@@ -1,7 +1,7 @@
 <script lang="ts">
 	
 	// COMPONENTS
-   import { Pencil, Loader2 } from "lucide-svelte";
+   import { Pencil } from "lucide-svelte";
 
 	import * as Tabs from "$lib/components/ui/tabs/index.js";
 	import { Button } from "$lib/components/ui/button/index.js";
@@ -12,19 +12,19 @@
    import TrackPlaylistEditButton from "$lib/components/app-ui/TrackPlaylistEditButton.svelte";
    import TrackRating from "$lib/components/app-ui/TrackRating.svelte";
 	import TagList from "$lib/components/app-ui/TagList.svelte";
+   import ArtistsList from "$lib/components/app-ui/ArtistsList.svelte";
+   import LyricsViewer from "$lib/components/app-ui/LyricsViewer.svelte";
 
 	// SCRIPTS
-	import { getArtistUidFromName, getLyrics, library, loadLibrary, reloadLibrary } from "$lib/ts/library.svelte";
+	import { getAlbumUidFromName, getArtistUidFromName, getLyrics, library } from "$lib/ts/library.svelte";
 	import { currentTrackTab, selection, setSelection } from "$lib/ts/app-states/state_session.svelte";
 	import { openEditModal } from "$lib/ts/app/editModal.svelte";
-	import { formatDuration, parseAlbumEntries, parseArtists, parseTags } from '$lib/ts/util/helpers';
+	import { formatDuration, parseAlbumEntries, parseTags } from '$lib/ts/util/helpers';
    import { playTrackByObject } from "$lib/ts/audio/audioManager.svelte";
-	import type { Lyrics } from "$lib/ts/util/types";
-   import { fetchLyrics } from "$lib/ts/app/enrichment";
+    import ScrollArea from "../ui/scroll-area/scroll-area.svelte";
 
 	// VARIABLES
 	let track = $derived(library.tracks.find(t => t.uid === selection.uid) ?? null);
-	let lyrics: Lyrics | null = $state(null);
 	let fetchingLyrics = $state(false);
 	let genres = $derived(track?.genres ? parseTags(track.genres) : null);
 	let tags = $derived(track?.tags ? parseTags(track.tags) : null);
@@ -46,28 +46,7 @@
 	});
 
 	let artistUID = $derived(getArtistUidFromName(track?.album_artist ?? "Unknown Artist"));
-	
-	// Reload lyrics reactively whenever the selected track changes
-	$effect(() => {
-		const uid = selection.uid;
-		lyrics = null;
-		if (!uid) return;
-		getLyrics(uid).then(result => {
-			lyrics = result;
-		});
-	});
 
-	async function doFetchLyrics() {
-		const uid = selection.uid;
-		if (!uid || fetchingLyrics) return;
-		fetchingLyrics = true;
-		try {
-			await fetchLyrics(uid);
-			lyrics = await getLyrics(uid);
-		} finally {
-			fetchingLyrics = false;
-		}
-	}
 </script>
 
 <div class="flex flex-col gap-4 p-4 border-2 h-full w-full overflow-hidden rounded-md">
@@ -80,17 +59,18 @@
 				<div class="flex flex-col gap-1">
 					<h2 class="text-2xl font-bold">{track.title ?? "Unknown Title"}</h2>
 					<div class="flex gap-2 text-sm text-muted-foreground flex-wrap">
-						<button onclick={() => setSelection(getArtistUidFromName(track.album_artist), "artist")} class="text-sm truncate cursor-pointer hover:underline">
-							{parseArtists(track.artists)}
-						</button>
+						<ArtistsList artists={track.artists} />
 						<span>|</span>
 						<div>
-							{#each parseAlbumEntries(track.albums) as album, i}
-								<button onclick={() => setSelection(album.uid, "album")} class="text-sm truncate cursor-pointer hover:underline">
-									{album.name}
-									{#if i < parseAlbumEntries(track.albums).length - 1}<span>,</span>{/if}
+							{#if track.albums}
+							{@const albumList = parseAlbumEntries(track.albums)}
+							{#each albumList as album, i}
+								<button onclick={() => setSelection(getAlbumUidFromName(album.name), "album")} class="text-sm truncate cursor-pointer hover:underline">
+									{album.name}{i < albumList.length - 1 ? "," : ""}
 								</button>
 							{/each}
+							{/if}
+
 						</div>
 						<span>|</span>
 						<span>{track.year ?? "—"}</span>
@@ -118,20 +98,9 @@
 				</Tabs.List>
 
 				<Tabs.Content value="lyrics" class="flex-1 overflow-y-auto mt-2">
-					{#if fetchingLyrics}
-						<div class="flex items-center gap-2 text-muted-foreground text-sm">
-							<Loader2 class="animate-spin size-4" />
-							<span>Fetching lyrics...</span>
-						</div>
-					{:else if lyrics === null}
-						<Button variant="outline" onclick={doFetchLyrics}>Get Lyrics</Button>
-					{:else if lyrics.instrumental}
-						<p class="text-muted-foreground text-sm">This track is instrumental.</p>
-					{:else if lyrics.plain}
-						<pre class="text-sm whitespace-pre-wrap font-sans leading-relaxed">{lyrics.plain}</pre>
-					{:else}
-						<p class="text-muted-foreground text-sm">No lyrics available.</p>
-					{/if}
+					<ScrollArea class="min-h-0 min-w-0 h-full pl-4">
+						<LyricsViewer uid={track.uid} />
+					</ScrollArea>
 				</Tabs.Content>
 
 				<Tabs.Content value="tags" class="flex-1 overflow-y-auto mt-2">

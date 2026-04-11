@@ -12,6 +12,7 @@
 	import { getArtistUidFromName } from "$lib/ts/library.svelte";
 	import { parseArtists } from "$lib/ts/util/helpers";
 	import type { Track } from "$lib/ts/util/types";
+   import ArtistsList from "$lib/components/app-ui/ArtistsList.svelte";
 
 	// PROPS
 	let { track } = $props<{ track: Track }>();
@@ -26,10 +27,9 @@
 				<span role="button" tabindex="0" onclick={() => setSelection(track.uid, "track")} onkeydown={(e) => { if (e.key === 'Enter') setSelection(track.uid, "track"); }} class="text-sm truncate cursor-pointer hover:underline">
 					{track.title}
 				</span>
-				<span role="button" tabindex="0"
-				onclick={() => setSelection(getArtistUidFromName(track.album_artist!), "artist")} onkeydown={(e) => { if (e.key === 'Enter') setSelection(getArtistUidFromName(track.album_artist!), "artist"); }} class="text-xs text-muted-foreground truncate cursor-pointer hover:underline">
-					{parseArtists(track.artists)}
-				</span>
+				<div class="text-xs text-muted-foreground truncate cursor-pointer hover:underline">
+					<ArtistsList artists={track.artists} />
+				</div>
 			</div>
 		</div>
 	</ContextMenu.Trigger>

@@ -1,8 +1,7 @@
 <script lang="ts">
 
 	// APP
-   import { checkPermissions, invoke } from "@tauri-apps/api/core";
-   import { onMount } from "svelte";
+   import { invoke } from "@tauri-apps/api/core";
 	
 	// COMPONENTS
 	import { Rows4, BadgePlus, Square } from "lucide-svelte";
@@ -17,17 +16,16 @@
 	import ScrollingText from "$lib/components/app-ui/ScrollingText.svelte";
 	import Queue from "$lib/components/app/now-playing/Queue.svelte";
 	import RecentlyPlayed from "$lib/components/app/now-playing/RecentlyPlayed.svelte";
+	import LyricsViewer from "$lib/components/app-ui/LyricsViewer.svelte";
 
 	// SCRIPTS
 	import { setSelection } from "$lib/ts/app-states/state_session.svelte";
 	import { getArtistUidFromName } from "$lib/ts/library.svelte";
 	import { currentlyPlaying, player } from "$lib/ts/audio/audioManager.svelte";
 	import { getArtworkColor, parseArtists } from "$lib/ts/util/helpers";
-   import type { Lyrics } from "$lib/ts/util/types";
 
 	// VARIABLES
 	let showQueue = $state(false);
-	let lyrics: Lyrics | null = $state(null);
 
 	let color = $state("var(--muted)");
 
@@ -43,10 +41,6 @@
 		});
 	});
 
-	async function updateLyrics() {
-		lyrics = await invoke("get_track_lyrics", { uid: currentlyPlaying.track.uid });
-	}
-
 </script>
 
 <div class="app-now-playing-wrapper flex flex-col gap-1 bg-muted rounded-md">
@@ -61,14 +55,8 @@
 			<Queue />
 			<RecentlyPlayed />
 			<Tabs.Content value="lyrics">
-				<ScrollArea class="min-h-0 min-w-0 h-[200px]">
-					{#if lyrics?.instrumental}
-						<p class="text-muted-foreground text-sm">This track is instrumental.</p>
-					{:else if lyrics?.plain}
-						<pre class="text-sm whitespace-pre-wrap font-sans leading-relaxed">{lyrics.plain}</pre>
-					{:else}
-						<p class="text-muted-foreground text-sm">No lyrics available.</p>
-					{/if}
+				<ScrollArea class="min-h-0 min-w-0 h-[400px] pl-4 pr-2">
+					<LyricsViewer uid={currentlyPlaying.track.uid} />
 				</ScrollArea>
 			</Tabs.Content>
 		</Tabs.Root>
