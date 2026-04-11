@@ -7,8 +7,9 @@
 	import { Pencil, Trash, FolderInput, Paperclip, CloudDownload } from "lucide-svelte";
 
 	import * as Tabs from "$lib/components/ui/tabs/index.js";
+	import * as Tooltip from "$lib/components/ui/tooltip/index.js";
 	import { ScrollArea } from "$lib/components/ui/scroll-area/index.js";
-	import { Button } from "$lib/components/ui/button/index.js";
+	import { Button, buttonVariants } from "$lib/components/ui/button/index.js";
 
 	import ArtworkDisplay from "$lib/components/app-ui/ArtworkDisplay.svelte";
 	import ArtistsList from "$lib/components/app-ui/ArtistsList.svelte";
@@ -63,7 +64,10 @@
 
 				<Tabs.Content value="tracks">
 					<div class="flex flex-col gap-2 pt-2">
-						<SearchBar bind:search searchCount={filteredTracks.length} />
+						<div class="flex gap-2 justify-between">
+							<span>{filteredTracks.length} {filteredTracks.length === 1 ? "track" : "tracks"}</span>
+							<SearchBar bind:search searchCount={filteredTracks.length} />
+						</div>
 
 						<div class="flex flex-col gap-2">
 							{#each filteredTracks as track}
@@ -93,7 +97,14 @@
 
 									<div class="flex gap-2">
 										<Button size="icon" variant="destructive"><Trash/></Button>
-										<Button size="icon" variant="outline"><CloudDownload/></Button>
+										<Tooltip.Root>
+											<Tooltip.Trigger class={buttonVariants({ variant: "outline", size: "icon" })} >
+												<CloudDownload/>
+											</Tooltip.Trigger>
+											<Tooltip.Content>
+												<p>Get Track Metadata via API</p>
+											</Tooltip.Content>
+										</Tooltip.Root>
 										<Button size="icon" variant="outline"><Paperclip/></Button>
 										{#if track.path != ""}
 											<Button size="icon" variant="outline"><FolderInput/></Button>
