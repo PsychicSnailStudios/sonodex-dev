@@ -21,8 +21,8 @@
 
 <ContextMenu.Root>
 	<ContextMenu.Trigger>
-		<div class="flex gap-2 p-2">
-			<ArtworkDisplay uid={track.uid} size={30} type="track" />
+		<div class="flex gap-2 p-2 items-center">
+			<ArtworkDisplay uid={track.uid} size={36} type="track" />
 			<div class="min-w-0 grid">
 				<span role="button" tabindex="0" onclick={() => setSelection(track.uid, "track")} onkeydown={(e) => { if (e.key === 'Enter') setSelection(track.uid, "track"); }} class="text-sm truncate cursor-pointer hover:underline">
 					{track.title}
