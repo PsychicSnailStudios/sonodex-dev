@@ -173,28 +173,30 @@ export async function syncArtists(artistNames: string[]): Promise<void> {
 	if (artistNames.length === 0) return;
 
 	const allArtists = await invoke<any[]>("get_artists");
+	const existingNames = new Set(allArtists.map((a) => (a.name ?? "").toLowerCase()));
+	const seen = new Set<string>();
 
 	for (const name of artistNames) {
-		const nameLower = name.toLowerCase();
-		const exists = allArtists.some((a) => (a.name ?? "").toLowerCase() === nameLower);
-		if (!exists) {
-			await invoke("create_artist_entry", {
-				artist: {
-					uid: `ar-${crypto.randomUUID()}`,
-					name,
-					aka: null,
-					about: null,
-					tags: JSON.stringify([]),
-					genres: JSON.stringify([]),
-					websites: null,
-					members: null,
-					profile_art_blob: null,
-					profile_art_path: null,
-					banner_art_blob: null,
-					banner_art_path: null,
-				},
-			});
-		}
+		const lower = name.toLowerCase();
+		if (existingNames.has(lower) || seen.has(lower)) continue;
+		seen.add(lower);
+
+		await invoke("create_artist_entry", {
+			artist: {
+				uid: `ar-${crypto.randomUUID()}`,
+				name,
+				aka: null,
+				about: null,
+				tags: JSON.stringify([]),
+				genres: JSON.stringify([]),
+				websites: null,
+				members: null,
+				profile_art_blob: null,
+				profile_art_path: null,
+				banner_art_blob: null,
+				banner_art_path: null,
+			},
+		});
 	}
 }
 
