@@ -1,6 +1,4 @@
 <script lang="ts">
-	import { onMount } from "svelte";
-
 	import { Trash, CloudDownload } from "lucide-svelte";
 
 	import * as Tabs from "$lib/components/ui/tabs/index.js";
@@ -15,49 +13,46 @@
 	import ArtistRow from "$lib/components/app-ui/library-manager/ArtistRow.svelte";
 	import DuplicateGroupCard from "$lib/components/app-ui/library-manager/DuplicateGroupCard.svelte";
 
-	import { removeTrackFromLibrary, enrichTrack } from "$lib/ts/app/libraryManager";
+	import {
+		removeTracksFromLibrary,
+		enrichTracks,
+		removeAlbums,
+		enrichAlbums,
+		removeArtists,
+		enrichArtists,
+		getDuplicates,
+	} from "$lib/ts/app/libraryManager";
 	import { library } from "$lib/ts/library.svelte";
-	import { getDuplicates } from "$lib/ts/app/libraryManager";
-	import type { DuplicateGroup } from "$lib/ts/types";
+	import type { DuplicateGroup } from "$lib/ts/util/types";
 
+	// ─── Search ───────────────────────────────────────────────────────────────────
 	let trackSearch = $state("");
 	let albumSearch = $state("");
 	let artistSearch = $state("");
 	let ghosts = $state(false);
 
+	// ─── Duplicates ───────────────────────────────────────────────────────────────
 	let duplicates = $state<DuplicateGroup[]>([]);
 	let duplicatesLoaded = $state(false);
+
+	// ─── Selections ───────────────────────────────────────────────────────────────
 	let trackSelections = $state<Record<string, boolean>>({});
+	let albumSelections = $state<Record<string, boolean>>({});
+	let artistSelections = $state<Record<string, boolean>>({});
 
-	$effect(() => {
-		filteredTracks.forEach(t => {
-			if (!(t.uid in trackSelections)) trackSelections[t.uid] = false;
-		});
-	});
-
-	const selectedUids = $derived(
-		Object.entries(trackSelections)
-			.filter(([, v]) => v)
-			.map(([k]) => k)
-	);
-
-	
+	// ─── Filtered lists ───────────────────────────────────────────────────────────
 	const filteredTracks = $derived(
-		trackSearch.trim() === ""
-			? library.tracks.filter((t) => {
-					if (ghosts) return t.path === "";
-					return true;
-				})
-			: library.tracks.filter((t) => {
-					const q = trackSearch.toLowerCase();
-					const title = t.title?.toLowerCase() ?? "";
-					const artists = t.artists?.toLowerCase() ?? "";
-					const album_artist = t.album_artist?.toLowerCase() ?? "";
-					const albums = t.albums?.toLowerCase() ?? "";
-					const matches = title.includes(q) || artists.includes(q) || album_artist.includes(q) || albums.includes(q);
-					if (ghosts) return matches && t.path === "";
-					return matches;
-				})
+		library.tracks.filter((t) => {
+			const matchesGhost = ghosts ? t.path === "" : true;
+			if (trackSearch.trim() === "") return matchesGhost;
+			const q = trackSearch.toLowerCase();
+			const matches =
+				(t.title?.toLowerCase() ?? "").includes(q) ||
+				(t.artists?.toLowerCase() ?? "").includes(q) ||
+				(t.album_artist?.toLowerCase() ?? "").includes(q) ||
+				(t.albums?.toLowerCase() ?? "").includes(q);
+			return matches && matchesGhost;
+		})
 	);
 
 	const filteredAlbums = $derived(
@@ -78,24 +73,59 @@
 			: library.artists.filter((a) => a.name?.toLowerCase().includes(artistSearch.toLowerCase()))
 	);
 
-	const anySelected = $derived(selectedUids.length > 0);
-	const allSelected = $derived(
-		filteredTracks.length > 0 && filteredTracks.every(t => trackSelections[t.uid])
+	// ─── Track selection derived ──────────────────────────────────────────────────
+	const selectedTrackUids = $derived(
+		Object.entries(trackSelections).filter(([, v]) => v).map(([k]) => k)
+	);
+	const anyTracksSelected = $derived(selectedTrackUids.length > 0);
+	const allTracksSelected = $derived(
+		filteredTracks.length > 0 && filteredTracks.every((t) => trackSelections[t.uid])
 	);
 
-	async function bulkRemove() {
-		for (const uid of selectedUids) {
-			await removeTrackFromLibrary(uid);
-		}
+	// ─── Album selection derived ──────────────────────────────────────────────────
+	const selectedAlbumUids = $derived(
+		Object.entries(albumSelections).filter(([, v]) => v).map(([k]) => k)
+	);
+	const anyAlbumsSelected = $derived(selectedAlbumUids.length > 0);
+	const allAlbumsSelected = $derived(
+		filteredAlbums.length > 0 && filteredAlbums.every((a) => albumSelections[a.uid])
+	);
+
+	// ─── Artist selection derived ─────────────────────────────────────────────────
+	const selectedArtistUids = $derived(
+		Object.entries(artistSelections).filter(([, v]) => v).map(([k]) => k)
+	);
+	const anyArtistsSelected = $derived(selectedArtistUids.length > 0);
+	const allArtistsSelected = $derived(
+		filteredArtists.length > 0 && filteredArtists.every((a) => artistSelections[a.uid])
+	);
+
+	// ─── Bulk actions ─────────────────────────────────────────────────────────────
+	async function bulkRemoveTracks() {
+		await removeTracksFromLibrary(selectedTrackUids);
 		trackSelections = {};
 	}
-
-	async function bulkEnrich() {
-		for (const uid of selectedUids) {
-			await enrichTrack(uid);
-		}
+	async function bulkEnrichTracks() {
+		await enrichTracks(selectedTrackUids);
 	}
 
+	async function bulkRemoveAlbums() {
+		await removeAlbums(selectedAlbumUids);
+		albumSelections = {};
+	}
+	async function bulkEnrichAlbums() {
+		await enrichAlbums(selectedAlbumUids);
+	}
+
+	async function bulkRemoveArtists() {
+		await removeArtists(selectedArtistUids);
+		artistSelections = {};
+	}
+	async function bulkEnrichArtists() {
+		await enrichArtists(selectedArtistUids);
+	}
+
+	// ─── Duplicates ───────────────────────────────────────────────────────────────
 	async function loadDuplicates() {
 		duplicatesLoaded = false;
 		duplicates = await getDuplicates();
@@ -138,23 +168,23 @@
 							</div>
 						</div>
 						<div class="flex gap-2 justify-between items-center">
-							{#if anySelected}
+							{#if anyTracksSelected}
 								<div class="flex gap-2">
 									<Checkbox
-										checked={allSelected}
+										checked={allTracksSelected}
 										onCheckedChange={(v) => {
 											const next: Record<string, boolean> = {};
 											filteredTracks.forEach(t => next[t.uid] = !!v);
 											trackSelections = next;
 										}}
 									/>
-									<span class="text-xs text-muted-foreground">{selectedUids.length} selected</span>
+									<span class="text-xs text-muted-foreground">{selectedTrackUids.length} selected</span>
 								</div>
 								<div>
 									<Tooltip.Root>
 										<Tooltip.Trigger
 											class={buttonVariants({ variant: "destructive", size: "sm" })}
-											onclick={bulkRemove}
+											onclick={bulkRemoveTracks}
 										>
 											<Trash class="w-4 h-4 mr-1" /> Remove
 										</Tooltip.Trigger>
@@ -163,7 +193,7 @@
 									<Tooltip.Root>
 										<Tooltip.Trigger
 											class={buttonVariants({ variant: "outline", size: "sm" })}
-											onclick={bulkEnrich}
+											onclick={bulkEnrichTracks}
 										>
 											<CloudDownload class="w-4 h-4 mr-1" /> Enrich
 										</Tooltip.Trigger>
@@ -191,9 +221,48 @@
 							<span class="text-sm text-muted-foreground">{filteredAlbums.length} {filteredAlbums.length === 1 ? "album" : "albums"}</span>
 							<SearchBar bind:search={albumSearch} searchCount={filteredAlbums.length} />
 						</div>
+						<div class="flex gap-2 justify-between items-center">
+							{#if anyAlbumsSelected}
+								<div class="flex gap-2">
+									<Checkbox
+										checked={allAlbumsSelected}
+										onCheckedChange={(v) => {
+											const next: Record<string, boolean> = {};
+											filteredAlbums.forEach(a => next[a.uid] = !!v);
+											albumSelections = next;
+										}}
+									/>
+									<span class="text-xs text-muted-foreground">{selectedAlbumUids.length} selected</span>
+								</div>
+								<div class="flex gap-2">
+									<Tooltip.Root>
+										<Tooltip.Trigger
+											class={buttonVariants({ variant: "destructive", size: "sm" })}
+											onclick={bulkRemoveAlbums}
+										>
+											<Trash class="w-4 h-4 mr-1" /> Remove
+										</Tooltip.Trigger>
+										<Tooltip.Content><p>Remove selected albums</p></Tooltip.Content>
+									</Tooltip.Root>
+									<Tooltip.Root>
+										<Tooltip.Trigger
+											class={buttonVariants({ variant: "outline", size: "sm" })}
+											onclick={bulkEnrichAlbums}
+										>
+											<CloudDownload class="w-4 h-4 mr-1" /> Enrich
+										</Tooltip.Trigger>
+										<Tooltip.Content><p>Fetch metadata for selected</p></Tooltip.Content>
+									</Tooltip.Root>
+								</div>
+							{/if}
+						</div>
 						<div class="flex flex-col gap-2">
 							{#each filteredAlbums as album (album.uid)}
-								<AlbumRow {album} />
+								<AlbumRow
+									{album}
+									selected={albumSelections[album.uid] ?? false}
+									onToggle={() => albumSelections[album.uid] = !(albumSelections[album.uid] ?? false)}
+								/>
 							{/each}
 						</div>
 					</div>
@@ -206,9 +275,48 @@
 							<span class="text-sm text-muted-foreground">{filteredArtists.length} {filteredArtists.length === 1 ? "artist" : "artists"}</span>
 							<SearchBar bind:search={artistSearch} searchCount={filteredArtists.length} />
 						</div>
+						<div class="flex gap-2 justify-between items-center">
+							{#if anyArtistsSelected}
+								<div class="flex gap-2">
+									<Checkbox
+										checked={allArtistsSelected}
+										onCheckedChange={(v) => {
+											const next: Record<string, boolean> = {};
+											filteredArtists.forEach(a => next[a.uid] = !!v);
+											artistSelections = next;
+										}}
+									/>
+									<span class="text-xs text-muted-foreground">{selectedArtistUids.length} selected</span>
+								</div>
+								<div class="flex gap-2">
+									<Tooltip.Root>
+										<Tooltip.Trigger
+											class={buttonVariants({ variant: "destructive", size: "sm" })}
+											onclick={bulkRemoveArtists}
+										>
+											<Trash class="w-4 h-4 mr-1" /> Remove
+										</Tooltip.Trigger>
+										<Tooltip.Content><p>Remove selected artists</p></Tooltip.Content>
+									</Tooltip.Root>
+									<Tooltip.Root>
+										<Tooltip.Trigger
+											class={buttonVariants({ variant: "outline", size: "sm" })}
+											onclick={bulkEnrichArtists}
+										>
+											<CloudDownload class="w-4 h-4 mr-1" /> Enrich
+										</Tooltip.Trigger>
+										<Tooltip.Content><p>Fetch metadata for selected</p></Tooltip.Content>
+									</Tooltip.Root>
+								</div>
+							{/if}
+						</div>
 						<div class="flex flex-col gap-2">
 							{#each filteredArtists as artist (artist.uid)}
-								<ArtistRow {artist} />
+								<ArtistRow
+									{artist}
+									selected={artistSelections[artist.uid] ?? false}
+									onToggle={() => artistSelections[artist.uid] = !(artistSelections[artist.uid] ?? false)}
+								/>
 							{/each}
 						</div>
 					</div>

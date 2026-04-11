@@ -34,7 +34,7 @@
 			{#if track.path != ""}
 				<button
 					onclick={() => setSelection(track.uid, "track")}
-					class="text-sm text-foreground truncate cursor-pointer hover:underline text-left"
+					class="text-sm truncate cursor-pointer hover:underline text-left"
 				>
 					<ScrollingText text={track.title} hoverOnly />
 				</button>

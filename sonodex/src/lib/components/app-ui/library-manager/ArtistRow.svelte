@@ -2,56 +2,80 @@
 	import { Pencil, Trash, CloudDownload } from "lucide-svelte";
 	import * as Tooltip from "$lib/components/ui/tooltip/index.js";
 	import { buttonVariants } from "$lib/components/ui/button/index.js";
+	import { Checkbox } from "$lib/components/ui/checkbox/index.js";
 	import ArtworkDisplay from "$lib/components/app-ui/ArtworkDisplay.svelte";
 	import { openEditModal } from "$lib/ts/app/editModal.svelte";
-	import { removeArtist } from "$lib/ts/app/libraryManager";
+	import { removeArtist, enrichArtist } from "$lib/ts/app/libraryManager";
+	import { setSelection } from "$lib/ts/app-states/state_session.svelte";
 	import { library } from "$lib/ts/library.svelte";
-	import type { Artist } from "$lib/ts/types";
+	import type { Artist } from "$lib/ts/util/types";
 
-	let { artist }: { artist: Artist } = $props();
+	let { artist, selected = false, onToggle }: { artist: Artist; selected?: boolean; onToggle?: () => void } = $props();
 
 	const trackCount = $derived(
 		library.tracks.filter((t) => {
 			try {
 				const arr: string[] = t.artists ? JSON.parse(t.artists as string) : [];
 				return arr.includes(artist.name);
-			} catch {
-				return false;
-			}
+			} catch { return false; }
 		}).length
 	);
+
+	const genres = $derived.by<string[]>(() => {
+		try {
+			return artist.genres ? JSON.parse(artist.genres as string) : [];
+		} catch { return []; }
+	});
 </script>
 
-<div class="flex gap-2 p-2 border-2 rounded-md justify-between items-center">
-	<div class="flex gap-2 min-w-0 flex-1">
+<div
+	class="flex gap-2 p-2 border-2 rounded-md justify-between items-center"
+	class:border-primary={selected}
+>
+	<div class="flex gap-2 items-center min-w-0 flex-1">
+		<Checkbox checked={selected} onCheckedChange={() => onToggle?.()} />
 		<ArtworkDisplay uid={artist.uid} size={40} type="artist" />
 		<div class="min-w-0 grid">
-			<span class="text-sm truncate">{artist.name}</span>
-			<div class="text-xs text-muted-foreground truncate">
-				{trackCount} {trackCount === 1 ? "track" : "tracks"}
-			</div>
+			<button
+				onclick={() => setSelection(artist.uid, "artist")}
+				class="text-sm truncate cursor-pointer hover:underline text-left"
+			>
+				{artist.name}
+			</button>
 		</div>
 	</div>
 
-	<div class="flex gap-2 shrink-0">
-		<Tooltip.Root>
-			<Tooltip.Trigger
-				class={buttonVariants({ variant: "destructive", size: "icon" })}
-				onclick={() => removeArtist(artist.uid)}
-			>
-				<Trash />
-			</Tooltip.Trigger>
-			<Tooltip.Content><p>Delete artist record</p></Tooltip.Content>
-		</Tooltip.Root>
+	{#if !selected}
+		<div class="flex gap-2 shrink-0">
+			<Tooltip.Root>
+				<Tooltip.Trigger
+					class={buttonVariants({ variant: "destructive", size: "icon" })}
+					onclick={() => removeArtist(artist.uid)}
+				>
+					<Trash />
+				</Tooltip.Trigger>
+				<Tooltip.Content><p>Delete artist record</p></Tooltip.Content>
+			</Tooltip.Root>
 
-		<Tooltip.Root>
-			<Tooltip.Trigger
-				class={buttonVariants({ variant: "outline", size: "icon" })}
-				onclick={() => openEditModal({ type: "artist", uid: artist.uid })}
-			>
-				<Pencil />
-			</Tooltip.Trigger>
-			<Tooltip.Content><p>Edit artist</p></Tooltip.Content>
-		</Tooltip.Root>
-	</div>
+			<Tooltip.Root>
+				<Tooltip.Trigger
+					class={buttonVariants({ variant: "outline", size: "icon" })}
+					onclick={() => enrichArtist(artist.uid)}
+				>
+					<CloudDownload />
+				</Tooltip.Trigger>
+				<Tooltip.Content><p>Fetch metadata via API</p></Tooltip.Content>
+			</Tooltip.Root>
+
+			<Tooltip.Root>
+				<Tooltip.Trigger
+					class={buttonVariants({ variant: "outline", size: "icon" })}
+					onclick={() => openEditModal({ type: "artist", uid: artist.uid })}
+				>
+					<Pencil />
+				</Tooltip.Trigger>
+				<Tooltip.Content><p>Edit artist</p></Tooltip.Content>
+			</Tooltip.Root>
+		</div>
+	{/if}
 </div>
