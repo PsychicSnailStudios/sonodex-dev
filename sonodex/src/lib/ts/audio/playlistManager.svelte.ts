@@ -1,6 +1,7 @@
 import { library } from "$lib/ts/library.svelte";
 import type { Playlist, Track } from "$lib/ts/util/types";
 import { invoke } from "@tauri-apps/api/core";
+import { showWarning } from "$lib/ts/app/dialogManager.svelte";
 
 type TrackEntry = { uid: string; name: string; order: number }
 
@@ -126,4 +127,13 @@ export async function createPlaylist(
 
 	await refreshPlaylists()
 	return uid;
+}
+
+export async function deletePlaylist(playlistUid: string) {
+
+	const confirmed = await showWarning({ title: "Delete playlist?", description: "This action cannot be undone",});
+	if (!confirmed) return false;
+
+	await invoke("delete_playlist_entry", { uid: playlistUid })
+	await refreshPlaylists()
 }

@@ -12,9 +12,9 @@
 	import PlaylistGridCard from "$lib/components/app-ui/playlist/PlaylistGridCard.svelte";
 	import PlaylistCompactRow from "$lib/components/app-ui/playlist/PlaylistCompactRow.svelte";
 	import FolderContext from "$lib/components/app-ui/context-menus/FolderContext.svelte";
-	import CreateNewPlaylist from "$lib/components/dialogs/CreateNewPlaylist.svelte";
-	import CreateNewFolder from "$lib/components/dialogs/CreateNewFolder.svelte";
-	import ImportPlaylist from "$lib/components/dialogs/ImportPlaylist.svelte";
+	import CreateNewPlaylist from "$lib/components/dialogs/playlists/CreateNewPlaylist.svelte";
+	import CreateNewFolder from "$lib/components/dialogs/playlists/CreateNewFolder.svelte";
+	import ImportPlaylist from "$lib/components/dialogs/playlists/ImportPlaylist.svelte";
 	import SearchBar from "$lib/components/app-ui/search/SearchBar.svelte";
 	import MediaGrid from "$lib/layouts/MediaGrid.svelte";
    import PlaylistViewContext from "$lib/components/app-ui/context-menus/PlaylistViewContext.svelte";

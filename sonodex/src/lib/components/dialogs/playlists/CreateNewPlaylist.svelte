@@ -3,7 +3,7 @@
 	import * as Tabs from "$lib/components/ui/tabs/index.js";
 	import { Input } from "$lib/components/ui/input/index.js";
 
-	import ImportPlaylist from "$lib/components/dialogs/ImportPlaylist.svelte";
+	import ImportPlaylist from "$lib/components/dialogs/playlists/ImportPlaylist.svelte";
 	
 	import { createPlaylist } from "$lib/ts/audio/playlistManager.svelte";
 	import { profileState } from "$lib/ts/profiles.svelte";

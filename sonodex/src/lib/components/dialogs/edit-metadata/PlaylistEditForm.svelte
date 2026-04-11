@@ -18,6 +18,7 @@
 	// SCRIPTS
 	import { closeEditModal } from "$lib/ts/app/editModal.svelte";
 	import { loadLibrary, reloadLibrary } from "$lib/ts/library.svelte";
+	import { deletePlaylist } from "$lib/ts/audio/playlistManager.svelte";
 
 	// PROPS
 	let { uid } = $props<{ uid: string }>();
@@ -58,9 +59,8 @@
 		}
 	}
 
-	async function deletePlaylist() {
-		await invoke("delete_playlist_entry", { uid });
-		await loadLibrary();
+	async function deleteThisPlaylist() {
+		deletePlaylist(uid);
 		closeEditModal();
 	}
 </script>
@@ -94,7 +94,7 @@
 <Separator class="my-4" />
 
 <div class="flex justify-end gap-2">
-	<Button variant="destructive" onclick={deletePlaylist}>Delete</Button>
+	<Button variant="destructive" onclick={deleteThisPlaylist}>Delete</Button>
 	<Button variant="outline" onclick={closeEditModal}>Cancel</Button>
 	<Button onclick={() => save()} disabled={saving}>{saving ? "Saving…" : "Save"}</Button>
 </div>
