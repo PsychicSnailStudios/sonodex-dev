@@ -348,7 +348,7 @@
 		Write tags to file
 	</label>
 	<div class="flex gap-2">
-		<Button variant="outline" disabled={hasLyrics} onclick={getLyrics}>Get Lyrics</Button>
+		<!-- <Button variant="outline" disabled={hasLyrics} onclick={getLyrics}>Get Lyrics</Button> -->
 		<Button variant="outline" onclick={() => enrichTrack(uid)}>Enrich</Button>
 		<Button variant="outline" onclick={closeEditModal}>Cancel</Button>
 		<Button onclick={save} disabled={saving}>

@@ -22,8 +22,9 @@
 	import { selection } from "$lib/ts/app-states/state_session.svelte";
 	import { library } from "$lib/ts/library.svelte";
 	import { openEditModal } from "$lib/ts/app/editModal.svelte";
-	import type { Artist, Track, Album } from "$lib/ts/util/types";
    import { parseTags } from "$lib/ts/util/helpers";
+	import { currentArtistTab } from "$lib/ts/app-states/state_session.svelte";
+	import type { Artist, Track, Album } from "$lib/ts/util/types";
 
 	// VARIABLES
 	let artist = $state<Artist | null>(null);
@@ -98,7 +99,7 @@
 			</div>
 		</div>
 
-		<Tabs.Root value="home" class="flex flex-col min-h-0 flex-1 px-4">
+		<Tabs.Root bind:value={currentArtistTab.id} class="flex flex-col min-h-0 flex-1 px-4">
 			<Tabs.List>
 				<Tabs.Trigger value="home">Home</Tabs.Trigger>
 				<Tabs.Trigger value="discography">Discography</Tabs.Trigger>

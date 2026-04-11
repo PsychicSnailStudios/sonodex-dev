@@ -10,6 +10,8 @@ type Selection = {
 }
 
 export let activeView = $state({ "id": "home"});
+export let currentArtistTab = $state({ "id": "home"});
+export let currentTrackTab = $state({ "id": "lyrics"});
 let viewIndex = $state(0);
 let viewHistory = $state([] as Selection[]);
 

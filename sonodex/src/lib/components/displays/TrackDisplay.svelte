@@ -1,10 +1,7 @@
 <script lang="ts">
 	
-	// APP
-	import { invoke } from "@tauri-apps/api/core";
-	
 	// COMPONENTS
-   import { Pencil } from "lucide-svelte";
+   import { Pencil, Loader2 } from "lucide-svelte";
 
 	import * as Tabs from "$lib/components/ui/tabs/index.js";
 	import { Button } from "$lib/components/ui/button/index.js";
@@ -18,16 +15,17 @@
 
 	// SCRIPTS
 	import { getArtistUidFromName, getLyrics, library, loadLibrary, reloadLibrary } from "$lib/ts/library.svelte";
-	import { selection, setSelection } from "$lib/ts/app-states/state_session.svelte";
+	import { currentTrackTab, selection, setSelection } from "$lib/ts/app-states/state_session.svelte";
 	import { openEditModal } from "$lib/ts/app/editModal.svelte";
 	import { formatDuration, parseAlbumEntries, parseArtists, parseTags } from '$lib/ts/util/helpers';
    import { playTrackByObject } from "$lib/ts/audio/audioManager.svelte";
 	import type { Lyrics } from "$lib/ts/util/types";
-    import { get } from "svelte/store";
+   import { fetchLyrics } from "$lib/ts/app/enrichment";
 
 	// VARIABLES
 	let track = $derived(library.tracks.find(t => t.uid === selection.uid) ?? null);
 	let lyrics: Lyrics | null = $state(null);
+	let fetchingLyrics = $state(false);
 	let genres = $derived(track?.genres ? parseTags(track.genres) : null);
 	let tags = $derived(track?.tags ? parseTags(track.tags) : null);
 
@@ -52,11 +50,24 @@
 	// Reload lyrics reactively whenever the selected track changes
 	$effect(() => {
 		const uid = selection.uid;
+		lyrics = null;
 		if (!uid) return;
 		getLyrics(uid).then(result => {
 			lyrics = result;
 		});
 	});
+
+	async function doFetchLyrics() {
+		const uid = selection.uid;
+		if (!uid || fetchingLyrics) return;
+		fetchingLyrics = true;
+		try {
+			await fetchLyrics(uid);
+			lyrics = await getLyrics(uid);
+		} finally {
+			fetchingLyrics = false;
+		}
+	}
 </script>
 
 <div class="flex flex-col gap-4 p-4 border-2 h-full w-full overflow-hidden rounded-md">
@@ -98,7 +109,7 @@
 				<Button variant="ghost" size="icon" onclick={() => openEditModal({ type: "track", uid: track!.uid })}><Pencil /></Button>
 			</div>
 
-			<Tabs.Root value="credits" class="flex flex-col min-h-0 flex-1">
+			<Tabs.Root bind:value={currentTrackTab.id} class="flex flex-col min-h-0 flex-1">
 				<Tabs.List>
 					<Tabs.Trigger value="lyrics">Lyrics</Tabs.Trigger>
 					<Tabs.Trigger value="tags">Tags</Tabs.Trigger>
@@ -107,8 +118,13 @@
 				</Tabs.List>
 
 				<Tabs.Content value="lyrics" class="flex-1 overflow-y-auto mt-2">
-					{#if lyrics === null}
-						<p class="text-muted-foreground text-sm">Loading lyrics...</p>
+					{#if fetchingLyrics}
+						<div class="flex items-center gap-2 text-muted-foreground text-sm">
+							<Loader2 class="animate-spin size-4" />
+							<span>Fetching lyrics...</span>
+						</div>
+					{:else if lyrics === null}
+						<Button variant="outline" onclick={doFetchLyrics}>Get Lyrics</Button>
 					{:else if lyrics.instrumental}
 						<p class="text-muted-foreground text-sm">This track is instrumental.</p>
 					{:else if lyrics.plain}
