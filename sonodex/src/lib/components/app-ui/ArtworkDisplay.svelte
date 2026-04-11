@@ -11,6 +11,7 @@
 	// SCRIPTS
 	import { library } from "$lib/ts/library.svelte";
 	import type { AudioCatagories } from "$lib/ts/util/types";
+    import { trackSelection } from "$lib/ts/app/trackSelection.svelte";
 	
 	// PROPS
 	let { uid, size = null, type = "track", previewPath = null }: { uid: string; size?: number | null; type?: AudioCatagories; previewPath?: string | null } = $props();
@@ -34,6 +35,12 @@
 		artist: () => library.artists.find(a => a.uid === uid)?.profile_art_path ?? null,
 		playlist: () => library.playlists.find(p => p.uid === uid)?.artwork_path ?? null,
 	};
+
+	const isGhost = $derived.by(() => {
+		if (type !== "track") return false;
+		const track = library.tracks.find(t => t.uid === uid);
+		return track ? track.path === "" : false;
+	});
 
 	// APP FUNCTIONS
 	$effect(() => {
@@ -96,7 +103,8 @@
 
 <div bind:this={el}
 	  style={size ? `width: ${size}px; height: ${size}px;` : ""}
-	  class="rounded-sm overflow-hidden relative bg-muted flex-shrink-0 w-full aspect-square">
+	  class="rounded-sm overflow-hidden relative bg-muted flex-shrink-0 w-full aspect-square"
+	  class:opacity-50={isGhost}>
 
 	{#if artworkUrl}
 		{#if !loaded}

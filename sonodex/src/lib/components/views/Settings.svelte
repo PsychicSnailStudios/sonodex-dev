@@ -197,9 +197,9 @@
 	}
 
 	async function handleLastfmConnect() {
-    await connectLastfm();
-    // Auth completes via deep-link → onLastfmConnected listener above fires
-}
+		await connectLastfm();
+		// Auth completes via deep-link → onLastfmConnected listener above fires
+	}
 
 	async function handleLastfmDisconnect() {
 		await disconnectLastfm();
@@ -561,17 +561,6 @@
 					</div>
 				{/each}
 				</div>
-	
-				<div class="space-y-2">
-					<h2 class="text-sm font-semibold">Enrich Library</h2>
-					<p class="text-xs text-muted-foreground">Fetch online metadata for all tracks. Respects the priority settings above.</p>
-					<div class="flex items-center gap-4">
-						<Button onclick={enrichAll} disabled={scanState.enriching}>
-						{scanState.enriching ? `Enriching... ${scanState.enrichDone}/${scanState.enrichTotal}` : "Enrich All Tracks"}
-						</Button>
-					</div>
-				</div>
-	
 			</div>
 		</div>
 	</ScrollArea>

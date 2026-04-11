@@ -100,6 +100,10 @@ export type ParsedTrack = {
 };
 
 export type ImportState = "idle" | "parsed" | "importing" | "done" | "error";
+
+export type DuplicateGroup = {
+	tracks: Track[];
+};
  
 export function parseUserOptions(raw: string | null | undefined): UserOptions {
 	const defaults: UserOptions = { linkedShuffle: null, trimStart: null, trimEnd: null };

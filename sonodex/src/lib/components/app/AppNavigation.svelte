@@ -46,7 +46,7 @@
 <div class="app-nav bg-muted flex flex-col p-2 gap-1 rounded-md">
 	{#each VIEW_TABS as tab}
 		<Button
-			variant="{activeView.id === tab.value ? 'default' : 'outline'}"
+			variant="{activeView.id === tab.value ? 'default' : 'ghost'}"
 			onclick={() => setView(tab.value)}
 			class="justify-start"
 			ondragenter={() => handleTabDragEnter(tab.value)}

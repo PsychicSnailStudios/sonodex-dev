@@ -1,51 +1,73 @@
 <script lang="ts">
-
-	// APP
 	import { onMount } from "svelte";
 
-	// COMPONENTS
-	import { Pencil, Trash, FolderInput, Paperclip, CloudDownload } from "lucide-svelte";
-
 	import * as Tabs from "$lib/components/ui/tabs/index.js";
-	import * as Tooltip from "$lib/components/ui/tooltip/index.js";
 	import { ScrollArea } from "$lib/components/ui/scroll-area/index.js";
-	import { Button, buttonVariants } from "$lib/components/ui/button/index.js";
+	import { Button } from "$lib/components/ui/button/index.js";
 
-	import ArtworkDisplay from "$lib/components/app-ui/ArtworkDisplay.svelte";
-	import ArtistsList from "$lib/components/app-ui/ArtistsList.svelte";
 	import SearchBar from "$lib/components/app-ui/search/SearchBar.svelte";
-	
-	// SCRIPTS
-   import { getAlbumUidFromName, library } from "$lib/ts/library.svelte";
-	import { parseAlbumEntries } from "$lib/ts/util/helpers";
-	import { setSelection } from "$lib/ts/app-states/state_session.svelte";
-	import { openEditModal } from "$lib/ts/app/editModal.svelte";
-	
-	// VARIABLES
-	let search = $state("");
+	import TrackRow from "$lib/components/app-ui/library-manager/TrackRow.svelte";
+	import AlbumRow from "$lib/components/app-ui/library-manager/AlbumRow.svelte";
+	import ArtistRow from "$lib/components/app-ui/library-manager/ArtistRow.svelte";
+	import DuplicateGroupCard from "$lib/components/app-ui/library-manager/DuplicateGroupCard.svelte";
+
+	import { library } from "$lib/ts/library.svelte";
+	import { getDuplicates } from "$lib/ts/app/libraryManager";
+	import type { DuplicateGroup } from "$lib/ts/types";
+
+	let trackSearch = $state("");
+	let albumSearch = $state("");
+	let artistSearch = $state("");
 	let ghosts = $state(false);
-	
+
+	let duplicates = $state<DuplicateGroup[]>([]);
+	let duplicatesLoaded = $state(false);
+
+	async function loadDuplicates() {
+		duplicatesLoaded = false;
+		duplicates = await getDuplicates();
+		duplicatesLoaded = true;
+	}
+
+	function onDuplicateResolved() {
+		loadDuplicates();
+	}
+
 	const filteredTracks = $derived(
-		search.trim() === ""
+		trackSearch.trim() === ""
 			? library.tracks.filter((t) => {
-					if (!ghosts) return true;
-					return t.path == "";
-			  })
+					if (ghosts) return t.path === "";
+					return true;
+				})
 			: library.tracks.filter((t) => {
-					const q = search.toLowerCase();
+					const q = trackSearch.toLowerCase();
 					const title = t.title?.toLowerCase() ?? "";
 					const artists = t.artists?.toLowerCase() ?? "";
 					const album_artist = t.album_artist?.toLowerCase() ?? "";
 					const albums = t.albums?.toLowerCase() ?? "";
-					return (title.includes(q) || artists.includes(q) || album_artist.includes(q) || albums.includes(q)) && t.path == "";
-			  })
+					const matches = title.includes(q) || artists.includes(q) || album_artist.includes(q) || albums.includes(q);
+					if (ghosts) return matches && t.path === "";
+					return matches;
+				})
 	);
 
-	// APP FUNCTIONS
+	const filteredAlbums = $derived(
+		albumSearch.trim() === ""
+			? library.albums
+			: library.albums.filter((a) => {
+					const q = albumSearch.toLowerCase();
+					return (
+						a.title?.toLowerCase().includes(q) ||
+						(a.album_artist?.toLowerCase().includes(q) ?? false)
+					);
+				})
+	);
 
-	// FUNCTIONS
-
-
+	const filteredArtists = $derived(
+		artistSearch.trim() === ""
+			? library.artists
+			: library.artists.filter((a) => a.name?.toLowerCase().includes(artistSearch.toLowerCase()))
+	);
 </script>
 
 <div class="flex flex-col gap-2 p-2 border-2 rounded-md h-full w-full overflow-hidden">
@@ -59,75 +81,83 @@
 					<Tabs.Trigger value="albums" class="flex-1">Albums</Tabs.Trigger>
 					<Tabs.Trigger value="artists" class="flex-1">Artists</Tabs.Trigger>
 					<Tabs.Trigger value="tags" class="flex-1">Tags</Tabs.Trigger>
-					<Tabs.Trigger value="duplicates" class="flex-1">Duplicates</Tabs.Trigger>
+					<Tabs.Trigger value="duplicates" class="flex-1" onclick={loadDuplicates}>Duplicates</Tabs.Trigger>
 				</Tabs.List>
 
+				<!-- TRACKS -->
 				<Tabs.Content value="tracks">
 					<div class="flex flex-col gap-2 pt-2">
-						<div class="flex gap-2 justify-between">
-							<span>{filteredTracks.length} {filteredTracks.length === 1 ? "track" : "tracks"}</span>
-							<SearchBar bind:search searchCount={filteredTracks.length} />
+						<div class="flex gap-2 justify-between items-center">
+							<span class="text-sm text-muted-foreground">{filteredTracks.length} {filteredTracks.length === 1 ? "track" : "tracks"}</span>
+							<div class="flex gap-2 items-center">
+								<Button
+									variant={ghosts ? "secondary" : "outline"}
+									size="sm"
+									onclick={() => (ghosts = !ghosts)}
+								>
+									Missing only
+								</Button>
+								<SearchBar bind:search={trackSearch} searchCount={filteredTracks.length} />
+							</div>
 						</div>
-
 						<div class="flex flex-col gap-2">
-							{#each filteredTracks as track}
-								<div class="flex gap-2 p-2 border-2 rounded-md justify-between items-center">
-									<div class="flex gap-2">
-										<ArtworkDisplay uid={track.uid} size={40} type="track" />
-										<div class="min-w-0 grid">
-											{#if track.path != ""}
-												<span class="text-sm truncate">{track.title}</span>
-											{:else}
-												<span class="text-sm text-muted-foreground truncate">{track.title}</span>
-											{/if}
-											<div class="text-xs text-muted-foreground truncate">
-												<ArtistsList artists={track.artists} />
-												{#if track.albums}
-												{@const albumList = parseAlbumEntries(track.albums)}
-												{" : "}
-												{#each albumList as album, i}
-													<button onclick={() => setSelection(getAlbumUidFromName(album.name), "album")} class="text-sm truncate cursor-pointer hover:underline">
-														{album.name}{i < albumList.length - 1 ? "," : ""}
-													</button>
-												{/each}
-												{/if}
-											</div>
-										</div>
-									</div>
-
-									<div class="flex gap-2">
-										<Button size="icon" variant="destructive"><Trash/></Button>
-										<Tooltip.Root>
-											<Tooltip.Trigger class={buttonVariants({ variant: "outline", size: "icon" })} >
-												<CloudDownload/>
-											</Tooltip.Trigger>
-											<Tooltip.Content>
-												<p>Get Track Metadata via API</p>
-											</Tooltip.Content>
-										</Tooltip.Root>
-										<Button size="icon" variant="outline"><Paperclip/></Button>
-										{#if track.path != ""}
-											<Button size="icon" variant="outline"><FolderInput/></Button>
-											{/if}
-										<Button size="icon" variant="outline" onclick={() => openEditModal({ type: "track", uid: track!.uid })}><Pencil/></Button>
-									</div>
-								</div>
+							{#each filteredTracks as track (track.uid)}
+								<TrackRow {track} />
 							{/each}
 						</div>
 					</div>
 				</Tabs.Content>
 
+				<!-- ALBUMS -->
 				<Tabs.Content value="albums">
-					<p>Albums</p>
+					<div class="flex flex-col gap-2 pt-2">
+						<div class="flex gap-2 justify-between items-center">
+							<span class="text-sm text-muted-foreground">{filteredAlbums.length} {filteredAlbums.length === 1 ? "album" : "albums"}</span>
+							<SearchBar bind:search={albumSearch} searchCount={filteredAlbums.length} />
+						</div>
+						<div class="flex flex-col gap-2">
+							{#each filteredAlbums as album (album.uid)}
+								<AlbumRow {album} />
+							{/each}
+						</div>
+					</div>
 				</Tabs.Content>
+
+				<!-- ARTISTS -->
 				<Tabs.Content value="artists">
-					<p>Artists</p>
+					<div class="flex flex-col gap-2 pt-2">
+						<div class="flex gap-2 justify-between items-center">
+							<span class="text-sm text-muted-foreground">{filteredArtists.length} {filteredArtists.length === 1 ? "artist" : "artists"}</span>
+							<SearchBar bind:search={artistSearch} searchCount={filteredArtists.length} />
+						</div>
+						<div class="flex flex-col gap-2">
+							{#each filteredArtists as artist (artist.uid)}
+								<ArtistRow {artist} />
+							{/each}
+						</div>
+					</div>
 				</Tabs.Content>
+
 				<Tabs.Content value="tags">
 					<p>Tags</p>
 				</Tabs.Content>
+
+				<!-- DUPLICATES -->
 				<Tabs.Content value="duplicates">
-					<p>Duplicates</p>
+					<div class="flex flex-col gap-2 pt-2">
+						{#if !duplicatesLoaded}
+							<p class="text-sm text-muted-foreground">Loading…</p>
+						{:else if duplicates.length === 0}
+							<p class="text-sm text-muted-foreground">No duplicates found.</p>
+						{:else}
+							<span class="text-sm text-muted-foreground">{duplicates.length} duplicate {duplicates.length === 1 ? "group" : "groups"}</span>
+							<div class="flex flex-col gap-3">
+								{#each duplicates as group, i (i)}
+									<DuplicateGroupCard {group} onresolved={onDuplicateResolved} />
+								{/each}
+							</div>
+						{/if}
+					</div>
 				</Tabs.Content>
 			</Tabs.Root>
 		</div>

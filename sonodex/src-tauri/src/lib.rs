@@ -17,6 +17,7 @@ use db::{
 
 use crate::connections::lastfm_auth;
 use crate::connections::spotify_auth;
+use crate::db::{MetadataUpdate, Setting};
 
 use profiles::{
 	create_profile as new_profile, get_lib_db_path, get_settings_db_path, read_registry,
@@ -449,6 +450,84 @@ fn write_track_tags(
 
 	db::update_track_metadata_by_uid(&conn, &uid, &update).map_err(|e| e.to_string())?;
 	app.emit("library:updated", ()).ok();
+	Ok(())
+}
+
+#[tauri::command]
+async fn replace_track_path(
+	app_handle: tauri::AppHandle,
+	state: State<'_, AppState>,
+	uid: String,
+	new_path: String,
+) -> Result<(), String> {
+	let profile_uid = state.get_uid();
+	let lib_conn = open_lib_conn(&profile_uid);
+	let settings_conn = open_settings_conn(&profile_uid);
+
+	let new_path = normalize_path(&new_path);
+
+	lib_conn
+		.execute("UPDATE tracks SET path = ?1 WHERE uid = ?2", [&new_path, &uid])
+		.map_err(|e| e.to_string())?;
+
+	let get = |key: &str, default: &str| -> String {
+		db::settings_manager::get_setting(&settings_conn, key)
+			.ok()
+			.flatten()
+			.unwrap_or_else(|| default.to_string())
+	};
+
+	let priority_title  = get("filename_priority_title",  "tag");
+	let priority_artist = get("filename_priority_artist", "tag");
+	let priority_album  = get("filename_priority_album",  "tag");
+	let priority_year   = get("filename_priority_year",   "tag");
+	let custom_pattern  = get("filename_custom_pattern",  "");
+
+	let tag_delim_raw      = get("artist_tag_delimiters",      " / |; ");
+	let filename_delim_raw = get("artist_filename_delimiters", " / |; | feat. | ft. | featuring ");
+	let genre_delim_raw    = get("genre_delimiters",           " / |; |, ");
+
+	let tag_delims:      Vec<&str> = tag_delim_raw.split('|').collect();
+	let filename_delims: Vec<&str> = filename_delim_raw.split('|').collect();
+	let genre_delims:    Vec<&str> = genre_delim_raw.split('|').collect();
+
+	let path = std::path::Path::new(&new_path);
+	if let Some(fresh_track) = scanner::read_track_with_settings(
+		path,
+		&priority_title,
+		&priority_artist,
+		&priority_album,
+		&priority_year,
+		&custom_pattern,
+		&tag_delims,
+		&filename_delims,
+		&genre_delims,
+	) {
+		let merged = MetadataUpdate {
+			title:        fresh_track.title,
+			artists:      fresh_track.artists,
+			album_artist: fresh_track.album_artist,
+			albums:       fresh_track.albums,
+			year:         fresh_track.year,
+			genres:       fresh_track.genres,
+			bpm:          fresh_track.bpm,
+			rating:       fresh_track.rating,
+			tags:         None,
+			key:          fresh_track.key,
+			credits:      fresh_track.credits,
+			label:        fresh_track.label,
+			artwork_blob: fresh_track.artwork_blob,
+			artwork_path: None,
+			user_options: None,
+		};
+		db::track_manager::update_track_metadata_by_uid(&lib_conn, &uid, &merged)
+			.map_err(|e| e.to_string())?;
+	}
+
+	app_handle
+		.emit("library:updated", ())
+		.map_err(|e| e.to_string())?;
+
 	Ok(())
 }
 
@@ -1521,6 +1600,29 @@ async fn spotify_enrich_artist_cmd(
 // ENTRY POINT
 // ─────────────────────────────────────────────
 
+#[tauri::command]
+fn open_in_explorer(path: String) -> Result<(), String> {
+	#[cfg(target_os = "windows")]
+	std::process::Command::new("explorer")
+		.args(["/select,", &path.replace('/', "\\")])
+		.spawn()
+		.map_err(|e| e.to_string())?;
+
+	#[cfg(target_os = "macos")]
+	std::process::Command::new("open")
+		.args(["-R", &path])
+		.spawn()
+		.map_err(|e| e.to_string())?;
+
+	#[cfg(target_os = "linux")]
+	std::process::Command::new("xdg-open")
+		.arg(std::path::Path::new(&path).parent().unwrap_or(std::path::Path::new("/")))
+		.spawn()
+		.map_err(|e| e.to_string())?;
+
+	Ok(())
+}
+
 pub fn handle_deep_link(app: tauri::AppHandle, url: &str) {
 	use tauri::Manager;
 	eprintln!("[deep-link] received url: {}", url);
@@ -1684,7 +1786,9 @@ pub fn run() {
 			spotify_enrich_album_cmd,
 			spotify_enrich_artist_cmd,
 			add_uid_remap,
-			resolve_uid
+			resolve_uid,
+			replace_track_path,
+			open_in_explorer
 		])
 		.run(tauri::generate_context!())
 		.expect("error while running tauri application");
