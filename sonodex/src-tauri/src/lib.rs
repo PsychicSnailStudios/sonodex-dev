@@ -734,6 +734,26 @@ fn save_setting(state: State<AppState>, key: String, value: String) -> Result<()
 	db::set_setting(&conn, &key, &value).map_err(|e| e.to_string())
 }
 
+#[tauri::command]
+fn add_uid_remap(
+	state: State<AppState>,
+	old_uid: String,
+	new_uid: String,
+	entity_type: String,
+) -> Result<(), String> {
+	let uid = state.get_uid();
+	let conn = open_settings_conn(&uid);
+	db::settings_manager::add_uid_remap(&conn, &old_uid, &new_uid, &entity_type)
+		.map_err(|e| e.to_string())
+}
+ 
+#[tauri::command]
+fn resolve_uid(state: State<AppState>, uid: String) -> Result<String, String> {
+	let profile_uid = state.get_uid();
+	let conn = open_settings_conn(&profile_uid);
+	db::settings_manager::resolve_uid(&conn, &uid).map_err(|e| e.to_string())
+}
+
 // ─────────────────────────────────────────────
 // ENRICHMENT
 // ─────────────────────────────────────────────
@@ -1663,6 +1683,8 @@ pub fn run() {
 			spotify_enrich_track_cmd,
 			spotify_enrich_album_cmd,
 			spotify_enrich_artist_cmd,
+			add_uid_remap,
+			resolve_uid
 		])
 		.run(tauri::generate_context!())
 		.expect("error while running tauri application");

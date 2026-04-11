@@ -18,6 +18,154 @@ function parseJsonArray(val: string | null | undefined): any[] {
 	}
 }
 
+// ─── Rename propagation ───────────────────────────────────────────────────────
+
+/**
+ * Rewrite every occurrence of oldName in artists/album_artist across all
+ * tracks and albums. Call this after an artist record's name changes.
+ */
+export async function renameArtistInLibrary(
+	oldName: string,
+	newName: string
+): Promise<void> {
+	if (!oldName || !newName || oldName.toLowerCase() === newName.toLowerCase()) return;
+
+	const [allTracks, allAlbums] = await Promise.all([
+		invoke<any[]>("get_tracks"),
+		invoke<any[]>("get_albums"),
+	]);
+
+	const oldLower = oldName.toLowerCase();
+
+	for (const track of allTracks) {
+		let changed = false;
+		const update: Record<string, any> = {};
+
+		const artistArr: string[] = parseJsonArray(track.artists);
+		const newArtistArr = artistArr.map((n) =>
+			n.toLowerCase() === oldLower ? newName : n
+		);
+		if (JSON.stringify(artistArr) !== JSON.stringify(newArtistArr)) {
+			update.artists = JSON.stringify(newArtistArr);
+			changed = true;
+		}
+
+		if ((track.album_artist ?? "").toLowerCase() === oldLower) {
+			update.album_artist = newName;
+			changed = true;
+		}
+
+		if (changed) {
+			await invoke("update_track_metadata", { uid: track.uid, update });
+		}
+	}
+
+	for (const album of allAlbums) {
+		let changed = false;
+		const update: Record<string, any> = {};
+
+		const artistArr: string[] = parseJsonArray(album.artists);
+		const newArtistArr = artistArr.map((n) =>
+			n.toLowerCase() === oldLower ? newName : n
+		);
+		if (JSON.stringify(artistArr) !== JSON.stringify(newArtistArr)) {
+			update.artists = JSON.stringify(newArtistArr);
+			changed = true;
+		}
+
+		if ((album.album_artist ?? "").toLowerCase() === oldLower) {
+			update.album_artist = newName;
+			changed = true;
+		}
+
+		if (changed) {
+			await invoke("update_album_entry", { uid: album.uid, update });
+		}
+	}
+}
+
+/**
+ * Rewrite the name field inside every track's albums JSON entries where
+ * the name matches oldName and album_artist matches. Call after an album
+ * record's title changes.
+ */
+export async function renameAlbumInTracks(
+	oldName: string,
+	newName: string,
+	albumArtist: string
+): Promise<void> {
+	if (!oldName || !newName || oldName.toLowerCase() === newName.toLowerCase()) return;
+
+	const allTracks = await invoke<any[]>("get_tracks");
+	const oldLower = oldName.toLowerCase();
+	const artistLower = albumArtist.toLowerCase();
+
+	for (const track of allTracks) {
+		const albumEntries: any[] = parseJsonArray(track.albums);
+		let changed = false;
+
+		const updated = albumEntries.map((entry) => {
+			if (
+				(entry.name ?? "").toLowerCase() === oldLower &&
+				(track.album_artist ?? "").toLowerCase() === artistLower
+			) {
+				changed = true;
+				return { ...entry, name: newName };
+			}
+			return entry;
+		});
+
+		if (changed) {
+			await invoke("update_track_metadata", {
+				uid: track.uid,
+				update: { albums: JSON.stringify(updated) },
+			});
+		}
+	}
+}
+
+// ─── AKA merge ────────────────────────────────────────────────────────────────
+
+/**
+ * For each AKA string, check if another artist record exists with that as
+ * their name. If so, register a uid remap (old → surviving), then delete
+ * the duplicate. Track/album name strings are left as-is since they still
+ * point to the surviving artist's name via the remap.
+ *
+ * Returns the list of artist names that were merged so the caller can inform
+ * the user if desired.
+ */
+export async function mergeArtistAkas(
+	survivingUid: string,
+	akaNames: string[]
+): Promise<string[]> {
+	if (akaNames.length === 0) return [];
+
+	const allArtists = await invoke<any[]>("get_artists");
+	const merged: string[] = [];
+
+	for (const akaName of akaNames) {
+		const akaLower = akaName.toLowerCase();
+		const duplicate = allArtists.find(
+			(a) => a.uid !== survivingUid && (a.name ?? "").toLowerCase() === akaLower
+		);
+		if (!duplicate) continue;
+
+		// Register remap so any stored uid references resolve to the survivor
+		await invoke("add_uid_remap", {
+			oldUid: duplicate.uid,
+			newUid: survivingUid,
+			entityType: "artist",
+		});
+
+		// Delete the duplicate record
+		await invoke("delete_artist_entry", { uid: duplicate.uid });
+		merged.push(akaName);
+	}
+
+	return merged;
+}
+
 // ─── Artist sync ──────────────────────────────────────────────────────────────
 
 export async function syncArtists(artistNames: string[]): Promise<void> {
@@ -50,11 +198,15 @@ export async function syncArtists(artistNames: string[]): Promise<void> {
 }
 
 /**
- * Delete artist records for any name in `removedNames` that is no longer
- * referenced by any track (artists, album_artist) or album (artists, album_artist).
+ * Delete artist records for any name in removedNames that is no longer
+ * referenced by any track or album. Shows a confirmation dialog first
+ * listing the artists that would be removed — the user can cancel to keep them.
+ *
+ * Returns true if the user confirmed (or there was nothing to prune),
+ * false if the user cancelled.
  */
-export async function pruneArtists(removedNames: string[]): Promise<void> {
-	if (removedNames.length === 0) return;
+export async function pruneArtists(removedNames: string[]): Promise<boolean> {
+	if (removedNames.length === 0) return true;
 
 	const [allArtists, allTracks, allAlbums] = await Promise.all([
 		invoke<any[]>("get_artists"),
@@ -74,13 +226,167 @@ export async function pruneArtists(removedNames: string[]): Promise<void> {
 
 	const nameToUid = new Map(allArtists.map((a) => [a.name.toLowerCase(), a.uid as string]));
 
-	for (const name of removedNames) {
+	const toPrune = removedNames.filter((name) => {
 		const lower = name.toLowerCase();
-		if (!usedNames.has(lower)) {
-			const uid = nameToUid.get(lower);
-			if (uid) await invoke("delete_artist_entry", { uid });
-		}
+		return !usedNames.has(lower) && nameToUid.has(lower);
+	});
+
+	if (toPrune.length === 0) return true;
+
+	const confirmed = await showPruneConfirmation(toPrune);
+	if (!confirmed) return false;
+
+	for (const name of toPrune) {
+		const uid = nameToUid.get(name.toLowerCase());
+		if (uid) await invoke("delete_artist_entry", { uid });
 	}
+
+	return true;
+}
+
+/**
+ * Show a native-style confirmation dialog asking whether to delete
+ * unreferenced artist records. Returns true if the user confirms.
+ */
+function showPruneConfirmation(artistNames: string[]): Promise<boolean> {
+	return new Promise((resolve) => {
+		const count = artistNames.length;
+		const noun = count === 1 ? "artist is" : "artists are";
+		const message =
+			`${count} ${noun} no longer referenced by any track or album and would be deleted. ` +
+			`Do you want to remove ${count === 1 ? "it" : "them"}?`;
+
+		// Build a minimal modal overlay
+		const overlay = document.createElement("div");
+		overlay.style.cssText = `
+			position:fixed;inset:0;z-index:9999;
+			display:flex;align-items:center;justify-content:center;
+			background:rgba(0,0,0,0.5);
+		`;
+
+		const dialog = document.createElement("div");
+		dialog.style.cssText = `
+			background:var(--background,#1a1a1a);
+			color:var(--foreground,#fff);
+			border:1px solid var(--border,#333);
+			border-radius:8px;
+			padding:24px;
+			max-width:380px;
+			width:100%;
+			box-shadow:0 8px 32px rgba(0,0,0,0.4);
+		`;
+
+		const title = document.createElement("p");
+		title.style.cssText = "font-weight:600;font-size:15px;margin:0 0 10px";
+		title.textContent = "Remove unreferenced artists?";
+
+		const body = document.createElement("p");
+		body.style.cssText = "font-size:13px;margin:0 0 20px;opacity:0.8;line-height:1.5";
+		body.textContent = message;
+
+		const actions = document.createElement("div");
+		actions.style.cssText = "display:flex;gap:8px;justify-content:flex-end";
+
+		const cancelBtn = document.createElement("button");
+		cancelBtn.textContent = "Keep";
+		cancelBtn.style.cssText = `
+			padding:6px 16px;border-radius:6px;font-size:13px;cursor:pointer;
+			background:transparent;border:1px solid var(--border,#555);
+			color:var(--foreground,#fff);
+		`;
+
+		const confirmBtn = document.createElement("button");
+		confirmBtn.textContent = "Remove";
+		confirmBtn.style.cssText = `
+			padding:6px 16px;border-radius:6px;font-size:13px;cursor:pointer;
+			background:var(--destructive,#c0392b);border:none;color:#fff;
+		`;
+
+		const cleanup = (result: boolean) => {
+			document.body.removeChild(overlay);
+			resolve(result);
+		};
+
+		cancelBtn.onclick = () => cleanup(false);
+		confirmBtn.onclick = () => cleanup(true);
+
+		actions.append(cancelBtn, confirmBtn);
+		dialog.append(title, body, actions);
+		overlay.appendChild(dialog);
+		document.body.appendChild(overlay);
+	});
+}
+
+// ─── Empty field warning ──────────────────────────────────────────────────────
+
+/**
+ * Warn the user that empty fields won't be updated. Resolves true if they
+ * want to proceed, false if they want to go back and fill them in.
+ * Only shows if hasEmpty is true.
+ */
+export function warnEmptyFields(hasEmpty: boolean): Promise<boolean> {
+	if (!hasEmpty) return Promise.resolve(true);
+
+	return new Promise((resolve) => {
+		const overlay = document.createElement("div");
+		overlay.style.cssText = `
+			position:fixed;inset:0;z-index:9999;
+			display:flex;align-items:center;justify-content:center;
+			background:rgba(0,0,0,0.5);
+		`;
+
+		const dialog = document.createElement("div");
+		dialog.style.cssText = `
+			background:var(--background,#1a1a1a);
+			color:var(--foreground,#fff);
+			border:1px solid var(--border,#333);
+			border-radius:8px;
+			padding:24px;
+			max-width:360px;
+			width:100%;
+			box-shadow:0 8px 32px rgba(0,0,0,0.4);
+		`;
+
+		const title = document.createElement("p");
+		title.style.cssText = "font-weight:600;font-size:15px;margin:0 0 10px";
+		title.textContent = "Some fields are empty";
+
+		const body = document.createElement("p");
+		body.style.cssText = "font-size:13px;margin:0 0 20px;opacity:0.8;line-height:1.5";
+		body.textContent =
+			"Empty fields will not be updated — their existing values will be kept. Do you want to continue?";
+
+		const actions = document.createElement("div");
+		actions.style.cssText = "display:flex;gap:8px;justify-content:flex-end";
+
+		const backBtn = document.createElement("button");
+		backBtn.textContent = "Go back";
+		backBtn.style.cssText = `
+			padding:6px 16px;border-radius:6px;font-size:13px;cursor:pointer;
+			background:transparent;border:1px solid var(--border,#555);
+			color:var(--foreground,#fff);
+		`;
+
+		const continueBtn = document.createElement("button");
+		continueBtn.textContent = "Continue";
+		continueBtn.style.cssText = `
+			padding:6px 16px;border-radius:6px;font-size:13px;cursor:pointer;
+			background:var(--primary,#3b82f6);border:none;color:#fff;
+		`;
+
+		const cleanup = (result: boolean) => {
+			document.body.removeChild(overlay);
+			resolve(result);
+		};
+
+		backBtn.onclick = () => cleanup(false);
+		continueBtn.onclick = () => cleanup(true);
+
+		actions.append(backBtn, continueBtn);
+		dialog.append(title, body, actions);
+		overlay.appendChild(dialog);
+		document.body.appendChild(overlay);
+	});
 }
 
 // ─── Album sync ───────────────────────────────────────────────────────────────

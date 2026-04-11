@@ -18,7 +18,7 @@
 	// SCRIPTS
 	import { closeEditModal } from "$lib/ts/app/editModal.svelte";
 	import { reloadLibrary } from "$lib/ts/library.svelte";
-	import { syncArtists, pruneArtists } from "$lib/ts/dbManager";
+	import { syncArtists, pruneArtists, renameArtistInLibrary, renameAlbumInTracks, warnEmptyFields } from "$lib/ts/dbManager";
 	import { enrichAlbum } from "$lib/ts/app/enrichment";
 
 	// PROPS
@@ -26,6 +26,7 @@
 
 	// VARIABLES
 	let title = $state("");
+	let originalTitle = $state("");
 	let albumArtist = $state("");
 	let artists = $state("");
 	let releaseDate = $state("");
@@ -38,7 +39,6 @@
 	let artworkPath = $state<string | null>(null);
 	let saving = $state(false);
 
-	// Track originals for pruning on save
 	let originalArtists = $state<string[]>([]);
 	let originalAlbumArtist = $state("");
 
@@ -48,6 +48,7 @@
 		if (!album) return;
 
 		title = album.title ?? "";
+		originalTitle = title;
 		albumArtist = album.album_artist ?? "";
 		originalAlbumArtist = albumArtist;
 		releaseDate = album.release_date ?? "";
@@ -76,15 +77,36 @@
 
 	// FUNCTIONS
 	async function save() {
+		const hasEmpty = !title || !albumArtist;
+		const proceed = await warnEmptyFields(hasEmpty);
+		if (!proceed) return;
+
 		saving = true;
 		try {
 			const artistArr = artists.split(",").map((s) => s.trim()).filter(Boolean);
 			const allNewNames = [...artistArr, ...(albumArtist ? [albumArtist] : [])];
 
-			// Create any newly added artist records
+			// Propagate album title rename into track album entries
+			if (originalTitle && title && originalTitle.toLowerCase() !== title.toLowerCase()) {
+				await renameAlbumInTracks(originalTitle, title, albumArtist);
+			}
+
+			// Propagate artist renames
+			if (originalAlbumArtist && albumArtist && originalAlbumArtist.toLowerCase() !== albumArtist.toLowerCase()) {
+				await renameArtistInLibrary(originalAlbumArtist, albumArtist);
+			}
+			const renamedArtists = originalArtists.filter((orig) => {
+				return !artistArr.map((x) => x.toLowerCase()).includes(orig.toLowerCase());
+			});
+			for (const oldName of renamedArtists) {
+				const matchingNew = artistArr.find(
+					(n) => !originalArtists.map((x) => x.toLowerCase()).includes(n.toLowerCase())
+				);
+				if (matchingNew) await renameArtistInLibrary(oldName, matchingNew);
+			}
+
 			await syncArtists(allNewNames);
 
-			// Delete artist records that are no longer referenced anywhere
 			const removedArtists = [
 				...originalArtists.filter((n) => !artistArr.map((x) => x.toLowerCase()).includes(n.toLowerCase())),
 				...(originalAlbumArtist && originalAlbumArtist !== albumArtist ? [originalAlbumArtist] : []),
@@ -108,6 +130,7 @@
 			await invoke("update_album_entry", { uid, update });
 			await reloadLibrary("albums");
 			await reloadLibrary("artists");
+			await reloadLibrary("tracks");
 		} finally {
 			saving = false;
 			closeEditModal();

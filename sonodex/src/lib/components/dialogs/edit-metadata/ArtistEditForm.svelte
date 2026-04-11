@@ -18,7 +18,8 @@
 	// SCRIPTS
 	import { closeEditModal } from "$lib/ts/app/editModal.svelte";
 	import { loadLibrary, library, reloadSingle, reloadLibrary } from "$lib/ts/library.svelte";
-   import { enrichArtist } from "$lib/ts/app/enrichment";
+	import { enrichArtist } from "$lib/ts/app/enrichment";
+	import { renameArtistInLibrary, mergeArtistAkas, warnEmptyFields } from "$lib/ts/dbManager";
 
 	// PROPS
 	let { uid } = $props<{ uid: string }>();
@@ -26,6 +27,7 @@
 
 	// VARIABLES
 	let name = $state("");
+	let originalName = $state("");
 	let aka = $state("");
 	let about = $state("");
 	let genres = $state("");
@@ -49,6 +51,7 @@
 		if (!artist) return;
 
 		name = artist.name ?? "";
+		originalName = name;
 		about = artist.about ?? "";
 		profileArtPath = artist.profile_art_path ?? null;
 
@@ -60,12 +63,27 @@
 	}
 
 	async function save() {
+		const hasEmpty = !name;
+		const proceed = await warnEmptyFields(hasEmpty);
+		if (!proceed) return;
+
 		saving = true;
 		try {
+			// Propagate name rename across all tracks and albums
+			if (originalName && name && originalName.toLowerCase() !== name.toLowerCase()) {
+				await renameArtistInLibrary(originalName, name);
+			}
+
+			// Merge any artist records whose name matches an AKA
+			const akaList = splitList(aka);
+			if (akaList.length > 0) {
+				await mergeArtistAkas(uid, akaList);
+			}
+
 			const update: Record<string, any> = {
 				name: name || null,
 				about: about || null,
-				aka: aka ? JSON.stringify(splitList(aka)) : null,
+				aka: aka ? JSON.stringify(akaList) : null,
 				genres: genres ? JSON.stringify(splitList(genres)) : null,
 				tags: tags ? JSON.stringify(splitList(tags)) : null,
 				websites: websites ? JSON.stringify(splitList(websites)) : null,
@@ -75,6 +93,8 @@
 
 			await invoke("update_artist_entry", { uid, update });
 			await reloadLibrary("artists");
+			await reloadLibrary("tracks");
+			await reloadLibrary("albums");
 		} finally {
 			saving = false;
 			closeEditModal();

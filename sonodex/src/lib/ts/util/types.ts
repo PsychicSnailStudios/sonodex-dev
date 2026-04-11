@@ -74,7 +74,7 @@ export type Playlist = {
 };
 
 export type Lyrics = {
-	id: number | null;
+	track_uid: string;
 	track_id: number;
 	source: string;
 	plain: string | null;

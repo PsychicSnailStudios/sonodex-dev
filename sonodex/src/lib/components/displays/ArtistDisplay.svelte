@@ -26,23 +26,45 @@
    import { parseTags } from "$lib/ts/util/helpers";
 
 	// VARIABLES
-	let artist = $derived(library.artists.find(a => a.uid === selection.uid) ?? null);
+	let artist = $state<Artist | null>(null);
 	let genres = $derived(artist?.genres ? parseTags(artist.genres) : null);
 	let tags = $derived(artist?.tags ? parseTags(artist.tags) : null);
 	
 	let artistAlbums: Album[] = $derived.by(() => {
 		if (!artist) return [];
-		return library.albums.filter(a =>
-			a.album_artist?.toLowerCase() === artist!.name.toLowerCase()
-		);
+
+		// Collect all known names for this artist: their main name + all AKAs
+		const akaNames: string[] = artist.aka
+			? (JSON.parse(artist.aka) as string[]).map(n => n.toLowerCase())
+			: [];
+		const allNames = new Set([artist.name.toLowerCase(), ...akaNames]);
+
+		return library.albums.filter(album => {
+			// Include if album_artist matches any known name
+			if (album.album_artist && allNames.has(album.album_artist.toLowerCase())) {
+				return true;
+			}
+			// Include if this artist appears as a contributing artist on any track in the album
+			const albumTracks = library.tracks.filter(t =>
+				t.albums && JSON.parse(t.albums).some((a: { uid: string }) => a.uid === album.uid)
+			);
+			return albumTracks.some(t => {
+				if (!t.artists) return false;
+				const trackArtists: string[] = JSON.parse(t.artists).map((a: string) => a.toLowerCase());
+				return trackArtists.some(a => allNames.has(a));
+			});
+		});
 	});
 
 	// APP FUNCTIONS
 	$effect(() => {
 		const uid = selection.uid;
+		if (!uid) return;
 		artist = null;
-		invoke("get_artist", { uid }).then((a) => {
-			artist = a as Artist;
+		invoke<string>("resolve_uid", { uid }).then((resolvedUid) => {
+			invoke("get_artist", { uid: resolvedUid }).then((a) => {
+				artist = a as Artist;
+			});
 		});
 	});
 
@@ -84,7 +106,11 @@
 			</Tabs.List>
 
 			<Tabs.Content value="home" class="flex-1 overflow-y-auto">
-				<h3 class="text-sm font-semibold mb-2 mt-2">TOP SONGS</h3>
+				<h3 class="text-sm font-semibold mb-2 mt-2">TAGS & GENRES</h3>
+				<TagList tags={genres} canEdit={false} />
+				<TagList tags={tags} canEdit={false} />
+
+				<h3 class="text-sm font-semibold mb-2 mt-2 pt-4">TOP SONGS</h3>
 				<TopTracks uid={artist.uid} />
 			</Tabs.Content>
 
@@ -101,9 +127,15 @@
 			</Tabs.Content>
 
 			<Tabs.Content value="about" class="flex-1 overflow-y-auto">
-				<h3 class="text-sm font-semibold mb-2 mt-2">TAGS & GENRES</h3>
-				<TagList tags={genres} canEdit={false} />
-				<TagList tags={tags} canEdit={false} />
+				<h3 class="text-sm font-semibold mb-2 mt-2">AKA</h3>
+				{#if artist.aka}
+					{@const akaList = JSON.parse(artist.aka) as string[]}
+					<div class="flex flex-row gap-1 flex-wrap">
+						{#each akaList as aka, i}
+							<p class="text-sm leading-relaxed">{aka}{i < akaList.length - 1 ? "," : ""}</p>
+						{/each}
+					</div>
+				{/if}
 				
 				<h3 class="text-sm font-semibold mb-2 mt-2 pt-4">BIO</h3>
 				{#if artist.about}

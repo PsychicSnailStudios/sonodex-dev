@@ -25,6 +25,9 @@
 		removeTrackFromOldAlbums,
 		syncArtists,
 		pruneArtists,
+		renameArtistInLibrary,
+		renameAlbumInTracks,
+		warnEmptyFields,
 		type AlbumEntry,
 	} from "$lib/ts/dbManager";
 	import { enrichTrack, fetchLyrics } from "$lib/ts/app/enrichment";
@@ -125,6 +128,10 @@
 	}
 
 	async function save() {
+		const hasEmpty = !title || !artists || !albumArtist;
+		const proceed = await warnEmptyFields(hasEmpty);
+		if (!proceed) return;
+
 		saving = true;
 		try {
 			const artistArr = artists.split(",").map((s) => s.trim()).filter(Boolean);
@@ -139,18 +146,33 @@
 					track_number: a.track_number != null && !isNaN(Number(a.track_number)) ? Number(a.track_number) : null,
 				}));
 
-			// Sync albums — creates new ones, updates existing, returns resolved entries with uids
+			// Propagate artist renames
+			const renamedArtists = originalArtists.filter((orig) => {
+				const newArr = artistArr.map((x) => x.toLowerCase());
+				return !newArr.includes(orig.toLowerCase());
+			});
+			for (const oldName of renamedArtists) {
+				const matchingNew = artistArr.find(
+					(n) => !originalArtists.map((x) => x.toLowerCase()).includes(n.toLowerCase())
+				);
+				if (matchingNew) {
+					await renameArtistInLibrary(oldName, matchingNew);
+				}
+			}
+
+			// Propagate album_artist rename
+			if (originalAlbumArtist && albumArtist && originalAlbumArtist.toLowerCase() !== albumArtist.toLowerCase()) {
+				await renameArtistInLibrary(originalAlbumArtist, albumArtist);
+			}
+
 			const finalAlbumEntries = await syncAlbums(cleanedAlbums, uid, title, albumArtist);
 
-			// Remove track from albums it was on before but isn't now; delete album if empty
 			const currentAlbumUids = new Set(finalAlbumEntries.map((e) => e.uid).filter(Boolean));
 			const removedAlbumUids = originalAlbumUids.filter((u) => !currentAlbumUids.has(u));
 			await removeTrackFromOldAlbums(uid, removedAlbumUids);
 
-			// Sync artists — create any new names
 			await syncArtists([...artistArr, ...(albumArtist ? [albumArtist] : [])]);
 
-			// Prune artists that are no longer referenced anywhere
 			const removedArtists = [
 				...originalArtists.filter((n) => !artistArr.map((x) => x.toLowerCase()).includes(n.toLowerCase())),
 				...(originalAlbumArtist && originalAlbumArtist !== albumArtist ? [originalAlbumArtist] : []),

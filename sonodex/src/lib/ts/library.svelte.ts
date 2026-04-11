@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { Track, Album, Artist, Playlist } from "$lib/ts/util/types";
+import type { Track, Album, Artist, Playlist, Lyrics } from "$lib/ts/util/types";
 import { SortState } from "$lib/ts/app/sortConfig.svelte";
 import { parseUidType } from "$lib/ts/util/helpers";
 
@@ -8,6 +8,7 @@ export const library = $state({
 	albums: [] as Album[],
 	artists: [] as Artist[],
 	playlists: [] as Playlist[],
+	lyrics: [] as Lyrics[],
 	loaded: false,
 });
 
@@ -19,8 +20,7 @@ export async function loadLibrary() {
 	library.loaded = true;
 }
 
-export async function reloadLibrary(type: "tracks" | "albums" | "artists" | "playlists") {
-
+export async function reloadLibrary(type: "tracks" | "albums" | "artists" | "playlists" | "lyrics") {
 	switch (type) {
 		case "tracks":
 			library.tracks = await invoke("get_tracks");
@@ -34,17 +34,31 @@ export async function reloadLibrary(type: "tracks" | "albums" | "artists" | "pla
 		case "playlists":
 			library.playlists = await invoke("get_playlists");
 			break;
+		case "lyrics":
+			const allLyrics = await Promise.all(
+				library.tracks.map(t => invoke<Lyrics | null>("get_track_lyrics", { uid: t.uid }))
+			);
+			library.lyrics = allLyrics.filter((l): l is Lyrics => l !== null);
+			break;
 	}
 }
 
 export async function reloadSingle(uid: string) {
-
 	let type = parseUidType(uid);
 
 	switch (type) {
 		case "track":
 			let newTrack = await invoke("get_track", { uid });
 			library.tracks.find(a => a.uid === uid) === newTrack;
+
+			const updatedLyrics = await invoke<Lyrics | null>("get_track_lyrics", { uid });
+			const existingIdx = library.lyrics.findIndex(l => l.track_uid === uid);
+			if (updatedLyrics) {
+				if (existingIdx >= 0) library.lyrics[existingIdx] = updatedLyrics;
+				else library.lyrics.push(updatedLyrics);
+			} else if (existingIdx >= 0) {
+				library.lyrics.splice(existingIdx, 1);
+			}
 			break;
 		case "album":
 			let newAlbum = await invoke("get_album", { uid });
@@ -61,9 +75,24 @@ export async function reloadSingle(uid: string) {
 	}
 }
 
+export async function getLyrics(trackUid: string): Promise<Lyrics | null> {
+	return await invoke<Lyrics | null>("get_track_lyrics", { uid: trackUid });
+}
+
 export function getArtistUidFromName(name: string): string {
-	const artist = library.artists.find((a) => a.name === name);
-	return artist?.uid ?? "";
+	const lower = name.toLowerCase();
+	const byName = library.artists.find((a) => a.name.toLowerCase() === lower);
+	if (byName) return byName.uid;
+
+	const byAka = library.artists.find((a) => {
+		try {
+			const akas: string[] = JSON.parse(a.aka ?? "[]");
+			return akas.some((aka) => aka.toLowerCase() === lower);
+		} catch {
+			return false;
+		}
+	});
+	return byAka?.uid ?? "";
 }
 
 export function getAlbumUidFromName(name: string): string {
