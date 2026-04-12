@@ -8,6 +8,8 @@
 	import { setMode, mode } from "mode-watcher";
 
 	// COMPONENTS
+	import { Loader2 } from "lucide-svelte";
+
 	import * as Select from "$lib/components/ui/select/index.js";
 	import { ScrollArea } from "$lib/components/ui/scroll-area/index.js";
 	import { Button } from "$lib/components/ui/button/index.js";
@@ -29,6 +31,7 @@
 	let newPath = $state("");
 	let settings = $state<Record<string, string>>({});
 
+	let removingPath = $state<string | null>(null);
 	let lastfmConnected = $state(false);
 	let spotifyConnected = $state(false);
 	let spotifyPlaylists = $state<SpotifyPlaylistSummary[]>([]);
@@ -154,10 +157,12 @@
 	}
 
 	async function removePath(path: string) {
+		removingPath = path;
 		await invoke("remove_path", { path });
 		await loadPaths();
 		await loadLibrary();
 		scanState.status = `Removed ${path}`;
+		removingPath = null;
 	}
 
 	async function rescan() {
@@ -262,20 +267,39 @@
 					class="flex-1 border rounded px-3 py-2 text-sm bg-background"
 				/>
 				<Button variant="outline" onclick={browsePath}>Browse</Button>
-				<Button onclick={addPath} disabled={scanState.loading}>Add & Scan</Button>
+				<Button onclick={addPath} disabled={scanState.loading}>
+					{#if scanState.loading}
+						<Loader2 class="animate-spin" />
+					{/if}
+					Add & Scan
+				</Button>
 				</div>
 	
 				<h4 class="text-sm font-semibold">Watched Paths ({paths.length})</h4>
 				{#each paths as p}
 				<div class="flex items-center justify-between border rounded px-3 py-2 text-sm">
 					<span>{p.path}</span>
-					<Button variant="destructive" onclick={() => removePath(p.path)}>Remove</Button>
+					<Button
+						variant="destructive"
+						disabled={scanState.loading || removingPath === p.path}
+						onclick={() => removePath(p.path)}
+					>
+						{#if removingPath === p.path}
+							<Loader2 class="animate-spin" />
+						{/if}
+						Remove
+					</Button>
 				</div>
 				{:else}
 				<p class="text-sm text-muted-foreground">No paths added yet.</p>
 				{/each}
 	
-				<Button onclick={rescan} disabled={scanState.loading}>Rescan All</Button>
+				<Button onclick={rescan} disabled={scanState.loading}>
+					{#if scanState.loading}
+						<Loader2 class="animate-spin" />
+					{/if}
+					Rescan All
+				</Button>
 			</div>
 	
 			<h3 class="font-semibold">EQ</h3>
