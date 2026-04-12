@@ -15,10 +15,8 @@ use walkdir::WalkDir;
 
 const SUPPORTED_EXTENSIONS: &[&str] = &["mp3", "flac", "m4a", "aac", "wav", "aiff", "ogg"];
 
-const ARTIST_TAG_DELIMITERS: &[&str] = &[" / ", "; ", ", "];
-
+const ARTIST_TAG_DELIMITERS: &[&str] = &[" / ", "; ", ", ", ","];
 const ARTIST_FILENAME_DELIMITERS: &[&str] = &[" / ", "; ", " feat. ", " ft. ", " featuring "];
-
 const GENRE_DELIMITERS: &[&str] = &[" / ", "; ", ", "];
 
 fn is_supported(path: &Path) -> bool {
@@ -64,20 +62,100 @@ fn normalize_rating(raw: &str) -> Option<f32> {
 	}
 }
 
-fn resolve_field(
-	tag_value: Option<String>,
-	filename_value: Option<String>,
-	folder_value: Option<String>,
-	priority: &str,
-) -> Option<String> {
-	let tag_value = tag_value.filter(|s| !s.trim().is_empty());
-	let filename_value = filename_value.filter(|s| !s.trim().is_empty());
-	let folder_value = folder_value.filter(|s| !s.trim().is_empty());
-	match priority {
-		"filename" => filename_value.or(tag_value).or(folder_value),
-		"folder" => folder_value.or(tag_value).or(filename_value),
-		_ => tag_value.or(filename_value).or(folder_value),
+/// Attempts to split any artist names containing `&` only if the resulting
+/// parts are already present in the list or the split produces ≤2 new artists.
+/// Deduplicates the result.
+fn try_parse_ampersand(artists: Vec<String>) -> Vec<String> {
+	let lower_existing: Vec<String> = artists.iter().map(|a| a.to_lowercase()).collect();
+	let mut result: Vec<String> = Vec::new();
+
+	for artist in &artists {
+		if artist.contains('&') {
+			let parts: Vec<String> = artist
+				.split('&')
+				.map(|p| p.trim().to_string())
+				.filter(|p| !p.is_empty())
+				.collect();
+
+			let new_parts: Vec<&String> = parts
+				.iter()
+				.filter(|p| !lower_existing.contains(&p.to_lowercase()))
+				.collect();
+
+			if new_parts.is_empty() || new_parts.len() <= 2 {
+				for part in &parts {
+					let lower = part.to_lowercase();
+					if !result.iter().any(|r: &String| r.to_lowercase() == lower) {
+						result.push(part.clone());
+					}
+				}
+				continue;
+			}
+		}
+
+		let lower = artist.to_lowercase();
+		if !result.iter().any(|r: &String| r.to_lowercase() == lower) {
+			result.push(artist.clone());
+		}
 	}
+
+	result
+}
+
+/// Extracts featured artists from a title string like "Song (feat. A & B)" or "Song feat. X, Y".
+/// Returns artist names found. Does not modify the title.
+fn extract_feat_artists(title: &str) -> Vec<String> {
+	let lower = title.to_lowercase();
+	let patterns = ["feat.", "ft.", "featuring"];
+
+	for pat in &patterns {
+		if let Some(pos) = lower.find(pat) {
+			let after_pat = &title[pos + pat.len()..];
+			let raw = after_pat
+				.trim_start_matches(|c: char| c == '.' || c == ' ')
+				.trim_end_matches(')')
+				.trim_end_matches(']')
+				.trim();
+			let parts: Vec<String> = raw
+				.split(&[',', '&', '/'][..])
+				.map(|p| p.trim().trim_matches(|c| c == '(' || c == '[' || c == ')' || c == ']').trim().to_string())
+				.filter(|p| !p.is_empty())
+				.collect();
+			if !parts.is_empty() {
+				return parts;
+			}
+		}
+	}
+	Vec::new()
+}
+
+/// Returns true if the folder path looks like a real Artist/Album structure
+/// (at least two meaningful components that aren't drive roots or generic names).
+fn is_verified_folder_structure(path: &Path) -> bool {
+	let components: Vec<&str> = path
+		.parent()
+		.map(|p| {
+			p.components()
+				.filter_map(|c| c.as_os_str().to_str())
+				.collect()
+		})
+		.unwrap_or_default();
+
+	if components.len() < 2 {
+		return false;
+	}
+
+	let folder = components[components.len() - 1];
+	let artist = components[components.len() - 2];
+
+	let generic = ["music", "audio", "downloads", "files", "media", "tracks", "songs"];
+	if generic.contains(&folder.to_lowercase().as_str())
+		|| generic.contains(&artist.to_lowercase().as_str())
+	{
+		return false;
+	}
+
+	folder.len() >= 2 && artist.len() >= 2
 }
 
 #[derive(Debug)]
@@ -283,6 +361,7 @@ pub fn read_track(path: &Path) -> Option<Track> {
 		ARTIST_TAG_DELIMITERS,
 		ARTIST_FILENAME_DELIMITERS,
 		GENRE_DELIMITERS,
+		false,
 	)
 }
 
@@ -296,6 +375,7 @@ pub fn read_track_with_settings(
 	artist_tag_delimiters: &[&str],
 	artist_filename_delimiters: &[&str],
 	genre_delimiters: &[&str],
+	try_ampersand: bool,
 ) -> Option<Track> {
 	let last_modified = get_last_modified(path);
 	let path_str = path.to_string_lossy().to_string();
@@ -316,6 +396,7 @@ pub fn read_track_with_settings(
 
 	let filename_meta = parse_filename(path, custom_pattern);
 	let folder_meta = parse_folder_path(path);
+	let folder_verified = is_verified_folder_structure(path);
 
 	let (
 		tag_title,
@@ -367,51 +448,118 @@ pub fn read_track_with_settings(
 	let tag_album = tag_album.filter(|s| !s.trim().is_empty());
 	let tag_album_artist = tag_album_artist.filter(|s| !s.trim().is_empty());
 
-	let title = resolve_field(tag_title, filename_meta.title, None, priority_title);
+	// Title: if tag title is missing, always parse from filename (title-only, no extra parts)
+	let title = if priority_title == "filename" {
+		filename_meta
+			.title
+			.clone()
+			.filter(|s| !s.trim().is_empty())
+			.or_else(|| tag_title.clone().filter(|s| !s.trim().is_empty()))
+	} else {
+		tag_title
+			.clone()
+			.filter(|s| !s.trim().is_empty())
+			.or_else(|| filename_meta.title.clone().filter(|s| !s.trim().is_empty()))
+	};
 
+	// Artists: split from appropriate source based on priority
 	let tag_artists: Option<Vec<String>> = tag_artist
-		.map(|s| split_on_delimiters(&s, artist_tag_delimiters));
+		.as_deref()
+		.map(|s| split_on_delimiters(s, artist_tag_delimiters));
 
 	let filename_artists: Option<Vec<String>> = filename_meta
 		.artist
-		.clone()
+		.as_deref()
 		.filter(|s| !s.trim().is_empty())
-		.map(|s| split_on_delimiters(&s, artist_filename_delimiters));
+		.map(|s| split_on_delimiters(s, artist_filename_delimiters));
 
-	let folder_artists: Option<Vec<String>> = folder_meta
-		.artist
-		.clone()
-		.filter(|s| !s.trim().is_empty())
-		.map(|s| split_on_delimiters(&s, artist_tag_delimiters));
+	// Folder artists only used when both tag and filename have no artist
+	let has_tag_artist = tag_artist.is_some();
+	let has_filename_artist = filename_meta.artist.as_deref().map(|s| !s.trim().is_empty()).unwrap_or(false);
 
-	let resolved_artists = match priority_artist {
+	let folder_artists: Option<Vec<String>> = if folder_verified && !has_tag_artist && !has_filename_artist {
+		folder_meta
+			.artist
+			.as_deref()
+			.filter(|s| !s.trim().is_empty())
+			.map(|s| split_on_delimiters(s, artist_tag_delimiters))
+	} else {
+		None
+	};
+
+	let mut resolved_artists: Option<Vec<String>> = match priority_artist {
 		"filename" => filename_artists.or(tag_artists).or(folder_artists),
 		"folder" => folder_artists.or(tag_artists).or(filename_artists),
 		_ => tag_artists.or(filename_artists).or(folder_artists),
 	};
 
-	let artists = resolved_artists
-		.as_ref()
-		.map(|v| serde_json::to_string(v).unwrap_or_else(|_| "[]".to_string()));
+	// Extract feat. artists from title and filename stem, add any new ones to the list
+	let title_str = title.as_deref().unwrap_or("");
+	let filename_stem = path.file_stem().and_then(|s| s.to_str()).unwrap_or("");
+	let mut feat_artists = extract_feat_artists(title_str);
+	for fa in extract_feat_artists(filename_stem) {
+		if !feat_artists.iter().any(|e: &String| e.to_lowercase() == fa.to_lowercase()) {
+			feat_artists.push(fa);
+		}
+	}
 
+	if !feat_artists.is_empty() {
+		let base = resolved_artists.unwrap_or_default();
+		let mut merged = base;
+		for fa in feat_artists {
+			if !merged.iter().any(|e: &String| e.to_lowercase() == fa.to_lowercase()) {
+				merged.push(fa);
+			}
+		}
+		resolved_artists = Some(merged);
+	}
+
+	// Ampersand parsing: only if enabled and artists were resolved
+	if try_ampersand {
+		if let Some(artists) = resolved_artists {
+			resolved_artists = Some(try_parse_ampersand(artists));
+		}
+	}
+
+	// Album artist: prefer tag, fall back to first resolved artist
 	let album_artist = tag_album_artist.or_else(|| {
 		resolved_artists
 			.as_ref()
 			.and_then(|v| v.first().cloned())
 	});
 
-	let tag_album_name = resolve_field(
-		tag_album,
-		filename_meta.album,
-		folder_meta.album.clone(),
-		priority_album,
-	);
+	// Ensure album_artist is first in the artists list
+	let mut resolved_artists = resolved_artists;
+	if let Some(ref aa) = album_artist {
+		if let Some(ref mut list) = resolved_artists {
+			let aa_lower = aa.to_lowercase();
+			if let Some(pos) = list.iter().position(|a| a.to_lowercase() == aa_lower) {
+				if pos != 0 {
+					let item = list.remove(pos);
+					list.insert(0, item);
+				}
+			} else if !list.is_empty() {
+				list.insert(0, aa.clone());
+			}
+		}
+	}
 
-	let folder_album_name = folder_meta.album.clone().filter(|s| !s.trim().is_empty());
+	let artists = resolved_artists
+		.as_ref()
+		.map(|v| serde_json::to_string(v).unwrap_or_else(|_| "[]".to_string()));
+
+	// Albums: build from tag and/or filename depending on priority
+	let tag_album_val = tag_album.filter(|s| !s.trim().is_empty());
+	let filename_album_val = filename_meta.album.filter(|s| !s.trim().is_empty());
+
+	let primary_album_name: Option<String> = match priority_album {
+		"filename" => filename_album_val.or(tag_album_val),
+		_ => tag_album_val.or(filename_album_val),
+	};
 
 	let mut album_entries: Vec<serde_json::Value> = Vec::new();
 
-	if let Some(ref a) = tag_album_name {
+	if let Some(ref a) = primary_album_name {
 		album_entries.push(serde_json::json!({
 			"uid": "",
 			"name": a,
@@ -419,16 +567,25 @@ pub fn read_track_with_settings(
 		}));
 	}
 
-	if let Some(ref fa) = folder_album_name {
-		let already_present = album_entries
-			.iter()
-			.any(|e| e["name"].as_str().map(|n| n.to_lowercase()) == Some(fa.to_lowercase()));
-		if !already_present {
-			album_entries.push(serde_json::json!({
-				"uid": "",
-				"name": fa,
-				"track_number": tag_track_number
-			}));
+	// Folder album: only add if verified structure AND folder implies a different album
+	if folder_verified {
+		if let Some(ref fa) = folder_meta.album {
+			let fa_trimmed = fa.trim();
+			if !fa_trimmed.is_empty() {
+				let already_present = album_entries.iter().any(|e| {
+					e["name"]
+						.as_str()
+						.map(|n| n.to_lowercase() == fa_trimmed.to_lowercase())
+						.unwrap_or(false)
+				});
+				if !already_present {
+					album_entries.push(serde_json::json!({
+						"uid": "",
+						"name": fa_trimmed,
+						"track_number": tag_track_number
+					}));
+				}
+			}
 		}
 	}
 
@@ -443,12 +600,20 @@ pub fn read_track_with_settings(
 		serde_json::to_string(&parts).unwrap_or_else(|_| "[]".to_string())
 	});
 
-	let year = resolve_field(
-		tag_year,
-		filename_meta.year,
-		folder_meta.year.clone(),
-		priority_year,
-	);
+	// Year: tag/filename/folder based on priority
+	let tag_year_val = tag_year.filter(|s| !s.trim().is_empty());
+	let filename_year_val = filename_meta.year.filter(|s| !s.trim().is_empty());
+	let folder_year_val = if folder_verified {
+		folder_meta.year.filter(|s| !s.trim().is_empty())
+	} else {
+		None
+	};
+
+	let year = match priority_year {
+		"filename" => filename_year_val.or(tag_year_val).or(folder_year_val),
+		"folder" => folder_year_val.or(tag_year_val).or(filename_year_val),
+		_ => tag_year_val.or(filename_year_val).or(folder_year_val),
+	};
 
 	Some(Track {
 		id: None,
@@ -729,6 +894,26 @@ pub fn scan_directory_with_progress(conn: &Connection, dir: &str, app: &AppHandl
 		.ok()
 		.flatten()
 		.unwrap_or_default();
+	let try_ampersand = get_setting(conn, "scan_try_parse_ampersand")
+		.ok()
+		.flatten()
+		.map(|v| v == "true")
+		.unwrap_or(true);
+	let auto_enrich_tracks = get_setting(conn, "auto_enrich_tracks")
+		.ok()
+		.flatten()
+		.map(|v| v == "true")
+		.unwrap_or(false);
+	let auto_enrich_albums = get_setting(conn, "auto_enrich_albums")
+		.ok()
+		.flatten()
+		.map(|v| v == "true")
+		.unwrap_or(false);
+	let auto_fetch_lyrics = get_setting(conn, "auto_fetch_lyrics")
+		.ok()
+		.flatten()
+		.map(|v| v == "true")
+		.unwrap_or(false);
 
 	let artist_tag_delimiters_owned: Vec<String> = get_setting(conn, "artist_tag_delimiters")
 		.ok()
@@ -783,6 +968,65 @@ pub fn scan_directory_with_progress(conn: &Connection, dir: &str, app: &AppHandl
 		.unwrap_or_else(|| GENRE_DELIMITERS.iter().map(|s| s.to_string()).collect());
 	let genre_delimiters: Vec<&str> = genre_delimiters_owned.iter().map(|s| s.as_str()).collect();
 
+	let enrich_settings = if auto_enrich_tracks || auto_enrich_albums {
+		Some(crate::enrichment::EnrichSettings {
+			primary_api: get_setting(conn, "enrich_primary_api")
+				.ok()
+				.flatten()
+				.unwrap_or_else(|| "musicbrainz".to_string()),
+			lastfm_key: get_setting(conn, "api_lastfm_key")
+				.ok()
+				.flatten()
+				.unwrap_or_default(),
+			discogs_key: get_setting(conn, "api_discogs_key")
+				.ok()
+				.flatten()
+				.unwrap_or_default(),
+			audiodb_key: get_setting(conn, "api_audiodb_key")
+				.ok()
+				.flatten()
+				.unwrap_or_default(),
+			priority_title: get_setting(conn, "enrich_priority_title")
+				.ok()
+				.flatten()
+				.unwrap_or_else(|| "local".to_string()),
+			priority_artists: get_setting(conn, "enrich_priority_artists")
+				.ok()
+				.flatten()
+				.unwrap_or_else(|| "local".to_string()),
+			priority_album_artist: get_setting(conn, "enrich_priority_album_artist")
+				.ok()
+				.flatten()
+				.unwrap_or_else(|| "local".to_string()),
+			priority_album: get_setting(conn, "enrich_priority_album")
+				.ok()
+				.flatten()
+				.unwrap_or_else(|| "local".to_string()),
+			priority_year: get_setting(conn, "enrich_priority_year")
+				.ok()
+				.flatten()
+				.unwrap_or_else(|| "local".to_string()),
+			priority_genres: get_setting(conn, "enrich_priority_genres")
+				.ok()
+				.flatten()
+				.unwrap_or_else(|| "local".to_string()),
+			priority_bpm: get_setting(conn, "enrich_priority_bpm")
+				.ok()
+				.flatten()
+				.unwrap_or_else(|| "local".to_string()),
+			priority_key: get_setting(conn, "enrich_priority_key")
+				.ok()
+				.flatten()
+				.unwrap_or_else(|| "local".to_string()),
+			priority_artwork: get_setting(conn, "enrich_priority_artwork")
+				.ok()
+				.flatten()
+				.unwrap_or_else(|| "local".to_string()),
+		})
+	} else {
+		None
+	};
+
 	let all_files: Vec<_> = WalkDir::new(dir)
 		.follow_links(true)
 		.into_iter()
@@ -799,8 +1043,18 @@ pub fn scan_directory_with_progress(conn: &Connection, dir: &str, app: &AppHandl
 	)
 	.ok();
 
+	let rt = tokio::runtime::Runtime::new().ok();
+	let http_client = if auto_enrich_tracks || auto_enrich_albums || auto_fetch_lyrics {
+		crate::enrichment::make_client().ok()
+	} else {
+		None
+	};
+
+	// Track which album UIDs were created/touched during this scan for post-scan album enrich
+	let mut scanned_album_uids: Vec<String> = Vec::new();
+
 	for entry in all_files {
-		if let Some(track) = read_track_with_settings(
+		if let Some(mut track) = read_track_with_settings(
 			entry.path(),
 			&priority_title,
 			&priority_artist,
@@ -810,9 +1064,119 @@ pub fn scan_directory_with_progress(conn: &Connection, dir: &str, app: &AppHandl
 			&artist_tag_delimiters,
 			&artist_filename_delimiters,
 			&genre_delimiters,
+			try_ampersand,
 		) {
+			// Auto-enrich track inline before folder fallback and upsert
+			if auto_enrich_tracks {
+				if let (Some(ref settings), Some(ref client), Some(ref rt)) =
+					(&enrich_settings, &http_client, &rt)
+				{
+					let track_input = crate::enrichment::TrackInput {
+						id: 0,
+						title: track.title.clone(),
+						artists: track.artists.clone(),
+						album_artist: track.album_artist.clone(),
+						albums: track.albums.clone(),
+						year: track.year.clone(),
+						genres: track.genres.clone(),
+						bpm: track.bpm,
+						key: track.key.clone(),
+						existing_artwork: track.artwork_blob.clone(),
+					};
+
+					if let Ok(result) = rt.block_on(
+						crate::enrichment::enrich_track_async(client, &track_input, settings),
+					) {
+						track.title = result.title.or(track.title);
+						track.artists = result.artists.or(track.artists);
+						track.album_artist = result.album_artist.or(track.album_artist);
+						track.albums = result.albums.or(track.albums);
+						track.year = result.year.or(track.year);
+						track.genres = result.genres.or(track.genres);
+						track.bpm = result.bpm.or(track.bpm);
+						track.key = result.key.or(track.key);
+						track.artwork_blob = result.artwork.or(track.artwork_blob);
+					}
+				}
+			}
+
 			if upsert_track(conn, &track).is_ok() {
 				process_track(conn, &track);
+
+				// Collect album UIDs for post-scan enrich
+				if auto_enrich_albums {
+					if let Some(ref albums_json) = track.albums {
+						if let Ok(entries) =
+							serde_json::from_str::<Vec<serde_json::Value>>(albums_json)
+						{
+							for entry in entries {
+								if let Some(uid) = entry["uid"].as_str() {
+									if !uid.is_empty()
+										&& !scanned_album_uids.contains(&uid.to_string())
+									{
+										scanned_album_uids.push(uid.to_string());
+									}
+								}
+							}
+						}
+					}
+				}
+
+				// Auto-fetch lyrics
+				if auto_fetch_lyrics {
+					if let (Some(ref client), Some(ref rt)) = (&http_client, &rt) {
+						let title = track.title.as_deref().unwrap_or("").to_string();
+						let artist = track
+							.album_artist
+							.clone()
+							.or_else(|| {
+								track.artists.as_deref().and_then(|a| {
+									serde_json::from_str::<Vec<String>>(a)
+										.ok()
+										.and_then(|v| v.into_iter().next())
+								})
+							})
+							.unwrap_or_default();
+						let album = track.albums.as_deref().and_then(|a| {
+							serde_json::from_str::<Vec<serde_json::Value>>(a)
+								.ok()
+								.and_then(|v| {
+									v.into_iter()
+										.next()
+										.and_then(|e| e["name"].as_str().map(|s| s.to_string()))
+								})
+						});
+						let duration_secs = track.duration_ms.map(|ms| (ms / 1000) as u64);
+
+						if !title.is_empty() && !artist.is_empty() {
+							if let Some(lyrics) = rt.block_on(crate::enrichment::lyrics::fetch_lyrics(
+								client,
+								&title,
+								&artist,
+								album.as_deref(),
+								duration_secs,
+							)) {
+								let track_id = crate::db::get_track_by_uid(conn, &track.uid)
+									.ok()
+									.flatten()
+									.and_then(|t| t.id);
+								if let Some(id) = track_id {
+									let _ = crate::db::upsert_lyrics(
+										conn,
+										&crate::db::Lyrics {
+											id: None,
+											track_id: id,
+											source: lyrics.source,
+											plain: lyrics.plain,
+											synced: lyrics.synced,
+											instrumental: lyrics.instrumental,
+										},
+									);
+								}
+							}
+						}
+					}
+				}
 			}
 		}
 
@@ -823,6 +1187,54 @@ pub fn scan_directory_with_progress(conn: &Connection, dir: &str, app: &AppHandl
 				serde_json::json!({ "scanned": scanned, "total": total }),
 			)
 			.ok();
+		}
+	}
+
+	// Post-scan: enrich newly scanned albums (album data only, not re-enriching tracks)
+	if auto_enrich_albums && !scanned_album_uids.is_empty() {
+		if let (Some(ref settings), Some(ref client), Some(ref rt)) =
+			(&enrich_settings, &http_client, &rt)
+		{
+			let albums = crate::db::get_all_albums(conn).unwrap_or_default();
+			for album_uid in &scanned_album_uids {
+				if let Some(album) = albums.iter().find(|a| &a.uid == album_uid) {
+					let artist = album
+						.album_artist
+						.clone()
+						.or_else(|| {
+							album.artists.as_deref().and_then(|a| {
+								serde_json::from_str::<Vec<String>>(a)
+									.ok()
+									.and_then(|v| v.into_iter().next())
+							})
+						});
+
+					if let Some(artist) = artist {
+						let result = rt.block_on(crate::enrichment::enrich_album_async(
+							client,
+							&album.title,
+							&artist,
+							settings,
+						));
+						let update = AlbumUpdate {
+							title: None,
+							format: result.format,
+							rating: None,
+							artists: None,
+							album_artist: None,
+							release_date: result.release_date,
+							tags: None,
+							genres: result.genres,
+							tracks: None,
+							credits: result.description,
+							label: result.label,
+							artwork_blob: result.artwork,
+							artwork_path: None,
+						};
+						let _ = crate::db::update_album_by_uid(conn, album_uid, &update);
+					}
+				}
+			}
 		}
 	}
 

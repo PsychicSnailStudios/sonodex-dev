@@ -24,6 +24,8 @@
 	} from "$lib/ts/app/libraryManager";
 	import { library } from "$lib/ts/library.svelte";
 	import type { DuplicateGroup } from "$lib/ts/util/types";
+    import { scanState } from "$lib/ts/app-states/state_session.svelte";
+    import { enrichAllAlbums, enrichAllArtists, enrichAllTracks } from "$lib/ts/app/enrichment";
 
 	// ─── Search ───────────────────────────────────────────────────────────────────
 	let trackSearch = $state("");
@@ -135,6 +137,44 @@
 	function onDuplicateResolved() {
 		loadDuplicates();
 	}
+
+	async function enrichAll() {
+		scanState.enriching = true;
+		scanState.enrichDone = 0;
+		scanState.enrichTotal = 0;
+		scanState.enrichErrors = 0;
+		try {
+			enrichAllTracks();
+			enrichAllAlbums();
+			enrichAllArtists();
+		} catch (e) {
+			scanState.status = `Enrich error: ${e}`;
+			scanState.enriching = false;
+		}
+	}
+	async function enrich(type: "tracks" | "albums" | "artists") {
+		scanState.enriching = true;
+		scanState.enrichDone = 0;
+		scanState.enrichTotal = 0;
+		scanState.enrichErrors = 0;
+		try {
+			switch (type) {
+				case "tracks":
+					enrichAllTracks();
+					break;
+				case "albums":
+					enrichAllAlbums();
+					break;
+				case "artists":
+					enrichAllArtists();
+					break;
+			}
+		} catch (e) {
+			scanState.status = `Enrich error: ${e}`;
+			scanState.enriching = false;
+		}
+	}
+	
 </script>
 
 <div class="flex flex-col gap-2 p-2 border-2 rounded-md h-full w-full overflow-hidden">

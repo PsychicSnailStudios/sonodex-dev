@@ -491,6 +491,8 @@ async fn replace_track_path(
 	let filename_delims: Vec<&str> = filename_delim_raw.split('|').collect();
 	let genre_delims:    Vec<&str> = genre_delim_raw.split('|').collect();
 
+	let try_ampersand = get("scan_try_parse_ampersand", "true") == "true";
+
 	let path = std::path::Path::new(&new_path);
 	if let Some(fresh_track) = scanner::read_track_with_settings(
 		path,
@@ -502,6 +504,7 @@ async fn replace_track_path(
 		&tag_delims,
 		&filename_delims,
 		&genre_delims,
+		try_ampersand,
 	) {
 		let merged = MetadataUpdate {
 			title:        fresh_track.title,

@@ -70,16 +70,59 @@ pub fn start_watcher(app: AppHandle, profile_uid: String, paths: Vec<String>) {
                         };
 
                         match event.kind {
-                            EventKind::Create(_) | EventKind::Modify(_) => {
-                                // Wait briefly for the file to be fully written
-                                std::thread::sleep(Duration::from_millis(300));
+                        EventKind::Create(_) | EventKind::Modify(_) => {
+                            std::thread::sleep(Duration::from_millis(300));
 
-                                if !path.exists() {
-                                    eprintln!("[watcher] Path gone after delay: {:?}", path);
-                                    continue;
-                                }
+                            if !path.exists() {
+                                eprintln!("[watcher] Path gone after delay: {:?}", path);
+                                continue;
+                            }
 
-                                match crate::scanner::read_track(path) {
+                            let settings_path = crate::profiles::get_settings_db_path(&profile_uid);
+                            let track_opt = if let Ok(settings_conn) = rusqlite::Connection::open(&settings_path) {
+                                let g = |key: &str, default: &str| -> String {
+                                    crate::db::get_setting(&settings_conn, key)
+                                        .ok()
+                                        .flatten()
+                                        .unwrap_or_else(|| default.to_string())
+                                };
+
+                                let priority_title  = g("filename_priority_title",  "tag");
+                                let priority_artist = g("filename_priority_artist", "tag");
+                                let priority_album  = g("filename_priority_album",  "tag");
+                                let priority_year   = g("filename_priority_year",   "tag");
+                                let custom_pattern  = g("filename_custom_pattern",  "");
+                                let try_ampersand   = g("scan_try_parse_ampersand", "true") == "true";
+
+                                let tag_delim_raw      = g("artist_tag_delimiters",      " / |; |, |,");
+                                let filename_delim_raw = g("artist_filename_delimiters", " / |; | feat. | ft. | featuring ");
+                                let genre_delim_raw    = g("genre_delimiters",           " / |; |, ");
+
+                                let tag_delims:      Vec<String> = tag_delim_raw.split('|').map(|s| s.to_string()).collect();
+                                let filename_delims: Vec<String> = filename_delim_raw.split('|').map(|s| s.to_string()).collect();
+                                let genre_delims:    Vec<String> = genre_delim_raw.split('|').map(|s| s.to_string()).collect();
+
+                                let tag_delims_ref:      Vec<&str> = tag_delims.iter().map(|s| s.as_str()).collect();
+                                let filename_delims_ref: Vec<&str> = filename_delims.iter().map(|s| s.as_str()).collect();
+                                let genre_delims_ref:    Vec<&str> = genre_delims.iter().map(|s| s.as_str()).collect();
+
+                                crate::scanner::read_track_with_settings(
+                                    path,
+                                    &priority_title,
+                                    &priority_artist,
+                                    &priority_album,
+                                    &priority_year,
+                                    &custom_pattern,
+                                    &tag_delims_ref,
+                                    &filename_delims_ref,
+                                    &genre_delims_ref,
+                                    try_ampersand,
+                                )
+                            } else {
+                                crate::scanner::read_track(path)
+                            };
+
+                            match track_opt {
                                     Some(track) => {
                                         match crate::db::upsert_track(&conn, &track) {
                                             Ok(_) => {

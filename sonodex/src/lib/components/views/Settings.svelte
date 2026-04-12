@@ -26,8 +26,8 @@
 
 	// VARIABLES
 	let paths = $state<{ id: number; path: string }[]>([]);
-	let newPath = "";
-	let settings: Record<string, string> = {};
+	let newPath = $state("");
+	let settings = $state<Record<string, string>>({});
 
 	let lastfmConnected = $state(false);
 	let spotifyConnected = $state(false);
@@ -66,6 +66,7 @@
 			await loadEqSettings();
 
 			await listen("enrich:progress", (event: any) => {
+				scanState.enriching = true;
 				scanState.enrichDone = event.payload.done;
 				scanState.enrichTotal = event.payload.total;
 				scanState.enrichErrors = event.payload.errors;
@@ -78,6 +79,7 @@
 			});
 
 			await listen("scan:progress", async (event: any) => {
+				scanState.loading = true;
 				scanState.progress = event.payload.scanned;
 				scanState.total = event.payload.total;
 				scanState.status = `Scanning... ${scanState.progress} / ${scanState.total}`;
@@ -164,21 +166,6 @@
 		scanState.progress = 0;
 		scanState.total = 0;
 		await invoke("rescan");
-	}
-
-	async function enrichAll() {
-		scanState.enriching = true;
-		scanState.enrichDone = 0;
-		scanState.enrichTotal = 0;
-		scanState.enrichErrors = 0;
-		try {
-			enrichAllTracks();
-			// enrichAllAlbums();
-			enrichAllArtists();
-		} catch (e) {
-			scanState.status = `Enrich error: ${e}`;
-			scanState.enriching = false;
-		}
 	}
 
 	async function handleEqToggle(checked: boolean) {
@@ -347,7 +334,7 @@
 	
 				<div class="space-y-2">
 				<h2 class="text-sm font-semibold">Metadata Priority</h2>
-				<p class="text-xs text-muted-foreground">Choose whether each field should prefer file tags or be parsed from the filename.</p>
+				<p class="text-xs text-muted-foreground">File Tag uses embedded tags with filename as fallback. Filename override prefers the filename. Folder uses the folder structure as the override source.</p>
 				{#each ["filename_priority_title", "filename_priority_artist", "filename_priority_album", "filename_priority_year"] as key}
 					<div class="flex items-center justify-between gap-4">
 					<label class="text-sm w-24">{SETTING_LABELS[key]}</label>
@@ -376,18 +363,38 @@
 				</div>
 	
 				<div class="space-y-2">
-				<h2 class="text-sm font-semibold">Folder Path Fallback</h2>
-				<p class="text-xs text-muted-foreground">If a field is missing from tags and filename, infer it from the folder structure (e.g. /Artist/Album/track).</p>
-				{#each [
-					{ key: "folder_fallback_artist", label: "Artist" },
-					{ key: "folder_fallback_album", label: "Album" },
-					{ key: "folder_fallback_year", label: "Year" },
-				] as { key, label }}
-					<div class="flex items-center justify-between gap-4">
-					<label class="text-sm">{label}</label>
-					<Switch checked={settings[key] === "true"} onCheckedChange={(checked) => saveSetting(key, checked ? "true" : "false")} />
+				<h2 class="text-sm font-semibold">Artist Parsing</h2>
+				<p class="text-xs text-muted-foreground">Attempt to split artist names containing "&" into separate artists when the result matches already-known artists.</p>
+				<div class="flex items-center justify-between gap-4">
+					<label class="text-sm">Try parse &amp;</label>
+					<Switch checked={settings["scan_try_parse_ampersand"] === "true"} onCheckedChange={(checked) => saveSetting("scan_try_parse_ampersand", checked ? "true" : "false")} />
+				</div>
+				</div>
+			</div>
+
+			<h3 class="font-semibold">Scan Behaviour</h3>
+			<div class="flex flex-col gap-2 p-2 bg-muted rounded-md">
+				<p class="text-xs text-muted-foreground">These run automatically when a path is scanned. Enrichment and lyrics fetch require an internet connection and will slow down scanning.</p>
+				<div class="flex items-center justify-between gap-4">
+					<div>
+						<label class="text-sm font-medium">Auto-enrich tracks</label>
+						<p class="text-xs text-muted-foreground">Fetch missing metadata from APIs during scan.</p>
 					</div>
-				{/each}
+					<Switch checked={settings["auto_enrich_tracks"] === "true"} onCheckedChange={(checked) => saveSetting("auto_enrich_tracks", checked ? "true" : "false")} />
+				</div>
+				<div class="flex items-center justify-between gap-4">
+					<div>
+						<label class="text-sm font-medium">Auto-enrich albums</label>
+						<p class="text-xs text-muted-foreground">Fetch album metadata after tracks are scanned.</p>
+					</div>
+					<Switch checked={settings["auto_enrich_albums"] === "true"} onCheckedChange={(checked) => saveSetting("auto_enrich_albums", checked ? "true" : "false")} />
+				</div>
+				<div class="flex items-center justify-between gap-4">
+					<div>
+						<label class="text-sm font-medium">Auto-fetch lyrics</label>
+						<p class="text-xs text-muted-foreground">Fetch lyrics from lrclib for each track during scan.</p>
+					</div>
+					<Switch checked={settings["auto_fetch_lyrics"] === "true"} onCheckedChange={(checked) => saveSetting("auto_fetch_lyrics", checked ? "true" : "false")} />
 				</div>
 			</div>
 	
