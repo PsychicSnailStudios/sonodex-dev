@@ -1,6 +1,6 @@
 <script lang="ts">
 	// COMPONENTS
-	import { House, Music, ListMusic, Search, Tags, DiscAlbum, Disc, SquareUser } from "lucide-svelte";
+	import { House, Music, ListMusic, Search, Tags, Settings, DiscAlbum, Disc, SquareUser } from "lucide-svelte";
 
 	import { Button } from "$lib/components/ui/button/index.js";
 
@@ -18,6 +18,8 @@
 		{ value: "albums", label: "Albums", icon: DiscAlbum },
 		{ value: "artists", label: "Artists", icon: SquareUser },
 		{ value: "playlists", label: "Playlists", icon: ListMusic },
+		{ value: "settings", label: "Settings", icon: Settings },
+		{ value: "manage", label: "Manage Library", icon: Disc },
 	];
 
 	let hoverTabTimeouts = new Map<string, ReturnType<typeof setTimeout>>();
