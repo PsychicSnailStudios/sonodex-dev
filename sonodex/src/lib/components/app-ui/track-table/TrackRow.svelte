@@ -23,6 +23,7 @@
 	let {
 		track,
 		orderedUids,
+		viewId,
 		index,
 		compact = false,
 		gridTemplate,
@@ -41,6 +42,7 @@
 		track: Track;
 		orderedUids: string[];
 		index: number;
+    	viewId: string;    
 		compact?: boolean;
 		gridTemplate: string;
 		showNumber: boolean;
@@ -58,12 +60,12 @@
 
 	// VARIABLES
 	const isGhosted = $derived(track.path === "" || /^[a-z]+-[0-9a-f-]{36}$/.test(track.path));
-	let isSelected = $derived(trackSelection.isSelected(track.uid));
+	let isSelected = $derived(trackSelection.isSelected(track.uid, viewId));
 	
 	// FUNCTIONS
 	function handleRowClick(e: MouseEvent) {
 		if ((e.target as HTMLElement).closest("button")) return;
-		selectTrack(track.uid, orderedUids, e);
+		selectTrack(track.uid, orderedUids, e, viewId);
 	}
 
 	function handleRowDblClick(e: MouseEvent) {

@@ -9,14 +9,22 @@ let lastClickedUid = $state<string | null>(null);
 let context = $state<SelectionContext>("library");
 let contextUid = $state<string | null>(null);
 
+let ownerViewId = $state<string | null>(null)
+
 export const trackSelection = {
 	get selected() { return selectedUids; },
 	get lastClicked() { return lastClickedUid; },
 	get context() { return context; },
 	get contextUid() { return contextUid; },
 	get count() { return selectedUids.size; },
-	isSelected(uid: string) { return selectedUids.has(uid); },
+	isSelected(uid: string, viewId: string): boolean {
+		return ownerViewId === viewId && selectedUids.has(uid)
+	}
 };
+
+export function generateViewId(): string {
+  return crypto.randomUUID()
+}
 
 export function setTrackSelectionContext(ctx: SelectionContext, uid: string | null = null) {
 	context = ctx;
@@ -25,12 +33,22 @@ export function setTrackSelectionContext(ctx: SelectionContext, uid: string | nu
 	lastClickedUid = null;
 }
 
-export function clearTrackSelection() {
+export function clearTrackSelection(viewId?: string) {
 	selectedUids = new Set();
 	lastClickedUid = null;
+
+	if (!viewId || ownerViewId === viewId) {
+		selectedUids = new Set()
+		ownerViewId = null
+	}
 }
 
-export function selectTrack(uid: string, orderedUids: string[], event: MouseEvent) {
+export function selectTrack(uid: string, orderedUids: string[], event: MouseEvent, viewId: string) {
+	if (ownerViewId !== viewId) {
+		selectedUids = new Set()
+		ownerViewId = viewId
+	}
+	
 	if (event.shiftKey && lastClickedUid) {
 		const a = orderedUids.indexOf(lastClickedUid);
 		const b = orderedUids.indexOf(uid);

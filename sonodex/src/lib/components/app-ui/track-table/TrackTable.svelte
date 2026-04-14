@@ -14,7 +14,7 @@
 	// SCRIPTS
 	import { parseAlbum, parseTrackNumber } from "$lib/ts/util/helpers"
 	import { dragState, endDrag } from "$lib/ts/app-states/state_drag.svelte"
-	import { trackSelection, setTrackSelectionContext, clearTrackSelection, copySelectedToClipboard } from "$lib/ts/app/trackSelection.svelte"
+	import { generateViewId, trackSelection, setTrackSelectionContext, clearTrackSelection, copySelectedToClipboard } from "$lib/ts/app/trackSelection.svelte"
 	import { removeTracksFromPlaylist, reorderPlaylistTracks, addTracksToPlaylist } from "$lib/ts/audio/playlistManager.svelte"
 	
 	// TYPES
@@ -28,6 +28,7 @@
 	}>();
 
 	// VARIABLES
+	const viewId = generateViewId()
 	const v = $derived(columns.visible)
 	const orderedUids = $derived(sortedTracks.map((t) => t.uid))
 
@@ -80,12 +81,12 @@
 	}
 
 	function handleTableClick(e: MouseEvent) {
-		if ((e.target as HTMLElement) === e.currentTarget) clearTrackSelection()
+		if ((e.target as HTMLElement) === e.currentTarget) clearTrackSelection(viewId)
 	}
 
 	function handleKeyDown(e: KeyboardEvent) {
 		if (e.key === "Escape") {
-			clearTrackSelection()
+			clearTrackSelection(viewId)
 			return
 		}
 		if ((e.ctrlKey || e.metaKey) && e.key === "c") {
@@ -96,7 +97,7 @@
 		if (e.key === "Delete" && playlistUid && trackSelection.count > 0) {
 			e.preventDefault()
 			removeTracksFromPlaylist(playlistUid, [...trackSelection.selected])
-			clearTrackSelection()
+			clearTrackSelection(viewId)
 			return
 		}
 		if ((e.ctrlKey || e.metaKey) && e.key === "v") {
@@ -287,6 +288,7 @@
 							index={i}
 							{compact}
 							{gridTemplate}
+  							{viewId}
 							showNumber={v.number}
 							showArtwork={v.artwork}
 							showTitle={v.title}
