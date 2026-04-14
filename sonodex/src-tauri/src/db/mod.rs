@@ -7,6 +7,7 @@ pub mod playlist_manager;
 pub mod settings_manager;
 pub mod track_manager;
 pub mod analytics_manager;
+pub mod tag_manager;
 
 pub use album_manager::*;
 pub use artist_manager::*;
@@ -182,5 +183,6 @@ pub fn init_lib_db(conn: &Connection) -> Result<()> {
 		CREATE UNIQUE INDEX IF NOT EXISTS idx_playlists_uid ON playlists(uid);
 		CREATE INDEX IF NOT EXISTS idx_playlists_folder ON playlists(folder);
 	",
-	)
+	)?;
+	crate::db::tag_manager::create_tag_tables(conn)
 }

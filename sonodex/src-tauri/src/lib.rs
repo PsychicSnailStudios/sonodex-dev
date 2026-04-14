@@ -28,6 +28,10 @@ use state::AppState;
 use tauri::{AppHandle, Emitter, Manager, State};
 use tauri_plugin_deep_link::DeepLinkExt;
 
+use crate::db::tag_manager::{
+    self, Tag, TagGroup, TagKind,
+};
+
 pub fn open_settings_conn(uid: &str) -> Connection {
 	Connection::open(get_settings_db_path(uid)).expect("Failed to open settings database")
 }
@@ -919,6 +923,14 @@ async fn enrich_track(
 			user_options: None,
 		};
 		db::update_track_metadata(&conn, numeric_id, &update).map_err(|e| e.to_string())?;
+
+		if let Some(ref genres_json) = update.genres {
+			if let Ok(names) = serde_json::from_str::<Vec<String>>(genres_json) {
+				for name in names {
+					crate::db::tag_manager::ensure_tag(&conn, &name, crate::db::tag_manager::TagKind::Genre);
+				}
+			}
+		}
 	}
 
 	app.emit("library:updated", ()).ok();
@@ -990,6 +1002,13 @@ async fn enrich_all(app: AppHandle, state: State<'_, AppState>) -> Result<(), St
 					artwork_path: None,
 					user_options: None,
 				};
+				if let Some(ref genres_json) = update.genres {
+					if let Ok(names) = serde_json::from_str::<Vec<String>>(genres_json) {
+						for name in names {
+							crate::db::tag_manager::ensure_tag(&conn, &name, crate::db::tag_manager::TagKind::Genre);
+						}
+					}
+				}
 				db::update_track_metadata(&conn, id, &update).ok();
 			}
 			Err(_) => errors += 1,
@@ -1599,6 +1618,146 @@ async fn spotify_enrich_artist_cmd(
 		.map_err(|e| e.to_string())
 }
 
+// ── Tags ──────────────────────────────────────────────────────────────────────
+
+/// Return every tag and genre in the dictionary, ordered by kind then name.
+#[tauri::command]
+async fn get_all_tags_cmd(state: State<'_, AppState>) -> Result<Vec<Tag>, String> {
+    let uid = state.get_uid();
+    let conn = open_lib_conn(&uid);
+    tag_manager::get_all_tags(&conn).map_err(|e| e.to_string())
+}
+
+/// Add a new tag (kind = "tag") to the dictionary.
+/// Returns the uid of the created (or already-existing) tag.
+#[tauri::command]
+async fn add_tag_cmd(
+    state: State<'_, AppState>,
+    name: String,
+    color: Option<String>,
+) -> Result<String, String> {
+    let uid = state.get_uid();
+    let conn = open_lib_conn(&uid);
+    tag_manager::add_tag(&conn, &name, TagKind::Tag, color.as_deref())
+        .map_err(|e| e.to_string())
+}
+
+/// Add a new genre to the dictionary.
+#[tauri::command]
+async fn add_genre_cmd(
+    state: State<'_, AppState>,
+    name: String,
+    color: Option<String>,
+) -> Result<String, String> {
+    let uid = state.get_uid();
+    let conn = open_lib_conn(&uid);
+    tag_manager::add_tag(&conn, &name, TagKind::Genre, color.as_deref())
+        .map_err(|e| e.to_string())
+}
+
+/// Rename a tag/genre and propagate the change to every entity that uses it.
+#[tauri::command]
+async fn rename_tag_cmd(
+    state: State<'_, AppState>,
+    uid: String,
+    new_name: String,
+) -> Result<(), String> {
+    let profile_uid = state.get_uid();
+    let conn = open_lib_conn(&profile_uid);
+    tag_manager::rename_tag(&conn, &uid, &new_name).map_err(|e| e.to_string())
+}
+
+/// Delete a tag/genre and remove it from every entity that uses it.
+#[tauri::command]
+async fn delete_tag_cmd(
+    state: State<'_, AppState>,
+    uid: String,
+) -> Result<(), String> {
+    let profile_uid = state.get_uid();
+    let conn = open_lib_conn(&profile_uid);
+    tag_manager::delete_tag(&conn, &uid).map_err(|e| e.to_string())
+}
+
+/// Update the display color of a tag/genre (UI hint only, not stored on entities).
+#[tauri::command]
+async fn update_tag_color_cmd(
+    state: State<'_, AppState>,
+    uid: String,
+    color: Option<String>,
+) -> Result<(), String> {
+    let profile_uid = state.get_uid();
+    let conn = open_lib_conn(&profile_uid);
+    tag_manager::update_tag_color(&conn, &uid, color.as_deref())
+        .map_err(|e| e.to_string())
+}
+
+// ── Tag Groups ────────────────────────────────────────────────────────────────
+
+/// Return all tag groups with their member uid lists.
+#[tauri::command]
+async fn get_tag_groups_cmd(state: State<'_, AppState>) -> Result<Vec<TagGroup>, String> {
+    let uid = state.get_uid();
+    let conn = open_lib_conn(&uid);
+    tag_manager::get_all_tag_groups(&conn).map_err(|e| e.to_string())
+}
+
+/// Create a new tag group.
+///
+/// `kind`       — "tag" or "genre"
+/// `member_uids` — list of tag UIDs to include
+#[tauri::command]
+async fn create_tag_group_cmd(
+    state: State<'_, AppState>,
+    name: String,
+    kind: String,
+    color: Option<String>,
+    member_uids: Vec<String>,
+) -> Result<TagGroup, String> {
+    let profile_uid = state.get_uid();
+    let conn = open_lib_conn(&profile_uid);
+    tag_manager::create_tag_group(
+        &conn,
+        &name,
+        TagKind::from_str(&kind),
+        color.as_deref(),
+        &member_uids,
+    )
+    .map_err(|e| e.to_string())
+}
+
+/// Update an existing tag group's name, color, and/or member list.
+/// Pass `null` for any field you don't want to change.
+#[tauri::command]
+async fn update_tag_group_cmd(
+    state: State<'_, AppState>,
+    uid: String,
+    name: Option<String>,
+    color: Option<Option<String>>,   // Some(None) = clear color, None = don't touch
+    member_uids: Option<Vec<String>>,
+) -> Result<(), String> {
+    let profile_uid = state.get_uid();
+    let conn = open_lib_conn(&profile_uid);
+    tag_manager::update_tag_group(
+        &conn,
+        &uid,
+        name.as_deref(),
+        color.as_ref().map(|c| c.as_deref()),
+        member_uids.as_deref(),
+    )
+    .map_err(|e| e.to_string())
+}
+
+/// Delete a tag group (does NOT delete the member tags themselves).
+#[tauri::command]
+async fn delete_tag_group_cmd(
+    state: State<'_, AppState>,
+    uid: String,
+) -> Result<(), String> {
+    let profile_uid = state.get_uid();
+    let conn = open_lib_conn(&profile_uid);
+    tag_manager::delete_tag_group(&conn, &uid).map_err(|e| e.to_string())
+}
+
 // ─────────────────────────────────────────────
 // ENTRY POINT
 // ─────────────────────────────────────────────
@@ -1711,7 +1870,7 @@ pub fn run() {
 
 			#[cfg(desktop)]
 			app.handle().plugin(tauri_plugin_updater::Builder::new().build())?;
-
+			app.handle().plugin(tauri_plugin_window_state::Builder::default().build())?;
 			Ok(())
 		})
 		.invoke_handler(tauri::generate_handler![
@@ -1791,7 +1950,17 @@ pub fn run() {
 			add_uid_remap,
 			resolve_uid,
 			replace_track_path,
-			open_in_explorer
+			open_in_explorer,
+			get_all_tags_cmd,
+			add_tag_cmd,
+			add_genre_cmd,
+			rename_tag_cmd,
+			delete_tag_cmd,
+			update_tag_color_cmd,
+			get_tag_groups_cmd,
+			create_tag_group_cmd,
+			update_tag_group_cmd,
+			delete_tag_group_cmd,
 		])
 		.run(tauri::generate_context!())
 		.expect("error while running tauri application");

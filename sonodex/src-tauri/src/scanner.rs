@@ -1103,6 +1103,21 @@ pub fn scan_directory_with_progress(conn: &Connection, dir: &str, app: &AppHandl
 			if upsert_track(conn, &track).is_ok() {
 				process_track(conn, &track);
 
+				if let Some(ref tags_json) = track.tags {
+					if let Ok(names) = serde_json::from_str::<Vec<String>>(tags_json) {
+						for name in names {
+							crate::db::tag_manager::ensure_tag(conn, &name, crate::db::tag_manager::TagKind::Tag);
+						}
+					}
+				}
+				if let Some(ref genres_json) = track.genres {
+					if let Ok(names) = serde_json::from_str::<Vec<String>>(genres_json) {
+						for name in names {
+							crate::db::tag_manager::ensure_tag(conn, &name, crate::db::tag_manager::TagKind::Genre);
+						}
+					}
+				}
+
 				// Collect album UIDs for post-scan enrich
 				if auto_enrich_albums {
 					if let Some(ref albums_json) = track.albums {

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Trash, CloudDownload } from "lucide-svelte";
+	import { Trash, CloudDownload, FolderInput } from "lucide-svelte";
 
 	import * as Tabs from "$lib/components/ui/tabs/index.js";
 	import * as Tooltip from "$lib/components/ui/tooltip/index.js";
@@ -12,6 +12,8 @@
 	import AlbumRow from "$lib/components/app-ui/library-manager/AlbumRow.svelte";
 	import ArtistRow from "$lib/components/app-ui/library-manager/ArtistRow.svelte";
 	import DuplicateGroupCard from "$lib/components/app-ui/library-manager/DuplicateGroupCard.svelte";
+	import AddToAlbumDialog from "$lib/components/app-ui/library-manager/AddToAlbumDialog.svelte";
+	import TagManager from "$lib/components/app-ui/library-manager/TagManager.svelte";
 
 	import {
 		removeTracksFromLibrary,
@@ -24,8 +26,8 @@
 	} from "$lib/ts/app/libraryManager";
 	import { library } from "$lib/ts/library.svelte";
 	import type { DuplicateGroup } from "$lib/ts/util/types";
-    import { scanState } from "$lib/ts/app-states/state_session.svelte";
-    import { enrichAllAlbums, enrichAllArtists, enrichAllTracks } from "$lib/ts/app/enrichment";
+	import { scanState } from "$lib/ts/app-states/state_session.svelte";
+	import { enrichAllAlbums, enrichAllArtists, enrichAllTracks } from "$lib/ts/app/enrichment";
 
 	// ─── Search ───────────────────────────────────────────────────────────────────
 	let trackSearch = $state("");
@@ -37,10 +39,17 @@
 	let duplicates = $state<DuplicateGroup[]>([]);
 	let duplicatesLoaded = $state(false);
 
+	// ─── Add to album dialog ──────────────────────────────────────────────────────
+	let addToAlbumOpen = $state(false);
+
 	// ─── Selections ───────────────────────────────────────────────────────────────
 	let trackSelections = $state<Record<string, boolean>>({});
 	let albumSelections = $state<Record<string, boolean>>({});
 	let artistSelections = $state<Record<string, boolean>>({});
+
+	let lastTrackIndex = $state<number | null>(null);
+	let lastAlbumIndex = $state<number | null>(null);
+	let lastArtistIndex = $state<number | null>(null);
 
 	// ─── Filtered lists ───────────────────────────────────────────────────────────
 	const filteredTracks = $derived(
@@ -102,6 +111,53 @@
 		filteredArtists.length > 0 && filteredArtists.every((a) => artistSelections[a.uid])
 	);
 
+	// ─── Shift-select helpers ─────────────────────────────────────────────────────
+	function shiftSelectRange<T extends { uid: string }>(
+		list: T[],
+		clickedIndex: number,
+		lastIndex: number | null,
+		selections: Record<string, boolean>
+	): Record<string, boolean> {
+		const next = { ...selections };
+		const from = lastIndex ?? clickedIndex;
+		const lo = Math.min(from, clickedIndex);
+		const hi = Math.max(from, clickedIndex);
+		for (let i = lo; i <= hi; i++) {
+			next[list[i].uid] = true;
+		}
+		return next;
+	}
+
+	function toggleTrack(uid: string, index: number) {
+		trackSelections = { ...trackSelections, [uid]: !(trackSelections[uid] ?? false) };
+		lastTrackIndex = index;
+	}
+
+	function shiftTrack(index: number) {
+		trackSelections = shiftSelectRange(filteredTracks, index, lastTrackIndex, trackSelections);
+		lastTrackIndex = index;
+	}
+
+	function toggleAlbum(uid: string, index: number) {
+		albumSelections = { ...albumSelections, [uid]: !(albumSelections[uid] ?? false) };
+		lastAlbumIndex = index;
+	}
+
+	function shiftAlbum(index: number) {
+		albumSelections = shiftSelectRange(filteredAlbums, index, lastAlbumIndex, albumSelections);
+		lastAlbumIndex = index;
+	}
+
+	function toggleArtist(uid: string, index: number) {
+		artistSelections = { ...artistSelections, [uid]: !(artistSelections[uid] ?? false) };
+		lastArtistIndex = index;
+	}
+
+	function shiftArtist(index: number) {
+		artistSelections = shiftSelectRange(filteredArtists, index, lastArtistIndex, artistSelections);
+		lastArtistIndex = index;
+	}
+
 	// ─── Bulk actions ─────────────────────────────────────────────────────────────
 	async function bulkRemoveTracks() {
 		await removeTracksFromLibrary(selectedTrackUids);
@@ -159,23 +215,18 @@
 		scanState.enrichErrors = 0;
 		try {
 			switch (type) {
-				case "tracks":
-					enrichAllTracks();
-					break;
-				case "albums":
-					enrichAllAlbums();
-					break;
-				case "artists":
-					enrichAllArtists();
-					break;
+				case "tracks": enrichAllTracks(); break;
+				case "albums": enrichAllAlbums(); break;
+				case "artists": enrichAllArtists(); break;
 			}
 		} catch (e) {
 			scanState.status = `Enrich error: ${e}`;
 			scanState.enriching = false;
 		}
 	}
-	
 </script>
+
+<AddToAlbumDialog bind:open={addToAlbumOpen} trackUids={selectedTrackUids} />
 
 <div class="flex flex-col gap-2 p-2 border-2 rounded-md h-full w-full overflow-hidden">
 	<h2 class="h2">Library Manager</h2>
@@ -239,15 +290,25 @@
 										</Tooltip.Trigger>
 										<Tooltip.Content><p>Fetch metadata for selected</p></Tooltip.Content>
 									</Tooltip.Root>
+									<Tooltip.Root>
+										<Tooltip.Trigger
+											class={buttonVariants({ variant: "outline", size: "sm" })}
+											onclick={() => (addToAlbumOpen = true)}
+										>
+											<FolderInput class="w-4 h-4 mr-1" /> Add to Album
+										</Tooltip.Trigger>
+										<Tooltip.Content><p>Add selected to an album</p></Tooltip.Content>
+									</Tooltip.Root>
 								</div>
 							{/if}
 						</div>
 						<div class="flex flex-col gap-2">
-							{#each filteredTracks as track (track.uid)}
+							{#each filteredTracks as track, i (track.uid)}
 								<TrackRow
 									{track}
 									selected={trackSelections[track.uid] ?? false}
-									onToggle={() => trackSelections[track.uid] = !(trackSelections[track.uid] ?? false)}
+									onToggle={() => toggleTrack(track.uid, i)}
+									onShiftClick={() => shiftTrack(i)}
 								/>
 							{/each}
 						</div>
@@ -297,11 +358,12 @@
 							{/if}
 						</div>
 						<div class="flex flex-col gap-2">
-							{#each filteredAlbums as album (album.uid)}
+							{#each filteredAlbums as album, i (album.uid)}
 								<AlbumRow
 									{album}
 									selected={albumSelections[album.uid] ?? false}
-									onToggle={() => albumSelections[album.uid] = !(albumSelections[album.uid] ?? false)}
+									onToggle={() => toggleAlbum(album.uid, i)}
+									onShiftClick={() => shiftAlbum(i)}
 								/>
 							{/each}
 						</div>
@@ -351,11 +413,12 @@
 							{/if}
 						</div>
 						<div class="flex flex-col gap-2">
-							{#each filteredArtists as artist (artist.uid)}
+							{#each filteredArtists as artist, i (artist.uid)}
 								<ArtistRow
 									{artist}
 									selected={artistSelections[artist.uid] ?? false}
-									onToggle={() => artistSelections[artist.uid] = !(artistSelections[artist.uid] ?? false)}
+									onToggle={() => toggleArtist(artist.uid, i)}
+									onShiftClick={() => shiftArtist(i)}
 								/>
 							{/each}
 						</div>
@@ -363,7 +426,7 @@
 				</Tabs.Content>
 
 				<Tabs.Content value="tags">
-					<p>Tags</p>
+					<TagManager />
 				</Tabs.Content>
 
 				<!-- DUPLICATES -->

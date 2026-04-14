@@ -2,6 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 import type { Track, Album, Artist, Playlist, Lyrics } from "$lib/ts/util/types";
 import { SortState } from "$lib/ts/app/sortConfig.svelte";
 import { parseUidType } from "$lib/ts/util/helpers";
+import { loadTags } from '$lib/ts/tagManager.svelte';
 
 export const library = $state({
 	tracks: [] as Track[],
@@ -17,10 +18,11 @@ export async function loadLibrary() {
 	library.albums = await invoke("get_albums");
 	library.artists = await invoke("get_artists");
 	library.playlists = await invoke("get_playlists");
+	await loadTags();
 	library.loaded = true;
 }
 
-export async function reloadLibrary(type: "tracks" | "albums" | "artists" | "playlists" | "lyrics") {
+export async function reloadLibrary(type: "tracks" | "all" | "tags" | "albums" | "artists" | "playlists" | "lyrics") {
 	switch (type) {
 		case "tracks":
 			library.tracks = await invoke("get_tracks");
@@ -39,6 +41,12 @@ export async function reloadLibrary(type: "tracks" | "albums" | "artists" | "pla
 				library.tracks.map(t => invoke<Lyrics | null>("get_track_lyrics", { uid: t.uid }))
 			);
 			library.lyrics = allLyrics.filter((l): l is Lyrics => l !== null);
+			break;
+		case "tags":
+			await loadTags();
+			break;
+		case "all":
+			await loadLibrary();
 			break;
 	}
 }

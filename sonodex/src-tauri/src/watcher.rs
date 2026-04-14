@@ -130,8 +130,24 @@ pub fn start_watcher(app: AppHandle, profile_uid: String, paths: Vec<String>) {
 									Some(track) => {
 										match crate::db::upsert_track(&conn, &track) {
 											Ok(_) => {
-												crate::scanner::process_track(&conn, &track);
-												eprintln!("[watcher] Upserted + processed: {:?}", path);
+											crate::scanner::process_track(&conn, &track);
+
+											if let Some(ref tags_json) = track.tags {
+												if let Ok(names) = serde_json::from_str::<Vec<String>>(tags_json) {
+													for name in names {
+														crate::db::tag_manager::ensure_tag(&conn, &name, crate::db::tag_manager::TagKind::Tag);
+													}
+												}
+											}
+											if let Some(ref genres_json) = track.genres {
+												if let Ok(names) = serde_json::from_str::<Vec<String>>(genres_json) {
+													for name in names {
+														crate::db::tag_manager::ensure_tag(&conn, &name, crate::db::tag_manager::TagKind::Genre);
+													}
+												}
+											}
+
+											eprintln!("[watcher] Upserted + processed: {:?}", path);
 												app.emit("library:updated", ()).ok();
 											}
 											Err(e) => {
