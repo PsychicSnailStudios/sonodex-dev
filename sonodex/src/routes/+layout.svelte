@@ -1,4 +1,7 @@
 <script lang="ts">
+  import { saveWindowState, restoreStateCurrent, StateFlags } from "@tauri-apps/plugin-window-state";
+  import { getCurrentWindow } from "@tauri-apps/api/window";
+  
   import './layout.css';
   import favicon from '$lib/assets/favicon.svg';
 
@@ -11,8 +14,18 @@
 
   import WarningDialog from "$lib/components/dialogs/WarnDialog.svelte";
 	import { dialogState, confirmDialog, cancelDialog } from "$lib/ts/app/dialogManager.svelte";
+    import { onMount } from "svelte";
 
   let { children } = $props();
+
+  onMount(async () => {
+    await restoreStateCurrent(StateFlags.ALL);
+
+    const appWindow = getCurrentWindow();
+    await appWindow.onCloseRequested(async () => {
+        await saveWindowState(StateFlags.ALL);
+    });
+  })
 </script>
 
 <svelte:head><link rel="icon" href={favicon} /></svelte:head>
