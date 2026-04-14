@@ -211,7 +211,6 @@
 	}
 </script>
 
-<!-- ─── Delete confirmation ──────────────────────────────────────────────────── -->
 <AlertDialog.Root open={!!deleteConfirmUid} onOpenChange={(v) => { if (!v) { deleteConfirmUid = null; deleteConfirmKind = null; } }}>
 	<AlertDialog.Content>
 		<AlertDialog.Header>
@@ -234,7 +233,6 @@
 	</AlertDialog.Content>
 </AlertDialog.Root>
 
-<!-- ─── Group create/edit modal ───────────────────────────────────────────────── -->
 <Dialog.Root bind:open={groupModalOpen}>
 	<Dialog.Content class="max-w-lg">
 		<Dialog.Header>
@@ -324,8 +322,6 @@
 		</Dialog.Footer>
 	</Dialog.Content>
 </Dialog.Root>
-
-<!-- ─── Main view ─────────────────────────────────────────────────────────────── -->
 
 <Accordion.Root type="single" bind:value={activeSection} onValueChange={(v) => { if (v) { activeSection = v; search = ""; addingNew = false; } }} class="flex flex-col gap-1">
 

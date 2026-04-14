@@ -12,7 +12,7 @@
 	import AlbumRow from "$lib/components/app-ui/library-manager/AlbumRow.svelte";
 	import ArtistRow from "$lib/components/app-ui/library-manager/ArtistRow.svelte";
 	import DuplicateGroupCard from "$lib/components/app-ui/library-manager/DuplicateGroupCard.svelte";
-	import AddToAlbumDialog from "$lib/components/app-ui/library-manager/AddToAlbumDialog.svelte";
+	import AddToAlbumDialog from "$lib/components/dialogs/AddToAlbumDialog.svelte";
 	import TagManager from "$lib/components/app-ui/library-manager/TagManager.svelte";
 
 	import {
