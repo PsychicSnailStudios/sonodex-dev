@@ -22,7 +22,7 @@ use serde::{Deserialize, Serialize};
 pub struct Tag {
     pub uid: String,
     pub name: String,
-    pub kind: TagKind, // "tag" | "genre"
+    pub kind: TagKind,         // "tag" | "genre"
     pub color: Option<String>, // hex color hint for the UI, e.g. "#f59e0b"
     pub created_at: i64,       // unix timestamp
 }
@@ -56,7 +56,7 @@ impl TagKind {
 pub struct TagGroup {
     pub uid: String,
     pub name: String,
-    pub kind: TagKind,   // groups are either all-tags or all-genres
+    pub kind: TagKind, // groups are either all-tags or all-genres
     pub color: Option<String>,
     pub member_uids: Vec<String>, // tag UIDs belonging to this group
     pub created_at: i64,
@@ -65,8 +65,8 @@ pub struct TagGroup {
 // ─── Schema (call from init_lib_db) ───────────────────────────────────────────
 
 pub fn create_tag_tables(conn: &Connection) -> Result<()> {
-	conn.execute_batch(
-		"
+    conn.execute_batch(
+        "
 		CREATE TABLE IF NOT EXISTS tags (
 			uid         TEXT    PRIMARY KEY NOT NULL,
 			name        TEXT    NOT NULL COLLATE NOCASE,
@@ -93,7 +93,7 @@ pub fn create_tag_tables(conn: &Connection) -> Result<()> {
 		CREATE INDEX IF NOT EXISTS idx_tag_group_members_tag
 			ON tag_group_members(tag_uid);
 		",
-	)
+    )
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -140,27 +140,32 @@ fn json_remove(json: &str, name: &str) -> Option<String> {
 /// Insert a new tag/genre into the dictionary.
 /// Returns the uid. If a tag with the same name (case-insensitive) already
 /// exists, the existing uid is returned and no row is inserted.
-pub fn add_tag(conn: &Connection, name: &str, kind: TagKind, color: Option<&str>) -> Result<String> {
-	let kind_str = kind.to_string();
+pub fn add_tag(
+    conn: &Connection,
+    name: &str,
+    kind: TagKind,
+    color: Option<&str>,
+) -> Result<String> {
+    let kind_str = kind.to_string();
 
-	let existing: Option<String> = conn
-		.query_row(
-			"SELECT uid FROM tags WHERE name = ?1 COLLATE NOCASE AND kind = ?2",
-			params![name, kind_str],
-			|row| row.get(0),
-		)
-		.ok();
+    let existing: Option<String> = conn
+        .query_row(
+            "SELECT uid FROM tags WHERE name = ?1 COLLATE NOCASE AND kind = ?2",
+            params![name, kind_str],
+            |row| row.get(0),
+        )
+        .ok();
 
-	if let Some(uid) = existing {
-		return Ok(uid);
-	}
+    if let Some(uid) = existing {
+        return Ok(uid);
+    }
 
-	let uid = crate::db::generate_uid("tg");
-	conn.execute(
-		"INSERT OR IGNORE INTO tags (uid, name, kind, color, created_at) VALUES (?1,?2,?3,?4,?5)",
-		params![uid, name, kind_str, color, now_ts()],
-	)?;
-	Ok(uid)
+    let uid = crate::db::generate_uid("tg");
+    conn.execute(
+        "INSERT OR IGNORE INTO tags (uid, name, kind, color, created_at) VALUES (?1,?2,?3,?4,?5)",
+        params![uid, name, kind_str, color, now_ts()],
+    )?;
+    Ok(uid)
 }
 
 /// Convenience — called from scanner/enrichment when a tag string is encountered.
@@ -189,13 +194,15 @@ pub fn get_tag_by_uid(conn: &Connection, uid: &str) -> Result<Option<Tag>> {
     conn.query_row(
         "SELECT uid, name, kind, color, created_at FROM tags WHERE uid = ?1",
         params![uid],
-        |row| Ok(Tag {
-            uid: row.get(0)?,
-            name: row.get(1)?,
-            kind: TagKind::from_str(&row.get::<_, String>(2)?),
-            color: row.get(3)?,
-            created_at: row.get(4)?,
-        }),
+        |row| {
+            Ok(Tag {
+                uid: row.get(0)?,
+                name: row.get(1)?,
+                kind: TagKind::from_str(&row.get::<_, String>(2)?),
+                color: row.get(3)?,
+                created_at: row.get(4)?,
+            })
+        },
     )
     .optional()
     .map_err(|e| e.into())
@@ -323,10 +330,16 @@ pub fn update_tag_group(
     member_uids: Option<&[String]>,
 ) -> Result<()> {
     if let Some(n) = name {
-        conn.execute("UPDATE tag_groups SET name = ?1 WHERE uid = ?2", params![n, uid])?;
+        conn.execute(
+            "UPDATE tag_groups SET name = ?1 WHERE uid = ?2",
+            params![n, uid],
+        )?;
     }
     if let Some(c) = color {
-        conn.execute("UPDATE tag_groups SET color = ?1 WHERE uid = ?2", params![c, uid])?;
+        conn.execute(
+            "UPDATE tag_groups SET color = ?1 WHERE uid = ?2",
+            params![c, uid],
+        )?;
     }
     if let Some(members) = member_uids {
         set_group_members(conn, uid, members)?;
@@ -368,10 +381,15 @@ fn get_group_member_uids(conn: &Connection, group_uid: &str) -> Result<Vec<Strin
 // ─── Propagation helpers ──────────────────────────────────────────────────────
 
 /// Walk every row in `table`.`field` (a JSON string array) and rename a value.
-fn propagate_rename(conn: &Connection, table: &str, field: &str, old: &str, new: &str) -> Result<()> {
-    let sql = format!(
-        "SELECT rowid, {field} FROM {table} WHERE {field} IS NOT NULL AND {field} != '[]'"
-    );
+fn propagate_rename(
+    conn: &Connection,
+    table: &str,
+    field: &str,
+    old: &str,
+    new: &str,
+) -> Result<()> {
+    let sql =
+        format!("SELECT rowid, {field} FROM {table} WHERE {field} IS NOT NULL AND {field} != '[]'");
     let mut stmt = conn.prepare(&sql)?;
     let rows: Vec<(i64, String)> = stmt
         .query_map([], |row| Ok((row.get(0)?, row.get(1)?)))?
@@ -389,9 +407,8 @@ fn propagate_rename(conn: &Connection, table: &str, field: &str, old: &str, new:
 
 /// Walk every row and remove a value from the JSON array.
 fn propagate_remove(conn: &Connection, table: &str, field: &str, name: &str) -> Result<()> {
-    let sql = format!(
-        "SELECT rowid, {field} FROM {table} WHERE {field} IS NOT NULL AND {field} != '[]'"
-    );
+    let sql =
+        format!("SELECT rowid, {field} FROM {table} WHERE {field} IS NOT NULL AND {field} != '[]'");
     let mut stmt = conn.prepare(&sql)?;
     let rows: Vec<(i64, String)> = stmt
         .query_map([], |row| Ok((row.get(0)?, row.get(1)?)))?
