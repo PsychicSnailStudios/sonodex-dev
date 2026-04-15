@@ -20,9 +20,11 @@
         "resizable": true,
         "fullscreen": false,
         "decorations": false,
+        "transparent": true,
         "dragDropEnabled": false
       }
     ],
+    "macOSPrivateApi": true,
     "security": {
 	  "csp": "default-src 'self' ipc: http://ipc.localhost; img-src 'self' asset: http://asset.localhost; media-src 'self' asset: http://asset.localhost",
       "assetProtocol": {

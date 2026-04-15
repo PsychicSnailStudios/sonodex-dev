@@ -30,7 +30,7 @@
 
 <svelte:head><link rel="icon" href={favicon} /></svelte:head>
 
-<div class="flex h-screen flex-col overflow-hidden">
+<div class="flex h-screen flex-col overflow-hidden main-app-bg">
   <ModeWatcher />
   <TitleBar />
   <Tooltip.Provider>
@@ -42,3 +42,10 @@
   <Toaster position="top-center" />
   <WarningDialog bind:open={dialogState.open} title={dialogState.title} description={dialogState.description} onconfirm={confirmDialog} oncancel={cancelDialog} />
 </div>
+
+<style>
+  .main-app-bg {
+    background-color: oklch(from var(--background) l c h / 95%);
+    backdrop-filter: blur(100px);
+  }
+</style>
