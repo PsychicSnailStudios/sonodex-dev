@@ -3,7 +3,6 @@
 	// APP
 	import { invoke } from "@tauri-apps/api/core";
 	import { listen } from "@tauri-apps/api/event";
-	import { open } from "@tauri-apps/plugin-dialog";
 	import { onMount } from "svelte";
 	import { setMode, mode } from "mode-watcher";
 
@@ -27,16 +26,13 @@
 	
 
 	// VARIABLES
-	let paths = $state<{ id: number; path: string }[]>([]);
-	let newPath = $state("");
 	let settings = $state<Record<string, string>>({});
 
-	let removingPath = $state<string | null>(null);
 	let lastfmConnected = $state(false);
 	let spotifyConnected = $state(false);
 	let spotifyPlaylists = $state<SpotifyPlaylistSummary[]>([]);
 	let spotifyPlaylistsLoading = $state(false);
-	let spotifyImporting = $state<string | null>(null); // playlist id currently importing
+	let spotifyImporting = $state<string | null>(null);
 
 	let themeOptions = [
 		{ value: "system", label: "System" },
@@ -64,7 +60,6 @@
 		let cleanupSpotify: (() => void) | undefined;
 
 		(async () => {
-			await loadPaths();
 			await loadSettings();
 			await loadEqSettings();
 
@@ -79,26 +74,6 @@
 				scanState.enriching = false;
 				scanState.enrichErrors = event.payload.errors;
 				scanState.status = `Enrichment done. ${event.payload.total - event.payload.errors} updated, ${event.payload.errors} not found.`;
-			});
-
-			await listen("scan:progress", async (event: any) => {
-				scanState.loading = true;
-				scanState.progress = event.payload.scanned;
-				scanState.total = event.payload.total;
-				scanState.status = `Scanning... ${scanState.progress} / ${scanState.total}`;
-			});
-
-			await listen("scan:done", async () => {
-				scanState.status = "Scan done.";
-				scanState.loading = false;
-				scanState.progress = 0;
-				scanState.total = 0;
-				await loadLibrary();
-			});
-
-			await listen("scan:error", (event: any) => {
-				scanState.status = `Scan error: ${event.payload}`;
-				scanState.loading = false;
 			});
 
 			lastfmConnected = await lastfmIsConnected();
@@ -120,16 +95,6 @@
 	});
 
 	// FUNCTIONS
-	async function browsePath() {
-		const selected = await open({ directory: true, multiple: false });
-		if (selected) newPath = selected as string;
-	}
-
-	async function loadPaths() {
-		const result = await invoke("get_paths");
-		paths = result as { id: number; path: string }[];
-	}
-
 	async function loadSettings() {
 		const raw: { key: string; value: string }[] = await invoke("get_settings");
 		settings = Object.fromEntries(raw.map((s) => [s.key, s.value]));
@@ -138,39 +103,6 @@
 	async function saveSetting(key: string, value: string) {
 		settings[key] = value;
 		await invoke("save_setting", { key, value });
-	}
-
-	async function addPath() {
-		if (!newPath.trim()) return;
-		scanState.loading = true;
-		scanState.status = "Scanning...";
-		scanState.progress = 0;
-		scanState.total = 0;
-		try {
-			await invoke("add_path", { path: newPath.trim() });
-			newPath = "";
-			await loadPaths();
-		} catch (e) {
-			scanState.status = `Error: ${e}`;
-			scanState.loading = false;
-		}
-	}
-
-	async function removePath(path: string) {
-		removingPath = path;
-		await invoke("remove_path", { path });
-		await loadPaths();
-		await loadLibrary();
-		scanState.status = `Removed ${path}`;
-		removingPath = null;
-	}
-
-	async function rescan() {
-		scanState.loading = true;
-		scanState.status = "Rescanning...";
-		scanState.progress = 0;
-		scanState.total = 0;
-		await invoke("rescan");
 	}
 
 	async function handleEqToggle(checked: boolean) {
@@ -190,7 +122,6 @@
 
 	async function handleLastfmConnect() {
 		await connectLastfm();
-		// Auth completes via deep-link → onLastfmConnected listener above fires
 	}
 
 	async function handleLastfmDisconnect() {
@@ -254,52 +185,6 @@
 					</Select.Content>
 				</Select.Root>
 				
-			</div>
-			
-			<h3 class="font-semibold">Library Management</h3>
-			<div class="flex flex-col gap-2 p-2 bg-muted rounded-md">
-	
-				<h4 class="text-sm font-semibold">Add Library Path</h4>
-				<div class="flex gap-2">
-				<input
-					bind:value={newPath}
-					placeholder="C:\Music or \\NAS\Music"
-					class="flex-1 border rounded px-3 py-2 text-sm bg-background"
-				/>
-				<Button variant="outline" onclick={browsePath}>Browse</Button>
-				<Button onclick={addPath} disabled={scanState.loading}>
-					{#if scanState.loading}
-						<Loader2 class="animate-spin" />
-					{/if}
-					Add & Scan
-				</Button>
-				</div>
-	
-				<h4 class="text-sm font-semibold">Watched Paths ({paths.length})</h4>
-				{#each paths as p}
-				<div class="flex items-center justify-between border rounded px-3 py-2 text-sm">
-					<span>{p.path}</span>
-					<Button
-						variant="destructive"
-						disabled={scanState.loading || removingPath === p.path}
-						onclick={() => removePath(p.path)}
-					>
-						{#if removingPath === p.path}
-							<Loader2 class="animate-spin" />
-						{/if}
-						Remove
-					</Button>
-				</div>
-				{:else}
-				<p class="text-sm text-muted-foreground">No paths added yet.</p>
-				{/each}
-	
-				<Button onclick={rescan} disabled={scanState.loading}>
-					{#if scanState.loading}
-						<Loader2 class="animate-spin" />
-					{/if}
-					Rescan All
-				</Button>
 			</div>
 	
 			<h3 class="font-semibold">EQ</h3>
@@ -444,7 +329,6 @@
 					{/if}
 				</div>
 	
-				<!-- Last.fm secret key field — only needed for auth, can be hidden once connected -->
 				{#if !lastfmConnected}
 				<div class="space-y-1">
 					<label class="text-sm font-medium">Last.fm Shared Secret</label>
@@ -480,7 +364,6 @@
 					{/if}
 				</div>
 	
-				<!-- Spotify client ID input — shown when not connected -->
 				{#if !spotifyConnected}
 				<div class="space-y-1">
 					<label class="text-sm font-medium">Spotify Client ID</label>
@@ -498,7 +381,6 @@
 				</div>
 				{/if}
 	
-				<!-- Spotify playlists (shown when connected) -->
 				{#if spotifyConnected}
 				<div class="space-y-2">
 					<div class="flex items-center justify-between">

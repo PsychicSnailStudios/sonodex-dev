@@ -1,5 +1,9 @@
 <script lang="ts">
-	import { Trash, CloudDownload, FolderInput } from "lucide-svelte";
+	import { Trash, CloudDownload, FolderInput, Loader2 } from "lucide-svelte";
+	import { invoke } from "@tauri-apps/api/core";
+	import { listen } from "@tauri-apps/api/event";
+	import { open } from "@tauri-apps/plugin-dialog";
+	import { onMount } from "svelte";
 
 	import * as Tabs from "$lib/components/ui/tabs/index.js";
 	import * as Tooltip from "$lib/components/ui/tooltip/index.js";
@@ -24,7 +28,7 @@
 		enrichArtists,
 		getDuplicates,
 	} from "$lib/ts/app/libraryManager";
-	import { library } from "$lib/ts/library.svelte";
+	import { library, loadLibrary } from "$lib/ts/library.svelte";
 	import type { DuplicateGroup } from "$lib/ts/util/types";
 	import { scanState } from "$lib/ts/app-states/state_session.svelte";
 	import { enrichAllAlbums, enrichAllArtists, enrichAllTracks } from "$lib/ts/app/enrichment";
@@ -50,6 +54,78 @@
 	let lastTrackIndex = $state<number | null>(null);
 	let lastAlbumIndex = $state<number | null>(null);
 	let lastArtistIndex = $state<number | null>(null);
+
+	// ─── Paths ────────────────────────────────────────────────────────────────────
+	let paths = $state<{ id: number; path: string }[]>([]);
+	let newPath = $state("");
+	let removingPath = $state<string | null>(null);
+
+	onMount(async () => {
+		await loadPaths();
+
+		await listen("scan:progress", async (event: any) => {
+			scanState.loading = true;
+			scanState.progress = event.payload.scanned;
+			scanState.total = event.payload.total;
+			scanState.status = `Scanning... ${scanState.progress} / ${scanState.total}`;
+		});
+
+		await listen("scan:done", async () => {
+			scanState.status = "Scan done.";
+			scanState.loading = false;
+			scanState.progress = 0;
+			scanState.total = 0;
+			await loadLibrary();
+		});
+
+		await listen("scan:error", (event: any) => {
+			scanState.status = `Scan error: ${event.payload}`;
+			scanState.loading = false;
+		});
+	});
+
+	async function loadPaths() {
+		const result = await invoke("get_paths");
+		paths = result as { id: number; path: string }[];
+	}
+
+	async function browsePath() {
+		const selected = await open({ directory: true, multiple: false });
+		if (selected) newPath = selected as string;
+	}
+
+	async function addPath() {
+		if (!newPath.trim()) return;
+		scanState.loading = true;
+		scanState.status = "Scanning...";
+		scanState.progress = 0;
+		scanState.total = 0;
+		try {
+			await invoke("add_path", { path: newPath.trim() });
+			newPath = "";
+			await loadPaths();
+		} catch (e) {
+			scanState.status = `Error: ${e}`;
+			scanState.loading = false;
+		}
+	}
+
+	async function removePath(path: string) {
+		removingPath = path;
+		await invoke("remove_path", { path });
+		await loadPaths();
+		await loadLibrary();
+		scanState.status = `Removed ${path}`;
+		removingPath = null;
+	}
+
+	async function rescan() {
+		scanState.loading = true;
+		scanState.status = "Rescanning...";
+		scanState.progress = 0;
+		scanState.total = 0;
+		await invoke("rescan");
+	}
 
 	// ─── Filtered lists ───────────────────────────────────────────────────────────
 	const filteredTracks = $derived(
@@ -239,6 +315,7 @@
 					<Tabs.Trigger value="albums" class="flex-1">Albums</Tabs.Trigger>
 					<Tabs.Trigger value="artists" class="flex-1">Artists</Tabs.Trigger>
 					<Tabs.Trigger value="tags" class="flex-1">Tags</Tabs.Trigger>
+					<Tabs.Trigger value="paths" class="flex-1">Paths</Tabs.Trigger>
 					<Tabs.Trigger value="duplicates" class="flex-1" onclick={loadDuplicates}>Duplicates</Tabs.Trigger>
 				</Tabs.List>
 
@@ -427,6 +504,58 @@
 
 				<Tabs.Content value="tags">
 					<TagManager />
+				</Tabs.Content>
+
+				<!-- PATHS -->
+				<Tabs.Content value="paths">
+					<div class="flex flex-col gap-4 pt-2">
+						<div class="flex flex-col gap-2">
+							<h4 class="text-sm font-semibold">Add Library Path</h4>
+							<div class="flex gap-2">
+								<input
+									bind:value={newPath}
+									placeholder="C:\Music or \\NAS\Music"
+									class="flex-1 border rounded px-3 py-2 text-sm bg-background"
+								/>
+								<Button variant="outline" onclick={browsePath}>Browse</Button>
+								<Button onclick={addPath} disabled={scanState.loading}>
+									{#if scanState.loading}
+										<Loader2 class="animate-spin w-4 h-4 mr-1" />
+									{/if}
+									Add & Scan
+								</Button>
+							</div>
+						</div>
+
+						<div class="flex flex-col gap-2">
+							<h4 class="text-sm font-semibold">Watched Paths ({paths.length})</h4>
+							{#each paths as p}
+								<div class="flex items-center justify-between border rounded px-3 py-2 text-sm">
+									<span class="truncate mr-2">{p.path}</span>
+									<Button
+										variant="destructive"
+										size="sm"
+										disabled={scanState.loading || removingPath === p.path}
+										onclick={() => removePath(p.path)}
+									>
+										{#if removingPath === p.path}
+											<Loader2 class="animate-spin w-4 h-4 mr-1" />
+										{/if}
+										Remove
+									</Button>
+								</div>
+							{:else}
+								<p class="text-sm text-muted-foreground">No paths added yet.</p>
+							{/each}
+						</div>
+
+						<Button onclick={rescan} disabled={scanState.loading} class="w-fit">
+							{#if scanState.loading}
+								<Loader2 class="animate-spin w-4 h-4 mr-1" />
+							{/if}
+							Rescan All
+						</Button>
+					</div>
 				</Tabs.Content>
 
 				<!-- DUPLICATES -->
