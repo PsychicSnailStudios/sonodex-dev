@@ -17,7 +17,7 @@ use db::{
 
 use crate::connections::lastfm_auth;
 use crate::connections::spotify_auth;
-use crate::db::{MetadataUpdate, Setting};
+use crate::db::{MetadataUpdate};
 
 use profiles::{
 	create_profile as new_profile, get_lib_db_path, get_settings_db_path, read_registry,
@@ -31,6 +31,9 @@ use tauri_plugin_deep_link::DeepLinkExt;
 use crate::db::tag_manager::{
     self, Tag, TagGroup, TagKind,
 };
+
+// use tauri::Manager;
+// use window_vibrancy::{apply_blur, apply_mica, apply_acrylic, clear_mica, apply_vibrancy, NSVisualEffectMaterial};
 
 pub fn open_settings_conn(uid: &str) -> Connection {
 	Connection::open(get_settings_db_path(uid)).expect("Failed to open settings database")
@@ -377,7 +380,24 @@ fn update_track_metadata(
 ) -> Result<(), String> {
 	let profile_uid = state.get_uid();
 	let conn = open_lib_conn(&profile_uid);
-	db::update_track_metadata_by_uid(&conn, &uid, &update).map_err(|e| e.to_string())
+	db::update_track_metadata_by_uid(&conn, &uid, &update).map_err(|e| e.to_string())?;
+
+	if let Some(ref tags_json) = update.tags {
+		if let Ok(names) = serde_json::from_str::<Vec<String>>(tags_json) {
+			for name in names {
+				crate::db::tag_manager::ensure_tag(&conn, &name, crate::db::tag_manager::TagKind::Tag);
+			}
+		}
+	}
+	if let Some(ref genres_json) = update.genres {
+		if let Ok(names) = serde_json::from_str::<Vec<String>>(genres_json) {
+			for name in names {
+				crate::db::tag_manager::ensure_tag(&conn, &name, crate::db::tag_manager::TagKind::Genre);
+			}
+		}
+	}
+
+	Ok(())
 }
 
 #[tauri::command]
@@ -453,6 +473,22 @@ fn write_track_tags(
 		.map_err(|e| e.to_string())?;
 
 	db::update_track_metadata_by_uid(&conn, &uid, &update).map_err(|e| e.to_string())?;
+
+	if let Some(ref tags_json) = update.tags {
+		if let Ok(names) = serde_json::from_str::<Vec<String>>(tags_json) {
+			for name in names {
+				crate::db::tag_manager::ensure_tag(&conn, &name, crate::db::tag_manager::TagKind::Tag);
+			}
+		}
+	}
+	if let Some(ref genres_json) = update.genres {
+		if let Ok(names) = serde_json::from_str::<Vec<String>>(genres_json) {
+			for name in names {
+				crate::db::tag_manager::ensure_tag(&conn, &name, crate::db::tag_manager::TagKind::Genre);
+			}
+		}
+	}
+
 	app.emit("library:updated", ()).ok();
 	Ok(())
 }
@@ -578,7 +614,24 @@ fn update_album_entry(
 ) -> Result<(), String> {
 	let profile_uid = state.get_uid();
 	let conn = open_lib_conn(&profile_uid);
-	update_album_by_uid(&conn, &uid, &update).map_err(|e| e.to_string())
+	update_album_by_uid(&conn, &uid, &update).map_err(|e| e.to_string())?;
+
+	if let Some(ref tags_json) = update.tags {
+		if let Ok(names) = serde_json::from_str::<Vec<String>>(tags_json) {
+			for name in names {
+				crate::db::tag_manager::ensure_tag(&conn, &name, crate::db::tag_manager::TagKind::Tag);
+			}
+		}
+	}
+	if let Some(ref genres_json) = update.genres {
+		if let Ok(names) = serde_json::from_str::<Vec<String>>(genres_json) {
+			for name in names {
+				crate::db::tag_manager::ensure_tag(&conn, &name, crate::db::tag_manager::TagKind::Genre);
+			}
+		}
+	}
+
+	Ok(())
 }
 
 #[tauri::command]
@@ -635,7 +688,24 @@ fn update_artist_entry(
 ) -> Result<(), String> {
 	let profile_uid = state.get_uid();
 	let conn = open_lib_conn(&profile_uid);
-	update_artist_by_uid(&conn, &uid, &update).map_err(|e| e.to_string())
+	update_artist_by_uid(&conn, &uid, &update).map_err(|e| e.to_string())?;
+
+	if let Some(ref tags_json) = update.tags {
+		if let Ok(names) = serde_json::from_str::<Vec<String>>(tags_json) {
+			for name in names {
+				crate::db::tag_manager::ensure_tag(&conn, &name, crate::db::tag_manager::TagKind::Tag);
+			}
+		}
+	}
+	if let Some(ref genres_json) = update.genres {
+		if let Ok(names) = serde_json::from_str::<Vec<String>>(genres_json) {
+			for name in names {
+				crate::db::tag_manager::ensure_tag(&conn, &name, crate::db::tag_manager::TagKind::Genre);
+			}
+		}
+	}
+
+	Ok(())
 }
 
 #[tauri::command]
@@ -922,8 +992,7 @@ async fn enrich_track(
 			artwork_path: None,
 			user_options: None,
 		};
-		db::update_track_metadata(&conn, numeric_id, &update).map_err(|e| e.to_string())?;
-
+		
 		if let Some(ref genres_json) = update.genres {
 			if let Ok(names) = serde_json::from_str::<Vec<String>>(genres_json) {
 				for name in names {
@@ -931,6 +1000,7 @@ async fn enrich_track(
 				}
 			}
 		}
+		db::update_track_metadata(&conn, numeric_id, &update).map_err(|e| e.to_string())?;
 	}
 
 	app.emit("library:updated", ()).ok();
@@ -1082,6 +1152,13 @@ async fn enrich_album(
 			artwork_blob: result.artwork,
 			artwork_path: None,
 		};
+		if let Some(ref genres_json) = update.genres {
+			if let Ok(names) = serde_json::from_str::<Vec<String>>(genres_json) {
+				for name in names {
+					crate::db::tag_manager::ensure_tag(&lib_conn, &name, crate::db::tag_manager::TagKind::Genre);
+				}
+			}
+		}
 		update_album_by_uid(&lib_conn, &uid, &update).map_err(|e| e.to_string())?;
 	}
 
@@ -1143,6 +1220,13 @@ async fn enrich_album(
 				artwork_path: None,
 				user_options: None,
 			};
+			if let Some(ref genres_json) = update.genres {
+				if let Ok(names) = serde_json::from_str::<Vec<String>>(genres_json) {
+					for name in names {
+						crate::db::tag_manager::ensure_tag(&lib_conn, &name, crate::db::tag_manager::TagKind::Genre);
+					}
+				}
+			}
 			db::update_track_metadata(&lib_conn, numeric_id, &update).ok();
 		}
 	}
@@ -1870,7 +1954,19 @@ pub fn run() {
 
 			#[cfg(desktop)]
 			app.handle().plugin(tauri_plugin_updater::Builder::new().build())?;
+			#[cfg(desktop)]
 			app.handle().plugin(tauri_plugin_window_state::Builder::default().build())?;
+
+			/* let window = app.get_window("main").unwrap();
+
+			#[cfg(target_os = "macos")]
+			apply_vibrancy(&window, NSVisualEffectMaterial::HudWindow, None, None)
+					.expect("Unsupported platform! 'apply_vibrancy' is only supported on macOS");
+
+			#[cfg(target_os = "windows")]
+			apply_blur(&window, Some((18, 18, 18, 125)))
+					.expect("Unsupported platform! 'apply_blur' is only supported on Windows");
+ */
 			Ok(())
 		})
 		.invoke_handler(tauri::generate_handler![

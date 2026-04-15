@@ -65,34 +65,35 @@ pub struct TagGroup {
 // ─── Schema (call from init_lib_db) ───────────────────────────────────────────
 
 pub fn create_tag_tables(conn: &Connection) -> Result<()> {
-    conn.execute_batch(
-        "
-        CREATE TABLE IF NOT EXISTS tags (
-            uid         TEXT    PRIMARY KEY NOT NULL,
-            name        TEXT    NOT NULL UNIQUE COLLATE NOCASE,
-            kind        TEXT    NOT NULL DEFAULT 'tag',  -- 'tag' | 'genre'
-            color       TEXT,
-            created_at  INTEGER NOT NULL
-        );
+	conn.execute_batch(
+		"
+		CREATE TABLE IF NOT EXISTS tags (
+			uid         TEXT    PRIMARY KEY NOT NULL,
+			name        TEXT    NOT NULL COLLATE NOCASE,
+			kind        TEXT    NOT NULL DEFAULT 'tag',
+			color       TEXT,
+			created_at  INTEGER NOT NULL,
+			UNIQUE(name, kind)
+		);
 
-        CREATE TABLE IF NOT EXISTS tag_groups (
-            uid         TEXT    PRIMARY KEY NOT NULL,
-            name        TEXT    NOT NULL UNIQUE COLLATE NOCASE,
-            kind        TEXT    NOT NULL DEFAULT 'tag',
-            color       TEXT,
-            created_at  INTEGER NOT NULL
-        );
+		CREATE TABLE IF NOT EXISTS tag_groups (
+			uid         TEXT    PRIMARY KEY NOT NULL,
+			name        TEXT    NOT NULL UNIQUE COLLATE NOCASE,
+			kind        TEXT    NOT NULL DEFAULT 'tag',
+			color       TEXT,
+			created_at  INTEGER NOT NULL
+		);
 
-        CREATE TABLE IF NOT EXISTS tag_group_members (
-            group_uid   TEXT    NOT NULL REFERENCES tag_groups(uid) ON DELETE CASCADE,
-            tag_uid     TEXT    NOT NULL REFERENCES tags(uid) ON DELETE CASCADE,
-            PRIMARY KEY (group_uid, tag_uid)
-        );
+		CREATE TABLE IF NOT EXISTS tag_group_members (
+			group_uid   TEXT    NOT NULL REFERENCES tag_groups(uid) ON DELETE CASCADE,
+			tag_uid     TEXT    NOT NULL REFERENCES tags(uid) ON DELETE CASCADE,
+			PRIMARY KEY (group_uid, tag_uid)
+		);
 
-        CREATE INDEX IF NOT EXISTS idx_tag_group_members_tag
-            ON tag_group_members(tag_uid);
-        ",
-    )
+		CREATE INDEX IF NOT EXISTS idx_tag_group_members_tag
+			ON tag_group_members(tag_uid);
+		",
+	)
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -140,26 +141,26 @@ fn json_remove(json: &str, name: &str) -> Option<String> {
 /// Returns the uid. If a tag with the same name (case-insensitive) already
 /// exists, the existing uid is returned and no row is inserted.
 pub fn add_tag(conn: &Connection, name: &str, kind: TagKind, color: Option<&str>) -> Result<String> {
-    let kind_str = kind.to_string();
-    // Check existing
-    let existing: Option<String> = conn
-        .query_row(
-            "SELECT uid FROM tags WHERE name = ?1 COLLATE NOCASE AND kind = ?2",
-            params![name, kind_str],
-            |row| row.get(0),
-        )
-        .ok();
+	let kind_str = kind.to_string();
 
-    if let Some(uid) = existing {
-        return Ok(uid);
-    }
+	let existing: Option<String> = conn
+		.query_row(
+			"SELECT uid FROM tags WHERE name = ?1 COLLATE NOCASE AND kind = ?2",
+			params![name, kind_str],
+			|row| row.get(0),
+		)
+		.ok();
 
-    let uid = crate::db::generate_uid("tg-");
-    conn.execute(
-        "INSERT INTO tags (uid, name, kind, color, created_at) VALUES (?1,?2,?3,?4,?5)",
-        params![uid, name, kind_str, color, now_ts()],
-    )?;
-    Ok(uid)
+	if let Some(uid) = existing {
+		return Ok(uid);
+	}
+
+	let uid = crate::db::generate_uid("tg");
+	conn.execute(
+		"INSERT OR IGNORE INTO tags (uid, name, kind, color, created_at) VALUES (?1,?2,?3,?4,?5)",
+		params![uid, name, kind_str, color, now_ts()],
+	)?;
+	Ok(uid)
 }
 
 /// Convenience — called from scanner/enrichment when a tag string is encountered.
@@ -265,7 +266,7 @@ pub fn create_tag_group(
     color: Option<&str>,
     member_uids: &[String],
 ) -> Result<TagGroup> {
-    let uid = crate::db::generate_uid("tgg-");
+    let uid = crate::db::generate_uid("tgg");
     let kind_str = kind.to_string();
     conn.execute(
         "INSERT INTO tag_groups (uid, name, kind, color, created_at) VALUES (?1,?2,?3,?4,?5)",
