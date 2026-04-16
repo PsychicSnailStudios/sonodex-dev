@@ -27,6 +27,7 @@
 	import TrackDisplay from "$lib/components/displays/TrackDisplay.svelte";
 
 	import ProfileSetup from "$lib/components/dialogs/profile/ProfileSetup.svelte";
+   import UpdateDialog from "$lib/components/dialogs/UpdateDialog.svelte";
 
 	// SCRIPTS
 	import { loadLibrary } from "$lib/ts/library.svelte";
@@ -38,6 +39,9 @@
 	// VARIABLES
 	let needsSetup = $state(false);
 	let setupChecked = $state(false);
+
+	let update = $state<import("@tauri-apps/plugin-updater").Update | null>(null);
+	let showUpdateDialog = $state(false);
 
 	let containerWidth = $state(0);
 	let minViewWidth = $derived(containerWidth ? (375 / containerWidth) * 100 : 15);
@@ -62,10 +66,10 @@
 		needsSetup = await invoke<boolean>("needs_profile_setup");
 		setupChecked = true;
 
-		const update = await checkForUpdate(true);
-		if (update) {
-			// show your update dialog/toast here
-			console.log(`Update available: ${update.version}`);
+		const found = await checkForUpdate(true);
+		if (found) {
+			update = found;
+			showUpdateDialog = true;
 		}
 
 		if (!needsSetup) {
@@ -119,6 +123,8 @@
 {#if setupChecked && needsSetup}
 	<ProfileSetup onComplete={onSetupComplete} />
 {/if}
+
+<UpdateDialog bind:open={showUpdateDialog} {update} />
 
 <div bind:clientWidth={containerWidth} class="h-full w-full overflow-hidden">
 <Resizable.PaneGroup direction="horizontal" class="app-wrapper grid gap-0.5 pl-2 pr-2 pb-2 overflow-hidden">
