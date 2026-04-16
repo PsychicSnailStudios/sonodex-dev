@@ -1333,8 +1333,19 @@ async fn enrich_artist(
             banner_art_blob: result.banner_art,
             banner_art_path: None,
         };
-        update_artist_by_uid(&lib_conn, &uid, &update).map_err(|e| e.to_string())?;
-    }
+		if let Some(ref genres_json) = update.genres {
+			if let Ok(names) = serde_json::from_str::<Vec<String>>(genres_json) {
+				for name in names {
+					crate::db::tag_manager::ensure_tag(
+						&lib_conn,
+						&name,
+						crate::db::tag_manager::TagKind::Genre,
+					);
+				}
+			}
+		}
+		update_artist_by_uid(&lib_conn, &uid, &update).map_err(|e| e.to_string())?;
+	}
 
     app.emit("library:updated", ()).ok();
     Ok(())
@@ -1392,6 +1403,17 @@ async fn enrich_all_albums(app: AppHandle, state: State<'_, AppState>) -> Result
                 artwork_blob: result.artwork,
                 artwork_path: None,
             };
+            if let Some(ref genres_json) = update.genres {
+                if let Ok(names) = serde_json::from_str::<Vec<String>>(genres_json) {
+                    for name in names {
+                        crate::db::tag_manager::ensure_tag(
+                            &lib_conn,
+                            &name,
+                            crate::db::tag_manager::TagKind::Genre,
+                        );
+                    }
+                }
+            }
             if update_album_by_uid(&lib_conn, &album.uid, &update).is_err() {
                 errors += 1;
             }
@@ -1458,9 +1480,20 @@ async fn enrich_all_artists(app: AppHandle, state: State<'_, AppState>) -> Resul
             banner_art_blob: result.banner_art,
             banner_art_path: None,
         };
-        if update_artist_by_uid(&lib_conn, &artist.uid, &update).is_err() {
-            errors += 1;
-        }
+        if let Some(ref genres_json) = update.genres {
+			if let Ok(names) = serde_json::from_str::<Vec<String>>(genres_json) {
+				for name in names {
+					crate::db::tag_manager::ensure_tag(
+						&lib_conn,
+						&name,
+						crate::db::tag_manager::TagKind::Genre,
+					);
+				}
+			}
+		}
+		if update_artist_by_uid(&lib_conn, &artist.uid, &update).is_err() {
+			errors += 1;
+		}
 
         done += 1;
         if done % 5 == 0 || done == total {
@@ -1710,8 +1743,19 @@ async fn spotify_enrich_track_cmd(uid: String, state: State<'_, AppState>) -> Re
         user_options: None,
     };
 
-    db::track_manager::update_track_metadata_by_uid(&lib_conn, &uid, &update)
-        .map_err(|e| e.to_string())
+	if let Some(ref genres_json) = update.genres {
+		if let Ok(names) = serde_json::from_str::<Vec<String>>(genres_json) {
+			for name in names {
+				crate::db::tag_manager::ensure_tag(
+					&lib_conn,
+					&name,
+					crate::db::tag_manager::TagKind::Genre,
+				);
+			}
+		}
+	}
+	db::track_manager::update_track_metadata_by_uid(&lib_conn, &uid, &update)
+		.map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -1752,7 +1796,18 @@ async fn spotify_enrich_album_cmd(uid: String, state: State<'_, AppState>) -> Re
         artwork_path: None,
     };
 
-    db::album_manager::update_album_by_uid(&lib_conn, &uid, &update).map_err(|e| e.to_string())
+	if let Some(ref genres_json) = update.genres {
+		if let Ok(names) = serde_json::from_str::<Vec<String>>(genres_json) {
+			for name in names {
+				crate::db::tag_manager::ensure_tag(
+					&lib_conn,
+					&name,
+					crate::db::tag_manager::TagKind::Genre,
+				);
+			}
+		}
+	}
+	db::album_manager::update_album_by_uid(&lib_conn, &uid, &update).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -1784,7 +1839,18 @@ async fn spotify_enrich_artist_cmd(uid: String, state: State<'_, AppState>) -> R
         banner_art_path: None,
     };
 
-    db::artist_manager::update_artist_by_uid(&lib_conn, &uid, &update).map_err(|e| e.to_string())
+	if let Some(ref genres_json) = update.genres {
+		if let Ok(names) = serde_json::from_str::<Vec<String>>(genres_json) {
+			for name in names {
+				crate::db::tag_manager::ensure_tag(
+					&lib_conn,
+					&name,
+					crate::db::tag_manager::TagKind::Genre,
+				);
+			}
+		}
+	}
+	db::artist_manager::update_artist_by_uid(&lib_conn, &uid, &update).map_err(|e| e.to_string())
 }
 
 // ── Tags ──────────────────────────────────────────────────────────────────────
