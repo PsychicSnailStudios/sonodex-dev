@@ -2,17 +2,17 @@ import { check } from "@tauri-apps/plugin-updater";
 import { relaunch } from "@tauri-apps/plugin-process";
 
 export async function checkForUpdate(silent = false) {
-	try {
-		const update = await check();
-		if (!update) {
-			if (!silent) console.log("Already on latest version");
-			return null;
-		}
-		return update;
-	} catch (e) {
-		console.error("Update check failed:", e);
-		return null;
-	}
+    try {
+        const update = await check();
+        if (!update?.available) {
+            if (!silent) console.log("Already on latest version");
+            return null;
+        }
+        return update;
+    } catch (e) {
+        console.error("Update check failed:", e);
+        return null;
+    }
 }
 
 export async function downloadAndInstall(
