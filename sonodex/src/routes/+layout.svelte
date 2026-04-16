@@ -45,7 +45,8 @@
 
 <style>
   .main-app-bg {
-    background-color: oklch(from var(--background) l c h / 95%);
+    //background-color: oklch(from var(--background) l c h / 95%);
+	radial-gradient(circle,oklch(from var(--background) l c h / 95%) 0%, oklch(from var(--background) l c h / 99%) 100%);
     backdrop-filter: blur(100px);
   }
 </style>
