@@ -59,6 +59,7 @@
 		class="flex gap-2 p-2 border-2 rounded-md justify-between items-center flex-1 cursor-pointer"
 		class:border-primary={selected}
 		onclick={handleRowClick}
+		onmousedown={(e) => { if (e.shiftKey) e.preventDefault(); }}
 		role="row"
 		aria-selected={selected}
 	>
