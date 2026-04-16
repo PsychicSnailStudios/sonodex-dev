@@ -36,6 +36,7 @@
       }
     }
   },
+  "devtools": true,
   "bundle": {
     "createUpdaterArtifacts": true,
     "active": true,
