@@ -31,6 +31,7 @@
 	import { playlistOrder } from "$lib/ts/app/playlistOrderStore.svelte";
 	import { folderOf, folderLabel, getSortedFolders, getDirectPlaylists, getFolderArtworkUids, compactRows, compactFolderRows } from "$lib/ts/app/playlistLibrary.svelte";
 	import type { PlaylistSortField, CompactRow } from "$lib/ts/app/playlistLibrary.svelte";
+	import { setSelection } from "$lib/ts/app-states/state_session.svelte";
 
 	type GridDropTarget = {
 		kind: "folder" | "playlist";
@@ -47,6 +48,8 @@
 	let sortField = $state<PlaylistSortField>(_saved.field);
 	let sortDir   = $state<"asc" | "desc">(_saved.dir);
 	let compact   = $state<boolean>(_saved.compact);
+
+	let playlistHoverTimer: ReturnType<typeof setTimeout> | null = null;
 
 	let search          = $state("");
 	let expandedFolders = $state<Set<string>>(new Set());
@@ -151,6 +154,7 @@
 		gridDropTarget = null;
 		compactDrop = null;
 		compactFolderDrop = null;
+		if (playlistHoverTimer !== null) { clearTimeout(playlistHoverTimer); playlistHoverTimer = null; }
 		resetFolderTimers();
 		endDrag();
 	}
@@ -191,9 +195,19 @@
 		if (draggingPlaylistUid === uid) return;
 		if (isDraggingFolderType(e)) {
 			gridDropTarget = { kind: "folder", index: visibleChildFolders.length, side: getSide(e) };
-		} else {
+		} else if (draggingPlaylistUid !== null) {
 			gridDropTarget = { kind: "playlist", index: pi, side: getSide(e) };
 			setHoveredPlaylist(null);
+			if (playlistHoverTimer !== null) { clearTimeout(playlistHoverTimer); playlistHoverTimer = null; }
+		} else {
+			gridDropTarget = null;
+			setHoveredPlaylist(uid);
+			if (playlistHoverTimer === null) {
+				playlistHoverTimer = setTimeout(() => {
+					setSelection(uid, "playlist");
+					playlistHoverTimer = null;
+				}, 700);
+			}
 		}
 	}
 
@@ -242,11 +256,12 @@
 		const raw = e.dataTransfer?.getData("text/plain");
 		if (!raw) { clearGridDrop(); endDrag(); return; }
 		const val = raw.trim();
+		console.log(val)
 		if (isDraggingFolderType(e) && gridDropTarget !== null) {
 			await doFolderReorder(val, gridDropTarget.index, gridDropTarget.side, playlists, currentPath, sortField, sortDir);
-		} else if (!isDraggingFolderType(e) && val.startsWith("p-") && gridDropTarget !== null) {
+		} else if (val.startsWith("p-") && gridDropTarget !== null) {
 			await doPlaylistReorder(val, gridDropTarget.index, gridDropTarget.side, playlists, sortField, sortDir, currentPath);
-		} else if (!isDraggingFolderType(e) && !val.startsWith("p-")) {
+		} else if (!val.startsWith("p-") && !isDraggingFolderType(e)) {
 			await addTracksToPlaylist(uid, val.split(",").map((u) => u.trim()).filter(Boolean));
 		}
 		clearGridDrop();
@@ -482,13 +497,14 @@
 								<PlaylistGridCard
 									playlist={p}
 									isDraggingThis={draggingPlaylistUid === p.uid}
+									isHovered={dragState.hoveredPlaylistUid === p.uid}
 									isReorderBefore={gridDropTarget?.kind === "playlist" && gridDropTarget.index === pi && gridDropTarget.side === "before"}
 									isReorderAfter={gridDropTarget?.kind === "playlist" && gridDropTarget.index === pi && gridDropTarget.side === "after"}
 									{allFolderPaths}
 									ondragstart={(e) => handlePlaylistDragStart(e, p.uid)}
 									ondragend={handleDragEnd}
 									ondragover={(e) => onGridPlaylistDragOver(e, pi, p.uid)}
-									ondragleave={() => { clearGridDrop(); setHoveredPlaylist(null); }}
+									ondragleave={() => { clearGridDrop(); setHoveredPlaylist(null); if (playlistHoverTimer !== null) { clearTimeout(playlistHoverTimer); playlistHoverTimer = null; } }}
 									ondrop={(e) => onGridPlaylistDrop(e, pi, p.uid)}
 								/>
 							{/each}

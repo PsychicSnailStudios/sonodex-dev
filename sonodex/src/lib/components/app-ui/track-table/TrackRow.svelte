@@ -77,8 +77,8 @@
 		if (!e.dataTransfer) return;
 
 		let uids: string[];
-		if (trackSelection.isSelected(track.uid) && trackSelection.count > 1) {
-			uids = orderedUids.filter((uid) => trackSelection.isSelected(uid));
+		if (trackSelection.isSelected(track.uid, viewId) && trackSelection.count > 1) {
+			uids = orderedUids.filter((uid) => trackSelection.isSelected(uid, viewId));
 		} else {
 			uids = [track.uid];
 		}

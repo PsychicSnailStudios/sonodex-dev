@@ -12,6 +12,7 @@
 		isDraggingThis: boolean;
 		isReorderBefore: boolean;
 		isReorderAfter: boolean;
+		isHovered: boolean;
 		allFolderPaths: string[];
 		ondragstart: (e: DragEvent) => void;
 		ondragend: (e: DragEvent) => void;
@@ -25,6 +26,7 @@
 		isDraggingThis,
 		isReorderBefore,
 		isReorderAfter,
+		isHovered,
 		allFolderPaths,
 		ondragstart,
 		ondragend,
@@ -39,6 +41,8 @@
 		<div
 			class="relative transition-all w-full rounded-md"
 			class:opacity-40={isDraggingThis}
+			class:ring-2={isHovered}
+			class:ring-primary={isHovered}
 		>
 			{#if isReorderBefore && !isDraggingThis}
 				<div class="absolute -left-2 top-0 bottom-0 w-0.5 bg-primary rounded-full z-10 pointer-events-none"></div>
