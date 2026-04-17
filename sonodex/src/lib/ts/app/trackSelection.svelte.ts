@@ -88,6 +88,8 @@ export function copySelectedToClipboard(orderedUids: string[]) {
 		.filter((uid) => selectedUids.has(uid))
 		.map((uid) => library.tracks.find((t) => t.uid === uid))
 		.filter(Boolean);
+	
+	if (tracks.length === 0) return
 
 	const trackNames = tracks.map((t) => (t!.title ?? "Unknown Title") + "; " + (t!.album_artist ?? "Unknown Artist")).join("\n");
 	const uids = tracks.map((t) => t!.uid).join("\n");
@@ -100,6 +102,8 @@ export function copySelectedNamesToClipboard(orderedUids: string[]) {
 		.filter((uid) => selectedUids.has(uid))
 		.map((uid) => library.tracks.find((t) => t.uid === uid))
 		.filter(Boolean);
+
+	if (tracks.length === 0) return;
 
 	const trackNames = tracks.map((t) => (t!.title ?? "Unknown Title") + "; " + (t!.album_artist ?? "Unknown Artist")).join("\n");
 

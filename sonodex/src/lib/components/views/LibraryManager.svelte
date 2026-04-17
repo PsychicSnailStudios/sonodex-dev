@@ -19,6 +19,7 @@
 	import AddToAlbumDialog from "$lib/components/dialogs/AddToAlbumDialog.svelte";
 	import TagManager from "$lib/components/app-ui/library-manager/TagManager.svelte";
 
+	import Fuse from "fuse.js";
 	import {
 		removeTracksFromLibrary,
 		enrichTracks,
@@ -32,6 +33,7 @@
 	import type { DuplicateGroup } from "$lib/ts/util/types";
 	import { scanState } from "$lib/ts/app-states/state_session.svelte";
 	import { enrichAllAlbums, enrichAllArtists, enrichAllTracks } from "$lib/ts/app/enrichment";
+    import { parseAlbum, parseArtists } from "$lib/ts/util/helpers";
 
 	// ─── Search ───────────────────────────────────────────────────────────────────
 	let trackSearch = $state("");
@@ -128,36 +130,77 @@
 	}
 
 	// ─── Filtered lists ───────────────────────────────────────────────────────────
+	const tracksFuse = $derived(
+		new Fuse(library.tracks, {
+			keys: [
+					{ name: "title",        weight: 0.5,  getFn: (t) => t.title ?? ""                        },
+					{ name: "artists",      weight: 0.25, getFn: (t) => parseArtists(t.artists ?? "[]")      },
+					{ name: "album_artist", weight: 0.15, getFn: (t) => t.album_artist ?? ""                 },
+					{ name: "albums",       weight: 0.1,  getFn: (t) => parseAlbum(t.albums ?? "[]")         },
+					{ name: "tags",       	weight: 0.05,  getFn: (t) => t.tags ?? ""     			 		     },
+					{ name: "genres",       weight: 0.05,  getFn: (t) => t.genres ?? ""     				     },
+			],
+			threshold:          0.35,  // 0 = exact only, 1 = match anything
+			ignoreLocation:     true,  // don't penalise matches deep in a string
+			includeScore:       false,
+			useExtendedSearch:  false,
+			minMatchCharLength: 2,     // ignore single-character queries
+		})
+	);
+
 	const filteredTracks = $derived(
-		library.tracks.filter((t) => {
-			const matchesGhost = ghosts ? t.path === "" : true;
-			if (trackSearch.trim() === "") return matchesGhost;
-			const q = trackSearch.toLowerCase();
-			const matches =
-				(t.title?.toLowerCase() ?? "").includes(q) ||
-				(t.artists?.toLowerCase() ?? "").includes(q) ||
-				(t.album_artist?.toLowerCase() ?? "").includes(q) ||
-				(t.albums?.toLowerCase() ?? "").includes(q);
-			return matches && matchesGhost;
+		(() => {
+			const pool = ghosts ? library.tracks.filter((t) => t.path === "") : library.tracks;
+			return trackSearch.trim().length < 2
+				? pool
+				: tracksFuse.search(trackSearch).map((r) => r.item).filter((t) => !ghosts || t.path === "");
+		})()
+	);
+
+	const albumFuse = $derived(
+		new Fuse(library.albums, {
+			keys: [
+					{ name: "title",        weight: 0.5,  getFn: (t) => t.title ?? ""                        },
+					{ name: "artists",      weight: 0.25, getFn: (t) => parseArtists(t.artists ?? "[]")      },
+					{ name: "album_artist", weight: 0.15, getFn: (t) => t.album_artist ?? ""                 },
+					{ name: "year",    	   weight: 0.1,  getFn: (t) => t.release_date ?? ""                 },
+					{ name: "tags",       	weight: 0.05,  getFn: (t) => t.tags ?? ""     			 		     },
+					{ name: "genres",       weight: 0.05,  getFn: (t) => t.genres ?? ""     				     },
+			],
+			threshold:          0.35,  // 0 = exact only, 1 = match anything
+			ignoreLocation:     true,  // don't penalise matches deep in a string
+			includeScore:       false,
+			useExtendedSearch:  false,
+			minMatchCharLength: 2,     // ignore single-character queries
 		})
 	);
 
 	const filteredAlbums = $derived(
-		albumSearch.trim() === ""
+		albumSearch.trim().length < 2
 			? library.albums
-			: library.albums.filter((a) => {
-					const q = albumSearch.toLowerCase();
-					return (
-						a.title?.toLowerCase().includes(q) ||
-						(a.album_artist?.toLowerCase().includes(q) ?? false)
-					);
-				})
+			: albumFuse.search(albumSearch).map((r) => r.item)
+	);
+
+	const artistFuse = $derived(
+		new Fuse(library.artists, {
+			keys: [
+					{ name: "name",         weight: 0.5,  getFn: (t) => t.name ?? ""                         },
+					{ name: "akas",     	   weight: 0.35, getFn: (t) => t.aka ?? ""						 		  },
+					{ name: "tags",       	weight: 0.05,  getFn: (t) => t.tags ?? ""     			 		     },
+					{ name: "genres",       weight: 0.05,  getFn: (t) => t.genres ?? ""     				     },
+			],
+			threshold:          0.35,  // 0 = exact only, 1 = match anything
+			ignoreLocation:     true,  // don't penalise matches deep in a string
+			includeScore:       false,
+			useExtendedSearch:  false,
+			minMatchCharLength: 2,     // ignore single-character queries
+		})
 	);
 
 	const filteredArtists = $derived(
-		artistSearch.trim() === ""
+		artistSearch.trim().length < 2
 			? library.artists
-			: library.artists.filter((a) => a.name?.toLowerCase().includes(artistSearch.toLowerCase()))
+			: artistFuse.search(artistSearch).map((r) => r.item)
 	);
 
 	// ─── Track selection derived ──────────────────────────────────────────────────

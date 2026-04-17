@@ -14,6 +14,7 @@
 	import MediaGrid from "$lib/layouts/MediaGrid.svelte";
 
 	// SCRIPTS
+	import Fuse from "fuse.js";
 	import { library } from "$lib/ts/library.svelte";
 	import { setSelection } from "$lib/ts/app-states/state_session.svelte";
 	import { createPersistedViewState } from "$lib/ts/app-states/state_session.svelte";
@@ -27,10 +28,26 @@
 		colPreset: "album",
 	});
 
+	const fuse = $derived(
+		new Fuse(library.artists, {
+			keys: [
+					{ name: "name",         weight: 0.5,  getFn: (t) => t.name ?? ""                         },
+					{ name: "akas",     	   weight: 0.35, getFn: (t) => t.aka ?? ""						 		  },
+					{ name: "tags",       	weight: 0.05,  getFn: (t) => t.tags ?? ""     			 		     },
+					{ name: "genres",       weight: 0.05,  getFn: (t) => t.genres ?? ""     				     },
+			],
+			threshold:          0.35,  // 0 = exact only, 1 = match anything
+			ignoreLocation:     true,  // don't penalise matches deep in a string
+			includeScore:       false,
+			useExtendedSearch:  false,
+			minMatchCharLength: 2,     // ignore single-character queries
+		})
+	);
+
 	const filteredArtists = $derived(() => {
-		const list = search.trim() === ""
+		const list = search.trim().length < 2
 			? library.artists
-			: library.artists.filter((a) => a.name.toLowerCase().includes(search.toLowerCase()));
+			: fuse.search(search).map((r) => r.item)
 
 		return [...list].sort((a, b) => {
 			const cmp = a.name.localeCompare(b.name);

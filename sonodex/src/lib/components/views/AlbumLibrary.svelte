@@ -16,9 +16,10 @@
 	import MediaGrid from "$lib/layouts/MediaGrid.svelte";
 
 	// SCRIPTS
+	import Fuse from "fuse.js";
+	import { parseArtists, parseAlbum } from "$lib/ts/util/helpers";
 	import { library } from "$lib/ts/library.svelte";
 	import { setSelection } from "$lib/ts/app-states/state_session.svelte";
-	import { parseArtists } from "$lib/ts/util/helpers";
 	import { createPersistedViewState } from "$lib/ts/app-states/state_session.svelte";
 	import type { SortField } from "$lib/ts/app/sortConfig.svelte";
 	
@@ -32,12 +33,9 @@
 	});
 
 	const filteredAlbums = $derived(() => {
-		const list = search.trim() === ""
+		const list = search.trim().length < 2
 			? library.albums
-			: library.albums.filter((a) => {
-				const q = search.toLowerCase();
-				return a.title.toLowerCase().includes(q) || (a.artists?.toLowerCase() ?? "").includes(q);
-			});
+			: fuse.search(search).map((r) => r.item)
 
 		return [...list].sort((a, b) => {
 			let cmp = 0;
@@ -51,6 +49,24 @@
 			return view.sort.direction === "asc" ? cmp : -cmp;
 		});
 	});
+
+	const fuse = $derived(
+		new Fuse(library.albums, {
+			keys: [
+					{ name: "title",        weight: 0.5,  getFn: (t) => t.title ?? ""                        },
+					{ name: "artists",      weight: 0.25, getFn: (t) => parseArtists(t.artists ?? "[]")      },
+					{ name: "album_artist", weight: 0.15, getFn: (t) => t.album_artist ?? ""                 },
+					{ name: "year",    	   weight: 0.1,  getFn: (t) => t.release_date ?? ""                 },
+					{ name: "tags",       	weight: 0.05,  getFn: (t) => t.tags ?? ""     			 		     },
+					{ name: "genres",       weight: 0.05,  getFn: (t) => t.genres ?? ""     				     },
+			],
+			threshold:          0.35,  // 0 = exact only, 1 = match anything
+			ignoreLocation:     true,  // don't penalise matches deep in a string
+			includeScore:       false,
+			useExtendedSearch:  false,
+			minMatchCharLength: 2,     // ignore single-character queries
+		})
+	);
 
 	// FUNCTIONS
 	function toggleAlbumSort(field: "name" | "artist" | "year") {
