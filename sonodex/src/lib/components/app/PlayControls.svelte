@@ -2,7 +2,7 @@
 
 	// COMPONENTS
 	import { CirclePlay, CirclePause, SkipBack, SkipForward,
-				Shuffle, Repeat, Repeat1,
+				Shuffle, TrendingUpDown, Repeat, Repeat1,
 				Volume, Volume2, VolumeX, Volume1, VolumeOff
 	} from "lucide-svelte";
 	
@@ -56,6 +56,8 @@
 					<Shuffle class="text-muted-foreground" />
 				{:else if player.shuffleType === 1}
 					<Shuffle />
+				{:else if player.shuffleType === 2}
+					<TrendingUpDown />
 				{:else}
 					<Shuffle />
 				{/if}

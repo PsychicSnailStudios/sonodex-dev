@@ -263,12 +263,21 @@ export function addTrackToQueue(track: Track) {
 
 export function queueTracksByObject(tracks: Track[], play: boolean = false, shuffle: boolean = false) {
 	if (play) clearQueue();
+	if (shuffle && player.shuffleType === 0) player.shuffleType = 1;
 
-	const ordered = (player.shuffleType === 1 || shuffle)
-		? [...tracks].sort(() => Math.random() - 0.5)
-		: [...tracks];
+	lastQueuedSet = tracks;
+	let ordered
+	switch (player.shuffleType) {
+		case 1:
+			ordered = spacedShuffle(tracks);
+			break;
+		case 2:
+			ordered = smartShuffle(tracks);
+			break;
+		default:
+			ordered = tracks;
+	}
 
-	lastQueuedSet = ordered;
 	ordered.forEach(t => queuedTracks.push(t));
 
 	if (play) startPlayingQueue();
@@ -276,6 +285,7 @@ export function queueTracksByObject(tracks: Track[], play: boolean = false, shuf
 
 export function queueTracksByUid(uids: string[], play: boolean = false, shuffle: boolean = false) {
 	if (play) clearQueue();
+	if (shuffle && player.shuffleType === 0) player.shuffleType = 1;
 
 	let tracks: Track[] = [];
 	flushSync(() => {
@@ -285,11 +295,19 @@ export function queueTracksByUid(uids: string[], play: boolean = false, shuffle:
 		});
 	});
 
-	const ordered = (player.shuffleType === 1 || shuffle)
-		? tracks.sort(() => Math.random() - 0.5)
-		: tracks;
+	lastQueuedSet = tracks;
+	let ordered
+	switch (player.shuffleType) {
+		case 1:
+			ordered = spacedShuffle(tracks);
+			break;
+		case 2:
+			ordered = smartShuffle(tracks);
+			break;
+		default:
+			ordered = tracks;
+	}
 
-	lastQueuedSet = ordered;
 	ordered.forEach(t => queuedTracks.push(t));
 
 	if (play) startPlayingQueue();
@@ -297,6 +315,7 @@ export function queueTracksByUid(uids: string[], play: boolean = false, shuffle:
 
 export function queueTracksFromUid(uid: string, play: boolean = false, shuffle: boolean = false) {
 	if (play) clearQueue();
+	if (shuffle && player.shuffleType === 0) player.shuffleType = 1;
 
 	let tracks: Track[] = [];
 	let type = parseUidType(uid);
@@ -319,11 +338,19 @@ export function queueTracksFromUid(uid: string, play: boolean = false, shuffle: 
 		});
 	}
 
-	const ordered = (player.shuffleType === 1 || shuffle)
-		? tracks.sort(() => Math.random() - 0.5)
-		: tracks;
+	lastQueuedSet = tracks;
+	let ordered
+	switch (player.shuffleType) {
+		case 1:
+			ordered = spacedShuffle(tracks);
+			break;
+		case 2:
+			ordered = smartShuffle(tracks);
+			break;
+		default:
+			ordered = tracks;
+	}
 
-	lastQueuedSet = ordered;
 	ordered.forEach(t => queuedTracks.push(t));
 
 	if (play) startPlayingQueue();
@@ -667,7 +694,7 @@ export function toggleLoop() {
 }
 
 export function toggleShuffle() {
-	player.shuffleType = (player.shuffleType + 1) % 2;
+	player.shuffleType = (player.shuffleType + 1) % 3;
 }
 
 export function togglePlay() {
@@ -704,9 +731,18 @@ function onTrackEnd(skipGhost = false) {
 	}
 
 	if (player.loopType === 2 && lastQueuedSet.length > 0) {
-		const requeued = (player.shuffleType === 1)
-			? [...lastQueuedSet].sort(() => Math.random() - 0.5)
-			: [...lastQueuedSet];
+		let requeued;
+		switch (player.shuffleType) {
+			case 1:
+				requeued = spacedShuffle(lastQueuedSet);
+				break;
+			case 2:
+				requeued = smartShuffle(lastQueuedSet);
+				break;
+			default:
+				requeued = lastQueuedSet;
+		}
+		
 
 		queuedTracks.splice(0, queuedTracks.length);
 		requeued.forEach(t => queuedTracks.push(t));
