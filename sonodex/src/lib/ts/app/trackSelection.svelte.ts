@@ -10,6 +10,7 @@ let context = $state<SelectionContext>("library");
 let contextUid = $state<string | null>(null);
 
 let ownerViewId = $state<string | null>(null)
+let clipboardUids = $state<string[]>([]);
 
 export const trackSelection = {
 	get selected() { return selectedUids; },
@@ -17,6 +18,7 @@ export const trackSelection = {
 	get context() { return context; },
 	get contextUid() { return contextUid; },
 	get count() { return selectedUids.size; },
+	get clipboardUids() { return clipboardUids; },
 	isSelected(uid: string, viewId: string): boolean {
 		return ownerViewId === viewId && selectedUids.has(uid)
 	}
@@ -88,13 +90,12 @@ export function copySelectedToClipboard(orderedUids: string[]) {
 		.filter((uid) => selectedUids.has(uid))
 		.map((uid) => library.tracks.find((t) => t.uid === uid))
 		.filter(Boolean);
-	
-	if (tracks.length === 0) return
 
+	if (tracks.length === 0) return;
+
+	clipboardUids = tracks.map((t) => t!.uid);
 	const trackNames = tracks.map((t) => (t!.title ?? "Unknown Title") + "; " + (t!.album_artist ?? "Unknown Artist")).join("\n");
-	const uids = tracks.map((t) => t!.uid).join("\n");
-
-	writeText(trackNames + "\n---\n" + uids).catch(() => {});
+	writeText(trackNames).catch(() => {});
 }
 
 export function copySelectedNamesToClipboard(orderedUids: string[]) {

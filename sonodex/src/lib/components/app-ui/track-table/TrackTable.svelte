@@ -1,8 +1,5 @@
 <script lang="ts">
 
-	// APP
-	import { readText } from "@tauri-apps/plugin-clipboard-manager";
-
 	// COMPONENTS
 	import { Clock2, Star, ChevronUp, ChevronDown, ChevronsUpDown } from "lucide-svelte"
    import * as ContextMenu from "$lib/components/ui/context-menu/index.js";
@@ -30,7 +27,6 @@
 	// VARIABLES
 	const viewId = generateViewId()
 	const v = $derived(columns.visible)
-	const orderedUids = $derived(sortedTracks.map((t) => t.uid))
 
 	const sortedTracks = $derived.by(() => {
 		if (!sort.field || !sort.direction) return tracks
@@ -64,6 +60,8 @@
 		if (v.options)           parts.push("30px")
 		return parts.join(" ")
 	})
+
+	const orderedUids = $derived(sortedTracks.map((t) => t.uid))
 	
 	let dragOverIndex = $state<number | null>(null)
 	let dragOverPosition = $state<"above" | "below">("below")
@@ -84,15 +82,16 @@
 		if ((e.target as HTMLElement) === e.currentTarget) clearTrackSelection(viewId)
 	}
 
-	function handleKeyDown(e: KeyboardEvent) {
+	async function handleKeyDown(e: KeyboardEvent) {
 		if (e.key === "Escape") {
 			clearTrackSelection(viewId)
 			return
 		}
 		if ((e.ctrlKey || e.metaKey) && e.key === "c") {
-			e.preventDefault()
-			copySelectedToClipboard(orderedUids)
-			return
+			if (trackSelection.count === 0) return;
+			e.preventDefault();
+			copySelectedToClipboard(orderedUids);
+			return;
 		}
 		if (e.key === "Delete" && playlistUid && trackSelection.count > 0) {
 			e.preventDefault()
@@ -103,13 +102,9 @@
 		if ((e.ctrlKey || e.metaKey) && e.key === "v") {
 			if (!playlistUid) return;
 			e.preventDefault();
-			readText().then(async (text) => {
-				const parts = text.split("\n---\n");
-				if (parts.length < 2) return;
-				const uids = parts[1].split("\n").map((u) => u.trim()).filter(Boolean);
-				if (uids.length === 0) return;
-				await addTracksToPlaylist(playlistUid, uids);
-			});
+			const uids = trackSelection.clipboardUids;
+			if (uids.length === 0) return;
+			await addTracksToPlaylist(playlistUid, uids);
 			return;
 		}
 	}
