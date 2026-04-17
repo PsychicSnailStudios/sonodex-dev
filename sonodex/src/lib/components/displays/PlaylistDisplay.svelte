@@ -19,10 +19,11 @@
 	import SearchBar from "$lib/components/app-ui/search/SearchBar.svelte";
 
 	// SCRIPTS
+	import Fuse from "fuse.js";
 	import { selection } from "$lib/ts/app-states/state_session.svelte";
 	import { getPlaylistTracks, library } from "$lib/ts/library.svelte";
 	import { openEditModal } from "$lib/ts/app/editModal.svelte";
-	import { getArtworkColor, parseArtists, totalDuration } from '$lib/ts/util/helpers';
+	import { getArtworkColor, parseAlbum, parseArtists, totalDuration } from '$lib/ts/util/helpers';
 	import { addTrackToPlaylist, addTracksToPlaylist } from "$lib/ts/audio/playlistManager.svelte";
 	import { queueTracksByObject } from "$lib/ts/audio/audioManager.svelte";
 	import { dragState, endDrag } from "$lib/ts/app-states/state_drag.svelte";
@@ -47,17 +48,28 @@
 		return getPlaylistTracks(playlist.uid, view.sort);
 	});
 
+	const fuse = $derived(
+		new Fuse(library.tracks, {
+			keys: [
+					{ name: "title",        weight: 0.5,  getFn: (t) => t.title ?? ""                        },
+					{ name: "artists",      weight: 0.25, getFn: (t) => parseArtists(t.artists ?? "[]")      },
+					{ name: "album_artist", weight: 0.15, getFn: (t) => t.album_artist ?? ""                 },
+					{ name: "albums",       weight: 0.1,  getFn: (t) => parseAlbum(t.albums ?? "[]")         },
+					{ name: "tags",       	weight: 0.05,  getFn: (t) => t.tags ?? ""     			 		     },
+					{ name: "genres",       weight: 0.05,  getFn: (t) => t.genres ?? ""     				     },
+			],
+			threshold:          0.35,  // 0 = exact only, 1 = match anything
+			ignoreLocation:     true,  // don't penalise matches deep in a string
+			includeScore:       false,
+			useExtendedSearch:  false,
+			minMatchCharLength: 2,     // ignore single-character queries
+		})
+	);
+
 	const filteredTracks = $derived(
-		search.trim() === ""
+		search.trim().length < 2
 			? library.tracks
-			: library.tracks.filter((t) => {
-					const q = search.toLowerCase();
-					const title = t.title?.toLowerCase() ?? "";
-					const artists = t.artists?.toLowerCase() ?? "";
-					const album_artist = t.album_artist?.toLowerCase() ?? "";
-					const albums = t.albums ? JSON.stringify(t.albums).toLowerCase() : "";
-					return title.includes(q) || artists.includes(q) || album_artist.includes(q) || albums.includes(q);
-			  })
+			: fuse.search(search).map((r) => r.item)
 	);
 
 	// APP FUNCTIONS

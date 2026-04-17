@@ -4,6 +4,7 @@
    import { Pencil } from "lucide-svelte";
 
 	import * as Tabs from "$lib/components/ui/tabs/index.js";
+	import ScrollArea from "$lib/components/ui/scroll-area/scroll-area.svelte";
 	import { Button } from "$lib/components/ui/button/index.js";
 
 	// CUSTOM COMPONENTS
@@ -21,7 +22,6 @@
 	import { openEditModal } from "$lib/ts/app/editModal.svelte";
 	import { formatDuration, parseAlbumEntries, parseTags } from '$lib/ts/util/helpers';
    import { playTrackByObject } from "$lib/ts/audio/audioManager.svelte";
-    import ScrollArea from "../ui/scroll-area/scroll-area.svelte";
 
 	// VARIABLES
 	let track = $derived(library.tracks.find(t => t.uid === selection.uid) ?? null);
