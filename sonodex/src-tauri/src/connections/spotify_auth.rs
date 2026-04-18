@@ -195,7 +195,7 @@ pub struct SpotifyPlaylistSummary {
 
 #[derive(Deserialize)]
 struct SpotifyPlaylistsPage {
-    items: Vec<SpotifyPlaylistItem>,
+    items: Vec<Option<SpotifyPlaylistItem>>,
     next: Option<String>,
 }
 
@@ -204,6 +204,7 @@ struct SpotifyPlaylistItem {
     id: String,
     name: String,
     description: Option<String>,
+    #[serde(rename = "items")]
     tracks: TrackCount,
     owner: Owner,
 }
@@ -241,7 +242,7 @@ pub async fn spotify_get_playlists(
 
         let page: SpotifyPlaylistsPage = res.json().await.map_err(|e| e.to_string())?;
 
-        for item in page.items {
+        for item in page.items.into_iter().flatten() {
             results.push(SpotifyPlaylistSummary {
                 id: item.id,
                 name: item.name,
@@ -304,9 +305,9 @@ pub async fn spotify_import_playlist(
 
     let mut spotify_tracks: Vec<SpotifyTrack> = Vec::new();
     let mut url = format!(
-		"{}/playlists/{}/tracks?limit=100&fields=items(track(id,name,duration_ms,track_number,artists,album)),next",
-		API_BASE, spotify_playlist_id
-	);
+        "{}/playlists/{}/tracks?limit=100",
+        API_BASE, spotify_playlist_id
+    );
 
     loop {
         let res = client
@@ -317,8 +318,9 @@ pub async fn spotify_import_playlist(
             .map_err(|e| e.to_string())?;
 
         if !res.status().is_success() {
+            let status = res.status();
             let text = res.text().await.unwrap_or_default();
-            return Err(format!("Spotify tracks error: {}", text));
+            return Err(format!("Spotify tracks error: status={} url={} body={}", status, url, text));
         }
 
         let page: SpotifyTracksPage = res.json().await.map_err(|e| e.to_string())?;

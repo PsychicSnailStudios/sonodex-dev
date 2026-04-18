@@ -7,8 +7,6 @@
 	import { setMode, mode } from "mode-watcher";
 
 	// COMPONENTS
-	import { Loader2 } from "lucide-svelte";
-
 	import * as Select from "$lib/components/ui/select/index.js";
 	import { ScrollArea } from "$lib/components/ui/scroll-area/index.js";
 	import { Button } from "$lib/components/ui/button/index.js";
@@ -22,17 +20,13 @@
 	import { applyEqToGraph } from "$lib/ts/audio/audioManager.svelte";
 	import { connectLastfm, disconnectLastfm, lastfmIsConnected, onLastfmConnected, } from "$lib/ts/connections/lastfm";
 	import { connectSpotify, disconnectSpotify, spotifyIsConnected, getSpotifyPlaylists, importSpotifyPlaylist, onSpotifyConnected, type SpotifyPlaylistSummary, } from "$lib/ts/connections/spotify";
-	import { enrichAlbum, enrichAllAlbums, enrichAllArtists, enrichAllTracks } from "$lib/ts/app/enrichment";
+	import { toast } from "svelte-sonner";
 	
-
 	// VARIABLES
 	let settings = $state<Record<string, string>>({});
 
 	let lastfmConnected = $state(false);
 	let spotifyConnected = $state(false);
-	let spotifyPlaylists = $state<SpotifyPlaylistSummary[]>([]);
-	let spotifyPlaylistsLoading = $state(false);
-	let spotifyImporting = $state<string | null>(null);
 
 	let themeOptions = [
 		{ value: "system", label: "System" },
@@ -85,6 +79,7 @@
 
 			cleanupSpotify = await onSpotifyConnected(async () => {
 				spotifyConnected = true;
+				toast.success("Spotify connected");
 			});
 		})();
 
@@ -136,30 +131,6 @@
 	async function handleSpotifyDisconnect() {
 		await disconnectSpotify();
 		spotifyConnected = false;
-		spotifyPlaylists = [];
-	}
-
-	async function loadSpotifyPlaylists() {
-		spotifyPlaylistsLoading = true;
-		try {
-			spotifyPlaylists = await getSpotifyPlaylists();
-		} catch (e) {
-			console.error("Failed to load Spotify playlists:", e);
-		} finally {
-			spotifyPlaylistsLoading = false;
-		}
-	}
-
-	async function handleImportPlaylist(pl: SpotifyPlaylistSummary) {
-		spotifyImporting = pl.id;
-		try {
-			await importSpotifyPlaylist(pl.id, pl.name, pl.owner);
-			await reloadLibrary("playlists");
-		} catch (e) {
-			console.error("Failed to import playlist:", e);
-		} finally {
-			spotifyImporting = null;
-		}
 	}
 
 </script>
@@ -378,40 +349,6 @@
 							value={settings["spotify_client_id"] ?? ""}
 							onchange={(e) => saveSetting("spotify_client_id", (e.target as HTMLInputElement).value)}
 					/>
-				</div>
-				{/if}
-	
-				{#if spotifyConnected}
-				<div class="space-y-2">
-					<div class="flex items-center justify-between">
-							<h4 class="text-sm font-semibold">Import Spotify Playlists</h4>
-							<Button variant="outline" onclick={loadSpotifyPlaylists} disabled={spotifyPlaylistsLoading}>
-								{spotifyPlaylistsLoading ? "Loading..." : "Load Playlists"}
-							</Button>
-					</div>
-	
-					{#if spotifyPlaylists.length > 0}
-					<div class="flex flex-col gap-1 max-h-64 overflow-y-auto">
-							{#each spotifyPlaylists as pl}
-							<div class="flex items-center justify-between border rounded px-3 py-2 text-sm">
-								<div class="flex flex-col min-w-0">
-									<span class="font-medium truncate">{pl.name}</span>
-									<span class="text-xs text-muted-foreground">{pl.track_count} tracks · {pl.owner}</span>
-								</div>
-								<Button
-									variant="outline"
-									class="shrink-0 ml-2"
-									onclick={() => handleImportPlaylist(pl)}
-									disabled={spotifyImporting === pl.id}
-								>
-									{spotifyImporting === pl.id ? "Importing..." : "Import"}
-								</Button>
-							</div>
-							{/each}
-					</div>
-					{:else if !spotifyPlaylistsLoading}
-					<p class="text-xs text-muted-foreground">Click "Load Playlists" to see your Spotify playlists.</p>
-					{/if}
 				</div>
 				{/if}
 	
