@@ -12,12 +12,13 @@
 	import { parseAlbum, parseTrackNumber } from "$lib/ts/util/helpers"
 	import { dragState, endDrag } from "$lib/ts/app-states/state_drag.svelte"
 	import { generateViewId, trackSelection, setTrackSelectionContext, clearTrackSelection, copySelectedToClipboard } from "$lib/ts/app/trackSelection.svelte"
-	import { removeTracksFromPlaylist, reorderPlaylistTracks, addTracksToPlaylist } from "$lib/ts/audio/playlistManager.svelte"
+	import { removeTracksFromPlaylist, reorderPlaylistTracks, addTracksToPlaylist, parseTracks } from "$lib/ts/audio/playlistManager.svelte"
 	
 	// TYPES
 	import type { ColumnState } from "$lib/ts/app/columnConfig.svelte"
 	import type { SortState } from "$lib/ts/app/sortConfig.svelte"
 	import type { Track } from "$lib/ts/util/types"
+    import { library } from "$lib/ts/library.svelte";
 
 	// PROPS
 	let { tracks, columns, sort, compact = false, playlistUid = null, } =$props<{
@@ -88,11 +89,11 @@
 			return
 		}
 		if ((e.ctrlKey || e.metaKey) && e.key === "c") {
-			if (trackSelection.count === 0) return;
-			e.preventDefault();
-			copySelectedToClipboard(orderedUids);
-			return;
-		}
+		if (trackSelection.count === 0) return;
+		e.preventDefault();
+		copySelectedToClipboard(orderedUids);
+		return;
+	}
 		if (e.key === "Delete" && playlistUid && trackSelection.count > 0) {
 			e.preventDefault()
 			removeTracksFromPlaylist(playlistUid, [...trackSelection.selected])
@@ -141,6 +142,19 @@
 			await reorderPlaylistTracks(playlistUid, without);
 		} else {
 			await addTracksToPlaylist(playlistUid, uids);
+
+			const playlist = library.playlists.find((p) => p.uid === playlistUid);
+			if (!playlist) { dragOverIndex = null; endDrag(); return; }
+			const current = parseTracks(playlist.tracks);
+			const currentUids = current.sort((a, b) => a.order - b.order).map((t) => t.uid);
+
+			const movingSet = new Set(uids);
+			const without = currentUids.filter((uid) => !movingSet.has(uid));
+			const anchor = orderedUids[dropIndex];
+			const anchorIndexInWithout = without.indexOf(anchor);
+			const insertAt = dragOverPosition === "above" ? anchorIndexInWithout : anchorIndexInWithout + 1;
+			without.splice(insertAt, 0, ...uids);
+			await reorderPlaylistTracks(playlistUid, without);
 		}
 
 		dragOverIndex = null;

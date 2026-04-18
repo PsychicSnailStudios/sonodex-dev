@@ -2,6 +2,7 @@ export type DragPayload = {
 	type: "tracks";
 	uids: string[];
 	sourcePlaylistUid: string | null;
+	sourceQueueIndex?: number;
 };
 
 let active = $state(false);

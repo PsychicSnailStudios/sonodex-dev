@@ -362,6 +362,48 @@ function startPlayingQueue() {
 	playTrack(queuedTracks[0]);
 }
 
+export function getQueueIndex(): number {
+	return queueIndex;
+}
+
+export function getQueuedTracksAll(): Track[] {
+	return queuedTracks;
+}
+ 
+export function reorderQueue(fromDisplayIndex: number, toDisplayIndex: number) {
+	const offset = queueIndex + 1;
+	const absFrom = fromDisplayIndex + offset;
+	const absTo = toDisplayIndex + offset;
+ 
+	if (
+		absFrom === absTo ||
+		absFrom < offset ||
+		absTo < offset ||
+		absFrom >= queuedTracks.length ||
+		absTo >= queuedTracks.length
+	) return;
+ 
+	const [removed] = queuedTracks.splice(absFrom, 1);
+	queuedTracks.splice(absTo, 0, removed);
+}
+ 
+export function removeFromQueue(displayIndex: number) {
+	const abs = displayIndex + queueIndex + 1;
+	if (abs < queueIndex + 1 || abs >= queuedTracks.length) return;
+	queuedTracks.splice(abs, 1);
+}
+ 
+export function insertIntoQueue(tracks: Track[], afterDisplayIndex?: number) {
+	const offset = queueIndex + 1;
+	if (afterDisplayIndex === undefined) {
+		tracks.forEach(t => queuedTracks.push(t));
+	} else {
+		const absInsert = afterDisplayIndex + offset + 1;
+		const clampedInsert = Math.min(absInsert, queuedTracks.length);
+		queuedTracks.splice(clampedInsert, 0, ...tracks);
+	}
+}
+
 function spacedShuffle(tracks: Track[]): Track[] {
     // Start with a Fisher-Yates shuffle
     const shuffled = [...tracks];
