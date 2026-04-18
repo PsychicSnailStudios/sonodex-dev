@@ -122,10 +122,8 @@ fn create_profile_cmd(
 
     let mut registry = read_registry();
     let is_first = registry.profiles.is_empty();
-    let is_only =
-        registry.profiles.iter().all(|p| p.uid == state.get_uid()) && registry.profiles.len() <= 1;
     registry.profiles.push(profile.clone());
-    if is_first || is_only {
+    if is_first {
         registry.active = profile.uid.clone();
         state.set_uid(profile.uid.clone());
     }

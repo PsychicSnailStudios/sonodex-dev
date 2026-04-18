@@ -6,6 +6,7 @@ import type { Track, AudioCatagories } from "$lib/ts/util/types";
 import { parseTrackNumber, parseUidType } from "../util/helpers";
 import { eq, EQ_BANDS } from "$lib/ts/app/eqStore.svelte";
 import { scrobbleStart, scrobbleEnd, scrobbleMarkPaused, scrobbleMarkSeeked } from "$lib/ts/audio/scrobbler.svelte";
+import { profileState } from "$lib/ts/profiles.svelte";
 
 let audio: HTMLAudioElement | null = null;
 
@@ -36,8 +37,8 @@ export const player = $state({
 	muted: false,
 });
 
-const PLAYER_STORAGE_KEY = "sonodex:player";
-const QUEUE_STORAGE_KEY = "sonodex:queue";
+function playerKey() { return `sonodex:player:${profileState.active?.uid ?? "default"}`; }
+function queueKey() { return `sonodex:queue:${profileState.active?.uid ?? "default"}`; }
 
 function buildAudioGraph(el: HTMLAudioElement) {
 	if (!audioCtx) {
@@ -82,7 +83,7 @@ export function applyEqToGraph() {
 
 export function loadPlayerState() {
 	try {
-		const raw = localStorage.getItem(PLAYER_STORAGE_KEY);
+		const raw = localStorage.getItem(playerKey());
 		if (!raw) return;
 		const saved = JSON.parse(raw);
 		player.volume = saved.volume ?? 1;
@@ -107,7 +108,7 @@ export function loadPlayerState() {
 		}
 	} catch {}
 	try {
-		const raw = localStorage.getItem(QUEUE_STORAGE_KEY);
+		const raw = localStorage.getItem(queueKey());
 		if (!raw) return;
 		const saved = JSON.parse(raw);
 		queuedTracks = saved.tracks ?? [];
@@ -117,10 +118,10 @@ export function loadPlayerState() {
 }
 
 export function savePlayerState() {
-	scrobbleEnd(audio!.currentTime);
+	if (audio) scrobbleEnd(audio.currentTime);
 
 	try {
-		localStorage.setItem(PLAYER_STORAGE_KEY, JSON.stringify({
+		localStorage.setItem(playerKey(), JSON.stringify({
 			track: player.track,
 			isPlaying: false,
 			loopType: player.loopType,
@@ -132,7 +133,7 @@ export function savePlayerState() {
 		}));
 	} catch {}
 	try {
-		localStorage.setItem(QUEUE_STORAGE_KEY, JSON.stringify({
+		localStorage.setItem(queueKey(), JSON.stringify({
 			tracks: queuedTracks,
 			index: queueIndex,
 			lastSet: lastQueuedSet

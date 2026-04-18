@@ -13,7 +13,9 @@
 	
 	// SCRIPTS
 	import { profileState, loadProfiles, switchProfile, deleteProfile, getProfileAvatar, } from "$lib/ts/profiles.svelte";
-
+	import { saveSessionState } from "$lib/ts/app-states/state_session.svelte";
+	import { savePlayerState } from "$lib/ts/audio/audioManager.svelte";
+	
 	// VARIABLES
 	let { open = $bindable(true), openAdd = $bindable(true) } = $props<{ open: boolean, openAdd: boolean }>();
 
@@ -37,6 +39,11 @@
 
 	async function handleSwitch(uid: string) {
 		if (uid === profileState.active?.uid) return;
+		const activeUid = profileState.active?.uid;
+		if (activeUid) {
+			saveSessionState(activeUid);
+			savePlayerState();
+		}
 		await switchProfile(uid);
 	}
 

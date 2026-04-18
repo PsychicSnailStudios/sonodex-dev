@@ -3,6 +3,7 @@ import { createColumnState } from "$lib/ts/app/columnConfig.svelte";
 import { clamp } from "$lib/ts/util/helpers";
 import type { SortField, SortDirection } from "$lib/ts/app/sortConfig.svelte";
 import type { ColumnKey } from "$lib/ts/app/columnConfig.svelte";
+import { profileState } from "$lib/ts/profiles.svelte";
 
 type Selection = {
 	uid: string;
@@ -28,23 +29,28 @@ export const scanState = $state({
 	enrichErrors: 0,
 });
 
-const SESSION_STORAGE_KEY = "sonodex:session";
+function sessionKey(profileUid: string) {
+	return `sonodex:session:${profileUid}`;
+}
+
+function viewKey(profileUid: string, key: string) {
+	return `sonodex:view:${profileUid}:${key}`;
+}
 
 // SAVE/LOAD
-export function loadSessionState() {
+export function loadSessionState(profileUid: string) {
 	try {
-		const raw = localStorage.getItem(SESSION_STORAGE_KEY);
+		const raw = localStorage.getItem(sessionKey(profileUid));
 		if (!raw) return;
 		const saved = JSON.parse(raw);
 		setSelection(saved.selection.uid, saved.selection.type);
 		setView(saved.activeView.id);
-
 	} catch {}
 }
 
-export function saveSessionState() {
+export function saveSessionState(profileUid: string) {
 	try {
-		localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify({
+		localStorage.setItem(sessionKey(profileUid), JSON.stringify({
 			selection: selection,
 			activeView: activeView
 		}));
@@ -60,7 +66,8 @@ export function createPersistedViewState(
 		colPreset?: string;
 	} = {}
 ) {
-	const storageKey = `sonodex:view:${key}`;
+	const profileUid = profileState.active?.uid ?? "default";
+	const storageKey = viewKey(profileUid, key);
 
 	let saved: any = null;
 	try {
@@ -133,11 +140,10 @@ export function clearSelection() {
 	viewIndex = 0;
 }
 export function moveSelection(index: number) {
-
 	viewIndex += index;
 	viewIndex = clamp(viewIndex, 0, viewHistory.length - 1);
 
-	selection.uid = viewHistory[viewIndex].uid
+	selection.uid = viewHistory[viewIndex].uid;
 	selection.type = viewHistory[viewIndex].type;
 }
 

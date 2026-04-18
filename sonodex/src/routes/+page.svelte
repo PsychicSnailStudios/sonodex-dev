@@ -35,6 +35,7 @@
 	import { dragState } from "$lib/ts/app-states/state_drag.svelte";
 	import { togglePlay, skipBack, skipNext, loadPlayerState, savePlayerState } from "$lib/ts/audio/audioManager.svelte";
 	import { checkForUpdate } from "$lib/updater.svelte";
+	import { loadProfiles, profileState } from "$lib/ts/profiles.svelte";
 
 	// VARIABLES
 	let needsSetup = $state(false);
@@ -51,15 +52,10 @@
 
 	// APP FUNCTIONS
 	onMount(() => {
-		loadPlayerState();
-		loadSessionState();
-
-		window.addEventListener("beforeunload", savePlayerState);
-		window.addEventListener("beforeunload", saveSessionState);
+		window.addEventListener("beforeunload", handleUnload);
 		return () => {
-			window.removeEventListener("beforeunload", savePlayerState);
-			window.removeEventListener("beforeunload", saveSessionState);
-		}
+			window.removeEventListener("beforeunload", handleUnload);
+		};
 	});
 
 	onMount(async () => {
@@ -73,6 +69,10 @@
 		}
 
 		if (!needsSetup) {
+			await loadProfiles();
+			const uid = profileState.active?.uid;
+			loadPlayerState();
+			if (uid) loadSessionState(uid);
 			await loadLibrary();
 		}
 
@@ -82,15 +82,24 @@
 
 		await listen("profile:ready", async () => {
 			needsSetup = false;
+			await loadProfiles();
+			const uid = profileState.active?.uid;
+			
+			loadPlayerState();
+			if (uid) loadSessionState(uid);
 			await loadLibrary();
 		});
 
-		window.addEventListener("keydown", (e) => {
-			keydown(e);
-		});
+		window.addEventListener("keydown", keydown);
 	});
 
 	// FUNCTIONS
+	function handleUnload() {
+		const uid = profileState.active?.uid;
+		if (uid) saveSessionState(uid);
+		savePlayerState();
+	}
+
 	function onSetupComplete() {
 		needsSetup = false;
 		loadLibrary();

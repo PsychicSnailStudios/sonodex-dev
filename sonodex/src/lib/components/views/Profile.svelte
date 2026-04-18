@@ -29,7 +29,7 @@
 
 	// APP FUNCTIONS
 	onMount(async () => {
-		await loadProfiles();
+		// await loadProfiles();
 		loadAvatars();
 	});
 
