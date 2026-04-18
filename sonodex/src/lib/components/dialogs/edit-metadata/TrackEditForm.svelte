@@ -206,6 +206,7 @@
 			await reloadLibrary("tracks");
 			await reloadLibrary("albums");
 			await reloadLibrary("artists");
+			tagStore.load();
 		} finally {
 			saving = false;
 			closeEditModal();

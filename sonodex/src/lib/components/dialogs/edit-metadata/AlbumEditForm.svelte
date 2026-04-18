@@ -17,7 +17,7 @@
 	import { Separator } from "$lib/components/ui/separator";
 
 	// CUSTOM COMPONENTS
-	import ArtworkEditor from "./ArtworkEditor.svelte";
+	import ArtworkEditor from "$lib/components/dialogs/edit-metadata/ArtworkEditor.svelte";
 	import TagSelector from "$lib/components/app-ui/TagSelector.svelte";
 
 	// SCRIPTS
@@ -25,6 +25,7 @@
 	import { reloadLibrary } from "$lib/ts/library.svelte";
 	import { syncArtists, pruneArtists, renameArtistInLibrary, renameAlbumInTracks, warnEmptyFields } from "$lib/ts/dbManager";
 	import { enrichAlbum } from "$lib/ts/app/enrichment";
+    import { tagStore } from "$lib/ts/tagManager.svelte";
 
 	// PROPS
 	let { uid } = $props<{ uid: string }>();
@@ -142,6 +143,7 @@
 			await reloadLibrary("albums");
 			await reloadLibrary("artists");
 			await reloadLibrary("tracks");
+			tagStore.load();
 		} finally {
 			saving = false;
 			closeEditModal();

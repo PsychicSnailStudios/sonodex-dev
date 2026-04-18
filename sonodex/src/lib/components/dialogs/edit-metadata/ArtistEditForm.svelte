@@ -94,6 +94,7 @@
 			await reloadLibrary("artists");
 			await reloadLibrary("tracks");
 			await reloadLibrary("albums");
+			tagStore.load();
 		} finally {
 			saving = false;
 			closeEditModal();
