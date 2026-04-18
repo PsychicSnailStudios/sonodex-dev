@@ -33,7 +33,7 @@
 	import type { DuplicateGroup } from "$lib/ts/util/types";
 	import { scanState } from "$lib/ts/app-states/state_session.svelte";
 	import { enrichAllAlbums, enrichAllArtists, enrichAllTracks } from "$lib/ts/app/enrichment";
-    import { parseAlbum, parseArtists } from "$lib/ts/util/helpers";
+   import { parseAlbum, parseArtists } from "$lib/ts/util/helpers";
 
 	// ─── Search ───────────────────────────────────────────────────────────────────
 	let trackSearch = $state("");
@@ -282,35 +282,57 @@
 		await removeTracksFromLibrary(selectedTrackUids);
 		trackSelections = {};
 	}
-	async function bulkEnrichTracks() {
-		await enrichTracks(selectedTrackUids);
-	}
 
 	async function bulkRemoveAlbums() {
 		await removeAlbums(selectedAlbumUids);
 		albumSelections = {};
-	}
-	async function bulkEnrichAlbums() {
-		await enrichAlbums(selectedAlbumUids);
 	}
 
 	async function bulkRemoveArtists() {
 		await removeArtists(selectedArtistUids);
 		artistSelections = {};
 	}
+
+	async function bulkEnrichTracks() {
+		scanState.enriching = true;
+		scanState.enrichDone = 0;
+		scanState.enrichTotal = 0;
+		scanState.enrichErrors = 0;
+		try {
+			await enrichTracks(selectedTrackUids);
+		} catch (e) {
+			scanState.status = `Enrich error: ${e}`;
+		} finally {
+			scanState.enriching = false;
+		}
+	}
+
+	async function bulkEnrichAlbums() {
+		scanState.enriching = true;
+		scanState.enrichDone = 0;
+		scanState.enrichTotal = 0;
+		scanState.enrichErrors = 0;
+		try {
+			await enrichAlbums(selectedAlbumUids);
+		} catch (e) {
+			scanState.status = `Enrich error: ${e}`;
+		} finally {
+			scanState.enriching = false;
+		}
+	}
+
 	async function bulkEnrichArtists() {
-		await enrichArtists(selectedArtistUids);
-	}
-
-	// ─── Duplicates ───────────────────────────────────────────────────────────────
-	async function loadDuplicates() {
-		duplicatesLoaded = false;
-		duplicates = await getDuplicates();
-		duplicatesLoaded = true;
-	}
-
-	function onDuplicateResolved() {
-		loadDuplicates();
+		scanState.enriching = true;
+		scanState.enrichDone = 0;
+		scanState.enrichTotal = 0;
+		scanState.enrichErrors = 0;
+		try {
+			await enrichArtists(selectedArtistUids);
+		} catch (e) {
+			scanState.status = `Enrich error: ${e}`;
+		} finally {
+			scanState.enriching = false;
+		}
 	}
 
 	async function enrichAll() {
@@ -342,6 +364,17 @@
 			scanState.status = `Enrich error: ${e}`;
 			scanState.enriching = false;
 		}
+	}
+
+	// ─── Duplicates ───────────────────────────────────────────────────────────────
+	async function loadDuplicates() {
+		duplicatesLoaded = false;
+		duplicates = await getDuplicates();
+		duplicatesLoaded = true;
+	}
+
+	function onDuplicateResolved() {
+		loadDuplicates();
 	}
 </script>
 
@@ -458,8 +491,14 @@
 										<Tooltip.Trigger
 											class={buttonVariants({ variant: "outline", size: "sm" })}
 											onclick={bulkEnrichTracks}
+											disabled={scanState.enriching}
 										>
-											<CloudDownload class="w-4 h-4 mr-1" /> Enrich
+											{#if scanState.enriching}
+												<Loader2 class="w-4 h-4 mr-1 animate-spin" />
+											{:else}
+												<CloudDownload class="w-4 h-4 mr-1" />
+											{/if}
+											Enrich
 										</Tooltip.Trigger>
 										<Tooltip.Content><p>Fetch metadata for selected</p></Tooltip.Content>
 									</Tooltip.Root>
@@ -522,8 +561,14 @@
 										<Tooltip.Trigger
 											class={buttonVariants({ variant: "outline", size: "sm" })}
 											onclick={bulkEnrichAlbums}
+											disabled={scanState.enriching}
 										>
-											<CloudDownload class="w-4 h-4 mr-1" /> Enrich
+											{#if scanState.enriching}
+												<Loader2 class="w-4 h-4 mr-1 animate-spin" />
+											{:else}
+												<CloudDownload class="w-4 h-4 mr-1" />
+											{/if}
+											Enrich
 										</Tooltip.Trigger>
 										<Tooltip.Content><p>Fetch metadata for selected</p></Tooltip.Content>
 									</Tooltip.Root>
@@ -577,8 +622,14 @@
 										<Tooltip.Trigger
 											class={buttonVariants({ variant: "outline", size: "sm" })}
 											onclick={bulkEnrichArtists}
+											disabled={scanState.enriching}
 										>
-											<CloudDownload class="w-4 h-4 mr-1" /> Enrich
+											{#if scanState.enriching}
+												<Loader2 class="w-4 h-4 mr-1 animate-spin" />
+											{:else}
+												<CloudDownload class="w-4 h-4 mr-1" />
+											{/if}
+											Enrich
 										</Tooltip.Trigger>
 										<Tooltip.Content><p>Fetch metadata for selected</p></Tooltip.Content>
 									</Tooltip.Root>

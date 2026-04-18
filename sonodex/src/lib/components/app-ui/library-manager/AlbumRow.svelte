@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Pencil, Trash, CloudDownload } from "lucide-svelte";
+	import { Pencil, Trash, CloudDownload, Loader2 } from "lucide-svelte";
 	import * as Tooltip from "$lib/components/ui/tooltip/index.js";
 	import { buttonVariants } from "$lib/components/ui/button/index.js";
 	import { Checkbox } from "$lib/components/ui/checkbox/index.js";
@@ -21,6 +21,18 @@
 		onToggle?: () => void;
 		onShiftClick?: () => void;
 	} = $props();
+
+	let enriching = $state(false);
+
+	async function handleEnrich(e: MouseEvent) {
+		e.stopPropagation();
+		enriching = true;
+		try {
+			await enrichAlbum(album.uid);
+		} finally {
+			enriching = false;
+		}
+	}
 
 	const trackCount = $derived.by(() => {
 		try {
@@ -110,9 +122,14 @@
 				<Tooltip.Root>
 					<Tooltip.Trigger
 						class={buttonVariants({ variant: "outline", size: "icon" })}
-						onclick={(e: MouseEvent) => { e.stopPropagation(); enrichAlbum(album.uid); }}
+						onclick={handleEnrich}
+						disabled={enriching}
 					>
-						<CloudDownload />
+						{#if enriching}
+							<Loader2 class="animate-spin" />
+						{:else}
+							<CloudDownload />
+						{/if}
 					</Tooltip.Trigger>
 					<Tooltip.Content><p>Fetch metadata via API</p></Tooltip.Content>
 				</Tooltip.Root>

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Pencil, Trash, FolderInput, Paperclip, CloudDownload, FolderOpen } from "lucide-svelte";
+	import { Pencil, Trash, FolderInput, Paperclip, CloudDownload, FolderOpen, Loader2 } from "lucide-svelte";
 	import * as Tooltip from "$lib/components/ui/tooltip/index.js";
 	import { buttonVariants } from "$lib/components/ui/button/index.js";
 	import ArtworkDisplay from "$lib/components/app-ui/ArtworkDisplay.svelte";
@@ -31,6 +31,18 @@
 	} = $props();
 
 	const albumList = $derived(parseAlbumEntries(track.albums));
+
+	let enriching = $state(false);
+
+	async function handleEnrich(e: MouseEvent) {
+		e.stopPropagation();
+		enriching = true;
+		try {
+			await enrichTrack(track.uid);
+		} finally {
+			enriching = false;
+		}
+	}
 
 	function handleRowClick(e: MouseEvent) {
 		const target = e.target as HTMLElement;
@@ -108,9 +120,14 @@
 				<Tooltip.Root>
 					<Tooltip.Trigger
 						class={buttonVariants({ variant: "outline", size: "icon" })}
-						onclick={(e: MouseEvent) => { e.stopPropagation(); enrichTrack(track.uid); }}
+						onclick={handleEnrich}
+						disabled={enriching}
 					>
-						<CloudDownload />
+						{#if enriching}
+							<Loader2 class="animate-spin" />
+						{:else}
+							<CloudDownload />
+						{/if}
 					</Tooltip.Trigger>
 					<Tooltip.Content><p>Fetch metadata via API</p></Tooltip.Content>
 				</Tooltip.Root>

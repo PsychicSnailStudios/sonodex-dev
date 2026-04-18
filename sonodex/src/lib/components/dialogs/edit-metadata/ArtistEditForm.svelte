@@ -160,7 +160,7 @@
 </Tabs.Root>
 
 <div class="flex justify-end gap-2">
-	<Button variant="outline" onclick={() => enrichArtist(uid)}>Enrich</Button>
+	<!-- <Button variant="outline" onclick={() => enrichArtist(uid)}>Enrich</Button> -->
 	<Button variant="outline" onclick={closeEditModal}>Cancel</Button>
 	<Button onclick={save} disabled={saving}>{saving ? "Saving…" : "Save"}</Button>
 </div>
