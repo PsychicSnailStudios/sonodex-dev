@@ -1,4 +1,5 @@
 import type { Track, TrackAlbumEntry, PlaylistTrackEntry, AudioCatagories } from "$lib/ts/util/types";
+import { convertFileSrc } from "@tauri-apps/api/core";
 
 export function parseUidType(uid: string): AudioCatagories {
 	if (uid.startsWith("t-")) return "track";
@@ -121,6 +122,16 @@ export async function getArtworkColor(bytes: number[], opacity = 1): Promise<str
 			resolve(`rgba(30, 30, 30, ${opacity})`)
 		}
 	})
+}
+export async function getArtworkColorFromPath(path: string, opacity = 1): Promise<string> {
+	try {
+		const url = convertFileSrc(path);
+		const res = await fetch(url);
+		const buf = await res.arrayBuffer();
+		return getArtworkColor(Array.from(new Uint8Array(buf)), opacity);
+	} catch {
+		return `rgba(30, 30, 30, ${opacity})`;
+	}
 }
 
 export function clamp(num: number, min: number, max: number): number {

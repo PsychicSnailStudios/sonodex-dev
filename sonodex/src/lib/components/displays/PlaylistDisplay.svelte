@@ -23,7 +23,7 @@
 	import { selection } from "$lib/ts/app-states/state_session.svelte";
 	import { getPlaylistTracks, library } from "$lib/ts/library.svelte";
 	import { openEditModal } from "$lib/ts/app/editModal.svelte";
-	import { getArtworkColor, parseAlbum, parseArtists, totalDuration } from '$lib/ts/util/helpers';
+	import { getArtworkColor, getArtworkColorFromPath, parseAlbum, parseArtists, totalDuration } from '$lib/ts/util/helpers';
 	import { addTrackToPlaylist, addTracksToPlaylist } from "$lib/ts/audio/playlistManager.svelte";
 	import { queueTracksByObject } from "$lib/ts/audio/audioManager.svelte";
 	import { dragState, endDrag } from "$lib/ts/app-states/state_drag.svelte";
@@ -75,10 +75,15 @@
 	// APP FUNCTIONS
 	$effect(() => {
 		const uid = selection.uid;
+		const firstTrack = tracks[0];
 		if (!uid) return;
 
-		const firstTrack = tracks[0];
 		color = "var(--muted)";
+
+		if (playlist?.artwork_path) {
+			getArtworkColorFromPath(playlist.artwork_path, 0.3).then((c) => color = c);
+			return;
+		}
 
 		invoke("get_playlist_artwork", { uid }).then((bytes) => {
 			if (bytes) {
