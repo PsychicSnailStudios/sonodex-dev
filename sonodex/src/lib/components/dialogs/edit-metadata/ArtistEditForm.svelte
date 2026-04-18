@@ -13,7 +13,8 @@
 	import { Separator } from "$lib/components/ui/separator";
 
 	// CUSTOM COMPONENTS
-	import ArtworkEditor from "./ArtworkEditor.svelte";
+	import ArtworkEditor from "$lib/components/dialogs/edit-metadata/ArtworkEditor.svelte";
+	import TagSelector from "$lib/components/app-ui/TagSelector.svelte";
 
 	// SCRIPTS
 	import { closeEditModal } from "$lib/ts/app/editModal.svelte";
@@ -30,8 +31,8 @@
 	let originalName = $state("");
 	let aka = $state("");
 	let about = $state("");
-	let genres = $state("");
-	let tags = $state("");
+	let genreList = $state<string[]>([]);
+	let tagList = $state<string[]>([]);
 	let websites = $state("");
 	let members = $state("");
 	let profileArtPath = $state<string | null>(null);
@@ -56,8 +57,8 @@
 		profileArtPath = artist.profile_art_path ?? null;
 
 		try { aka = (artist.aka ? JSON.parse(artist.aka) : []).join(", "); } catch { aka = ""; }
-		try { genres = (artist.genres ? JSON.parse(artist.genres) : []).join(", "); } catch { genres = ""; }
-		try { tags = (artist.tags ? JSON.parse(artist.tags) : []).join(", "); } catch { tags = ""; }
+		try { genreList = artist.genres ? JSON.parse(artist.genres) : []; } catch { genreList = []; }
+		try { tagList = artist.tags ? JSON.parse(artist.tags) : []; } catch { tagList = []; }
 		try { websites = (artist.websites ? JSON.parse(artist.websites) : []).join(", "); } catch { websites = ""; }
 		try { members = (artist.members ? JSON.parse(artist.members) : []).join(", "); } catch { members = ""; }
 	}
@@ -69,12 +70,10 @@
 
 		saving = true;
 		try {
-			// Propagate name rename across all tracks and albums
 			if (originalName && name && originalName.toLowerCase() !== name.toLowerCase()) {
 				await renameArtistInLibrary(originalName, name);
 			}
 
-			// Merge any artist records whose name matches an AKA
 			const akaList = splitList(aka);
 			if (akaList.length > 0) {
 				await mergeArtistAkas(uid, akaList);
@@ -84,8 +83,8 @@
 				name: name || null,
 				about: about || null,
 				aka: aka ? JSON.stringify(akaList) : null,
-				genres: genres ? JSON.stringify(splitList(genres)) : null,
-				tags: tags ? JSON.stringify(splitList(tags)) : null,
+				genres: genreList.length > 0 ? JSON.stringify(genreList) : null,
+				tags: tagList.length > 0 ? JSON.stringify(tagList) : null,
 				websites: websites ? JSON.stringify(splitList(websites)) : null,
 				members: members ? JSON.stringify(splitList(members)) : null,
 				profile_art_path: profileArtPath,
@@ -109,27 +108,31 @@
 		<Tabs.Trigger value="artwork" class="flex-1">Artwork</Tabs.Trigger>
 	</Tabs.List>
 
-	<Tabs.Content value="info" class="space-y-3 mt-4">
-		<div class="space-y-1.5">
-			<Label for="artist-name">Name</Label>
-			<Input id="artist-name" bind:value={name} />
+	<Tabs.Content value="info">
+		<div class="flex-1 min-h-0 pr-1 space-y-3 mt-4">
+
+			<div class="space-y-1.5">
+				<Label for="artist-name">Name</Label>
+				<Input id="artist-name" bind:value={name} />
+			</div>
+			<div class="space-y-1.5">
+				<Label for="artist-aka">Also Known As <span class="text-muted-foreground text-xs">(comma-separated)</span></Label>
+				<Input id="artist-aka" bind:value={aka} />
+			</div>
+			<div class="space-y-1.5">
+				<Label for="artist-members">Members <span class="text-muted-foreground text-xs">(comma-separated)</span></Label>
+				<Input id="artist-members" bind:value={members} />
+			</div>
+			<div class="space-y-1.5">
+				<Label for="artist-genres">Genres <span class="text-muted-foreground text-xs">(comma-separated)</span></Label>
+				<TagSelector bind:value={genreList} isGenre={true} placeholder="Add genre…" />
+			</div>
+			<div class="space-y-1.5">
+				<Label for="artist-tags">Tags <span class="text-muted-foreground text-xs">(comma-separated)</span></Label>
+				<TagSelector bind:value={tagList} placeholder="Add tag…" />
+			</div>
 		</div>
-		<div class="space-y-1.5">
-			<Label for="artist-aka">Also Known As <span class="text-muted-foreground text-xs">(comma-separated)</span></Label>
-			<Input id="artist-aka" bind:value={aka} />
-		</div>
-		<div class="space-y-1.5">
-			<Label for="artist-genres">Genres <span class="text-muted-foreground text-xs">(comma-separated)</span></Label>
-			<Input id="artist-genres" bind:value={genres} />
-		</div>
-		<div class="space-y-1.5">
-			<Label for="artist-members">Members <span class="text-muted-foreground text-xs">(comma-separated)</span></Label>
-			<Input id="artist-members" bind:value={members} />
-		</div>
-		<div class="space-y-1.5">
-			<Label for="artist-about">Biography</Label>
-			<Textarea id="artist-about" bind:value={about} rows={5} />
-		</div>
+		<Separator class="my-4" />
 	</Tabs.Content>
 
 	<Tabs.Content value="details" class="space-y-3 mt-4">
@@ -138,9 +141,10 @@
 			<Input id="artist-websites" bind:value={websites} />
 		</div>
 		<div class="space-y-1.5">
-			<Label for="artist-tags">Tags <span class="text-muted-foreground text-xs">(comma-separated)</span></Label>
-			<Input id="artist-tags" bind:value={tags} />
+			<Label for="artist-about">Biography</Label>
+			<Textarea id="artist-about" bind:value={about} rows={5} />
 		</div>
+		<Separator class="my-4" />
 	</Tabs.Content>
 
 	<Tabs.Content value="artwork" class="mt-4">
@@ -150,10 +154,9 @@
 			entityUid={uid}
 			onchange={(path) => { profileArtPath = path; }}
 		/>
+		<Separator class="my-4" />
 	</Tabs.Content>
 </Tabs.Root>
-
-<Separator class="my-4" />
 
 <div class="flex justify-end gap-2">
 	<Button variant="outline" onclick={() => enrichArtist(uid)}>Enrich</Button>

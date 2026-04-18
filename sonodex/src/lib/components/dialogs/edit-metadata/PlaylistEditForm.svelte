@@ -65,33 +65,22 @@
 	}
 </script>
 
-<Tabs.Root value="info">
-	<Tabs.List class="w-full">
-		<Tabs.Trigger value="info" class="flex-1">Info</Tabs.Trigger>
-		<Tabs.Trigger value="artwork" class="flex-1">Artwork</Tabs.Trigger>
-	</Tabs.List>
-
-	<Tabs.Content value="info" class="space-y-3 mt-4">
-		<div class="space-y-1.5">
-			<Label for="playlist-title">Title</Label>
-			<Input id="playlist-title" bind:value={title} />
-		</div>
-		<div class="space-y-1.5">
-			<Label for="playlist-desc">Description</Label>
-			<Textarea id="playlist-desc" bind:value={description} rows={4} />
-		</div>
-	</Tabs.Content>
-
-	<Tabs.Content value="artwork" class="mt-4">
-		<ArtworkEditor
-			entityType="playlist"
-			entityUid={uid}
-			onchange={(path) => { artworkPath = path; }}
-		/>
-	</Tabs.Content>
-</Tabs.Root>
-
-<Separator class="my-4" />
+<div class="space-y-3 mt-4">
+	<ArtworkEditor
+		entityType="playlist"
+		entityUid={uid}
+		onchange={(path) => { artworkPath = path; }}
+	/>
+	<div class="space-y-1.5 mt-8">
+		<Label for="playlist-title">Title</Label>
+		<Input id="playlist-title" bind:value={title} />
+	</div>
+	<div class="space-y-1.5">
+		<Label for="playlist-desc">Description</Label>
+		<Textarea id="playlist-desc" bind:value={description} rows={4} />
+	</div>
+	<Separator class="my-4" />
+</div>
 
 <div class="flex justify-end gap-2">
 	<Button variant="destructive" onclick={deleteThisPlaylist}>Delete</Button>

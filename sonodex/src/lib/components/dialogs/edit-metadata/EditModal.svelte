@@ -29,7 +29,7 @@
 			</Dialog.Title>
 		</Dialog.Header>
 
-		<div class="flex-1 overflow-y-auto min-h-0">
+		<div class="flex-1 flex flex-col min-h-0 justify-between">
 			{#if editModal.target}
 				{#if editModal.target.type === "track"}
 					<TrackEditForm uid={editModal.target.uid} />
