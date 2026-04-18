@@ -9,6 +9,7 @@
 	// SCRIPTS
 	import { setSelection } from "$lib/ts/app-states/state_session.svelte";
 	import { startDrag, endDrag } from "$lib/ts/app-states/state_drag.svelte";
+	import { queueSelection, selectQueueItem } from "$lib/ts/app/queueSelection.svelte";
 	import ArtistsList from "$lib/components/app-ui/ArtistsList.svelte";
 	import type { Track } from "$lib/ts/util/types";
 
@@ -17,58 +18,78 @@
 		track,
 		displayIndex = null,
 		isNowPlaying = false,
-		onDragStart = null,
-		onDragEnd = null,
+		allUpcomingUids = [],
 	} = $props<{
 		track: Track;
 		displayIndex?: number | null;
 		isNowPlaying?: boolean;
-		onDragStart?: ((e: DragEvent) => void) | null;
-		onDragEnd?: (() => void) | null;
+		allUpcomingUids?: string[];
 	}>();
 
+	// VARIABLES
+	let isSelected = $derived(
+		!isNowPlaying && displayIndex !== null && queueSelection.isSelected(displayIndex)
+	);
+
 	// FUNCTIONS
+	function handleClick(e: MouseEvent) {
+		if (isNowPlaying || displayIndex === null) return;
+		if ((e.target as HTMLElement).closest("button")) return;
+		selectQueueItem(displayIndex, e, allUpcomingUids.length);
+	}
+
 	function handleDragStart(e: DragEvent) {
 		if (!e.dataTransfer) return;
 		e.dataTransfer.effectAllowed = "move";
-		e.dataTransfer.setData("text/plain", track.uid);
 
 		if (isNowPlaying) {
+			e.dataTransfer.setData("text/plain", track.uid);
 			startDrag({ type: "tracks", uids: [track.uid], sourcePlaylistUid: null });
-		} else {
-			startDrag({
-				type: "tracks",
-				uids: [track.uid],
-				sourcePlaylistUid: null,
-				sourceQueueIndex: displayIndex ?? undefined,
-			});
+			return;
 		}
 
-		onDragStart?.(e);
+		let dragIndices: number[];
+		let dragUids: string[];
+
+		if (displayIndex !== null && queueSelection.isSelected(displayIndex) && queueSelection.count > 1) {
+			dragIndices = [...queueSelection.selected].sort((a, b) => a - b);
+			dragUids = dragIndices.map(i => allUpcomingUids[i]).filter(Boolean);
+		} else {
+			dragIndices = displayIndex !== null ? [displayIndex] : [];
+			dragUids = [track.uid];
+		}
+
+		e.dataTransfer.setData("text/plain", dragUids.join(","));
+		startDrag({
+			type: "tracks",
+			uids: dragUids,
+			sourcePlaylistUid: null,
+			sourceQueueIndices: dragIndices,
+		});
 	}
 
 	function handleDragEnd() {
 		endDrag();
-		onDragEnd?.();
 	}
 </script>
 
 <ContextMenu.Root>
 	<ContextMenu.Trigger>
 		<div
-			class="flex gap-2 p-2 items-center cursor-grab active:cursor-grabbing rounded-md hover:bg-muted/50 transition-colors"
+			class="flex gap-2 p-2 items-center cursor-grab active:cursor-grabbing rounded-md transition-colors {isSelected ? 'bg-primary/15 hover:bg-primary/20' : 'hover:bg-muted/50'}"
 			draggable="true"
-			ondragstart={handleDragStart}
-			ondragend={handleDragEnd}
 			role="row"
 			tabindex="0"
+			onclick={handleClick}
+			ondragstart={handleDragStart}
+			ondragend={handleDragEnd}
 		>
 			<ArtworkDisplay uid={track.uid} size={36} type="track" />
 			<div class="min-w-0 grid flex-1">
 				<span
 					role="button"
 					tabindex="0"
-					onclick={() => setSelection(track.uid, "track")}
+					onclick={(e) => { e.stopPropagation(); setSelection(track.uid, "track"); }}
 					onkeydown={(e) => { if (e.key === 'Enter') setSelection(track.uid, "track"); }}
 					class="text-sm truncate cursor-pointer hover:underline"
 				>
@@ -80,5 +101,5 @@
 			</div>
 		</div>
 	</ContextMenu.Trigger>
-	<TrackContext track={track} />
+	<TrackContext track={track} inQueue={!isNowPlaying} displayIndex={displayIndex} />
 </ContextMenu.Root>

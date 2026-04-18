@@ -13,12 +13,15 @@
 		player,
 		reorderQueue,
 		insertIntoQueue,
+		removeFromQueue,
 	} from "$lib/ts/audio/audioManager.svelte";
 	import { dragState, endDrag } from "$lib/ts/app-states/state_drag.svelte";
+	import { clearQueueSelection, queueSelection } from "$lib/ts/app/queueSelection.svelte";
 	import { library } from "$lib/ts/library.svelte";
 
 	// VARIABLES
 	let upcomingTracks = $derived(getQueuedTracks());
+	let upcomingUids = $derived(upcomingTracks.map(t => t.uid));
 
 	let dragOverIndex = $state<number | null>(null);
 	let dragOverPosition = $state<"above" | "below">("below");
@@ -29,27 +32,24 @@
 		const queueMs = getQueuedTracks().reduce((acc, t) => acc + (t.duration_ms ?? 0), 0);
 		const currentRemaining = (player.duration - player.currentTime) * 1000;
 		const totalMs = queueMs + Math.max(0, currentRemaining);
-
 		const totalSecs = Math.floor(totalMs / 1000);
 		const h = Math.floor(totalSecs / 3600);
 		const m = Math.floor((totalSecs % 3600) / 60);
 		const s = totalSecs % 60;
-
 		return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
 	}
 
-	function isQueueDrag(): boolean {
-		return dragState.payload?.sourceQueueIndex !== undefined && !isNowPlayingDrag();
+	function handleKeyDown(e: KeyboardEvent) {
+		if (e.key === "Delete" && queueSelection.count > 0) {
+			e.preventDefault();
+			const indices = [...queueSelection.selected].sort((a, b) => b - a);
+			indices.forEach(i => removeFromQueue(i));
+			clearQueueSelection();
+		}
 	}
 
-	function isNowPlayingDrag(): boolean {
-		return (
-			dragState.payload !== null &&
-			dragState.payload.sourceQueueIndex === undefined &&
-			dragState.payload.sourcePlaylistUid === null &&
-			dragState.payload.uids.length === 1 &&
-			player.track?.uid === dragState.payload.uids[0]
-		);
+	function isQueueDrag(): boolean {
+		return (dragState.payload?.sourceQueueIndices?.length ?? 0) > 0;
 	}
 
 	function handleRowDragOver(e: DragEvent, index: number) {
@@ -71,9 +71,7 @@
 	function handleScrollAreaDragOver(e: DragEvent) {
 		e.preventDefault();
 		if (e.dataTransfer) e.dataTransfer.dropEffect = "move";
-		if (dragOverIndex === null) {
-			dragOverAppend = true;
-		}
+		if (dragOverIndex === null) dragOverAppend = true;
 	}
 
 	function handleScrollAreaDragLeave(e: DragEvent) {
@@ -86,41 +84,40 @@
 		e.preventDefault();
 		e.stopPropagation();
 
-		const toDisplayIndex = dragOverPosition === "above" ? dropIndex : dropIndex + 1;
-
 		if (isQueueDrag()) {
-			const fromDisplayIndex = dragState.payload!.sourceQueueIndex!;
-			reorderQueue(fromDisplayIndex, toDisplayIndex);
+			const fromIndices = dragState.payload!.sourceQueueIndices!;
+			const toDisplayIndex = dragOverPosition === "above" ? dropIndex : dropIndex + 1;
+			reorderQueue(fromIndices, toDisplayIndex);
 		} else {
 			const uids = getDropUids(e);
 			const tracks = resolveUidsToTracks(uids);
 			if (tracks.length > 0) {
-				insertIntoQueue(tracks, toDisplayIndex - 1);
+				const afterIndex = dragOverPosition === "above" ? dropIndex - 1 : dropIndex;
+				insertIntoQueue(tracks, afterIndex);
 			}
 		}
 
 		dragOverIndex = null;
 		dragOverAppend = false;
+		clearQueueSelection();
 		endDrag();
 	}
 
 	function handleScrollAreaDrop(e: DragEvent) {
 		e.preventDefault();
-
 		if (dragOverIndex !== null) return;
 
 		if (isQueueDrag()) {
-			const fromDisplayIndex = dragState.payload!.sourceQueueIndex!;
-			reorderQueue(fromDisplayIndex, getQueuedTracks().length - 1);
+			const fromIndices = dragState.payload!.sourceQueueIndices!;
+			reorderQueue(fromIndices, upcomingTracks.length - 1);
 		} else {
 			const uids = getDropUids(e);
 			const tracks = resolveUidsToTracks(uids);
-			if (tracks.length > 0) {
-				insertIntoQueue(tracks);
-			}
+			if (tracks.length > 0) insertIntoQueue(tracks);
 		}
 
 		dragOverAppend = false;
+		clearQueueSelection();
 		endDrag();
 	}
 
@@ -136,14 +133,13 @@
 	}
 </script>
 
+<svelte:window onkeydown={handleKeyDown} />
+
 <Tabs.Content value="queue" class="p-1 space-y-2">
 	<p class="text-sm text-foreground">Now Playing</p>
-	<div
-		class="rounded-md border-2"
-		draggable="false"
-	>
+	<div class="rounded-md border-2">
 		{#if player.track}
-			<QueueTrackItem track={player.track} isNowPlaying={true} />
+			<QueueTrackItem track={player.track} isNowPlaying={true} allUpcomingUids={upcomingUids} />
 		{/if}
 	</div>
 
@@ -178,6 +174,7 @@
 						{track}
 						displayIndex={i}
 						isNowPlaying={false}
+						allUpcomingUids={upcomingUids}
 					/>
 
 					{#if dragOverIndex === i && dragOverPosition === "below"}

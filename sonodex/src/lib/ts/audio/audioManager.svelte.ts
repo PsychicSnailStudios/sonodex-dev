@@ -362,29 +362,34 @@ function startPlayingQueue() {
 	playTrack(queuedTracks[0]);
 }
 
+export function getQueuedTracksAll(): Track[] {
+	return queuedTracks;
+}
+
 export function getQueueIndex(): number {
 	return queueIndex;
 }
 
-export function getQueuedTracksAll(): Track[] {
-	return queuedTracks;
-}
- 
-export function reorderQueue(fromDisplayIndex: number, toDisplayIndex: number) {
+export function reorderQueue(fromDisplayIndices: number[], toDisplayIndex: number) {
 	const offset = queueIndex + 1;
-	const absFrom = fromDisplayIndex + offset;
+	const absIndices = fromDisplayIndices.map(i => i + offset);
 	const absTo = toDisplayIndex + offset;
  
 	if (
-		absFrom === absTo ||
-		absFrom < offset ||
-		absTo < offset ||
-		absFrom >= queuedTracks.length ||
-		absTo >= queuedTracks.length
+		absIndices.some(i => i < offset || i >= queuedTracks.length) ||
+		absTo < offset || absTo >= queuedTracks.length
 	) return;
  
-	const [removed] = queuedTracks.splice(absFrom, 1);
-	queuedTracks.splice(absTo, 0, removed);
+	const movingSet = new Set(absIndices);
+	const removed = absIndices.map(i => queuedTracks[i]);
+	const without = queuedTracks.filter((_, i) => !movingSet.has(i));
+ 
+	const anchorTrack = queuedTracks[absTo];
+	const anchorIndexInWithout = without.indexOf(anchorTrack);
+ 
+	without.splice(anchorIndexInWithout, 0, ...removed);
+ 
+	queuedTracks.splice(0, queuedTracks.length, ...without);
 }
  
 export function removeFromQueue(displayIndex: number) {
