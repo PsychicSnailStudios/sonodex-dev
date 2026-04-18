@@ -352,15 +352,68 @@
 
 	<ScrollArea class="h-full w-full min-h-0 min-w-0">
 		<div class="flex flex-col gap-4 p-2 pr-4">
-			<Tabs.Root value="tracks" class="flex flex-col min-h-0 flex-1">
+			<Tabs.Root value="paths" class="flex flex-col min-h-0 flex-1">
 				<Tabs.List class="w-full">
+					<Tabs.Trigger value="paths" class="flex-1">Paths</Tabs.Trigger>
 					<Tabs.Trigger value="tracks" class="flex-1">Tracks</Tabs.Trigger>
 					<Tabs.Trigger value="albums" class="flex-1">Albums</Tabs.Trigger>
 					<Tabs.Trigger value="artists" class="flex-1">Artists</Tabs.Trigger>
 					<Tabs.Trigger value="tags" class="flex-1">Tags</Tabs.Trigger>
-					<Tabs.Trigger value="paths" class="flex-1">Paths</Tabs.Trigger>
 					<Tabs.Trigger value="duplicates" class="flex-1" onclick={loadDuplicates}>Duplicates</Tabs.Trigger>
 				</Tabs.List>
+				
+
+				<!-- PATHS -->
+				<Tabs.Content value="paths">
+					<div class="flex flex-col gap-4 pt-2">
+						<div class="flex flex-col gap-2">
+							<h4 class="text-sm font-semibold">Add Library Path</h4>
+							<div class="flex gap-2">
+								<input
+									bind:value={newPath}
+									placeholder="C:\Music or \\NAS\Music"
+									class="flex-1 border rounded px-3 py-2 text-sm bg-background"
+								/>
+								<Button variant="outline" onclick={browsePath}>Browse</Button>
+								<Button onclick={addPath} disabled={scanState.loading}>
+									{#if scanState.loading}
+										<Loader2 class="animate-spin w-4 h-4 mr-1" />
+									{/if}
+									Add & Scan
+								</Button>
+							</div>
+						</div>
+
+						<div class="flex flex-col gap-2">
+							<h4 class="text-sm font-semibold">Watched Paths ({paths.length})</h4>
+							{#each paths as p}
+								<div class="flex items-center justify-between border rounded px-3 py-2 text-sm">
+									<span class="truncate mr-2">{p.path}</span>
+									<Button
+										variant="destructive"
+										size="sm"
+										disabled={scanState.loading || removingPath === p.path}
+										onclick={() => removePath(p.path)}
+									>
+										{#if removingPath === p.path}
+											<Loader2 class="animate-spin w-4 h-4 mr-1" />
+										{/if}
+										Remove
+									</Button>
+								</div>
+							{:else}
+								<p class="text-sm text-muted-foreground">No paths added yet.</p>
+							{/each}
+						</div>
+
+						<Button onclick={rescan} disabled={scanState.loading} class="w-fit">
+							{#if scanState.loading}
+								<Loader2 class="animate-spin w-4 h-4 mr-1" />
+							{/if}
+							Rescan All
+						</Button>
+					</div>
+				</Tabs.Content>
 
 				<!-- TRACKS -->
 				<Tabs.Content value="tracks">
@@ -547,58 +600,6 @@
 
 				<Tabs.Content value="tags">
 					<TagManager />
-				</Tabs.Content>
-
-				<!-- PATHS -->
-				<Tabs.Content value="paths">
-					<div class="flex flex-col gap-4 pt-2">
-						<div class="flex flex-col gap-2">
-							<h4 class="text-sm font-semibold">Add Library Path</h4>
-							<div class="flex gap-2">
-								<input
-									bind:value={newPath}
-									placeholder="C:\Music or \\NAS\Music"
-									class="flex-1 border rounded px-3 py-2 text-sm bg-background"
-								/>
-								<Button variant="outline" onclick={browsePath}>Browse</Button>
-								<Button onclick={addPath} disabled={scanState.loading}>
-									{#if scanState.loading}
-										<Loader2 class="animate-spin w-4 h-4 mr-1" />
-									{/if}
-									Add & Scan
-								</Button>
-							</div>
-						</div>
-
-						<div class="flex flex-col gap-2">
-							<h4 class="text-sm font-semibold">Watched Paths ({paths.length})</h4>
-							{#each paths as p}
-								<div class="flex items-center justify-between border rounded px-3 py-2 text-sm">
-									<span class="truncate mr-2">{p.path}</span>
-									<Button
-										variant="destructive"
-										size="sm"
-										disabled={scanState.loading || removingPath === p.path}
-										onclick={() => removePath(p.path)}
-									>
-										{#if removingPath === p.path}
-											<Loader2 class="animate-spin w-4 h-4 mr-1" />
-										{/if}
-										Remove
-									</Button>
-								</div>
-							{:else}
-								<p class="text-sm text-muted-foreground">No paths added yet.</p>
-							{/each}
-						</div>
-
-						<Button onclick={rescan} disabled={scanState.loading} class="w-fit">
-							{#if scanState.loading}
-								<Loader2 class="animate-spin w-4 h-4 mr-1" />
-							{/if}
-							Rescan All
-						</Button>
-					</div>
 				</Tabs.Content>
 
 				<!-- DUPLICATES -->
