@@ -1,7 +1,7 @@
 <script lang="ts">
 
 	// COMPONENTS
-	import { CirclePlay, CirclePause, SkipBack, SkipForward,
+	import { CirclePlay, CirclePause, SkipBack, SkipForward, Pause, Play,
 				Shuffle, TrendingUpDown, Repeat, Repeat1,
 				Volume, Volume2, VolumeX, Volume1, VolumeOff
 	} from "lucide-svelte";
@@ -65,13 +65,16 @@
 			<Button variant="ghost" size="icon" onclick={skipBack}>
 				<SkipBack />
 			</Button>
-			<Button variant="ghost" size="lg" onclick={togglePlay}>
+			<button
+				onclick={togglePlay}
+				class="play-btn"
+			>
 				{#if player.isPlaying}
-					<CirclePause size={32} />
+					<Pause size={20} fill="var(--muted)" color="var(--muted)" />
 				{:else}
-					<CirclePlay size={32} />
+					<Play size={20} fill="var(--muted)" color="var(--muted)" />
 				{/if}
-			</Button>
+			</button>
 			<Button variant="ghost" size="icon" onclick={skipNext}>
 				<SkipForward />
 			</Button>
@@ -147,9 +150,6 @@
 	grid-template-columns: auto 1fr auto;
 }
 
-:global(.app-tracking-slider span[data-slider-track]) {
-	background-color: var(--foreground) !important;
-}
 
 :global([data-slider-thumb]) {
 	opacity: 0;
@@ -158,4 +158,36 @@
 :global([data-slider-thumb]:hover) {
 	opacity: 1;
 }
+
+:global(.app-tracking-slider [data-slot="slider-track"]) {
+	background-color: oklch(from var(--background) l c h / 50%) !important;
+}
+
+:global(.app-tracking-slider [data-slot="slider-range"]) {
+	background-color: var(--accent) !important;
+}
+
+.play-btn {
+	width: 42px;
+	height: 42px;
+	border-radius: 50%;
+	background-color: var(--foreground);
+	border: none;
+	cursor: pointer;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 0;
+	transition: transform 0.1s ease, opacity 0.1s ease;
+}
+
+.play-btn:hover {
+	opacity: 0.85;
+	transform: scale(1.05);
+}
+
+.play-btn:active {
+	transform: scale(0.97);
+}
+
 </style>
