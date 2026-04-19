@@ -1015,7 +1015,7 @@ async fn enrich_track(
     };
 
     let client = enrichment::make_client()?;
-    let result = enrichment::enrich_track_async(&client, &track_input, &settings).await?;
+    let result = enrichment::enrich_track_async(&client, &track_input, &settings, Some(&profile_uid)).await?;
 
     {
         let conn = open_lib_conn(&profile_uid);
@@ -1100,7 +1100,7 @@ async fn enrich_all(app: AppHandle, state: State<'_, AppState>) -> Result<(), St
 
     for track_input in &track_inputs {
         let id = track_input.id;
-        match enrichment::enrich_track_async(&client, track_input, &settings).await {
+        match enrichment::enrich_track_async(&client, track_input, &settings, Some(&profile_uid)).await {
             Ok(result) => {
                 let conn = open_lib_conn(&profile_uid);
                 let update = db::MetadataUpdate {
@@ -1185,7 +1185,7 @@ async fn enrich_album(
         .ok_or("Album has no artist")?;
 
     let client = enrichment::make_client()?;
-    let result = enrichment::enrich_album_async(&client, &album.title, &artist, &settings).await;
+    let result = enrichment::enrich_album_async(&client, &album.title, &artist, &settings, Some(&profile_uid)).await;
 
     {
         let lib_conn = open_lib_conn(&profile_uid);
@@ -1255,9 +1255,7 @@ async fn enrich_album(
             (input, numeric_id)
         };
 
-        if let Ok(track_result) =
-            enrichment::enrich_track_async(&client, &track_input, &settings).await
-        {
+        if let Ok(track_result) = enrichment::enrich_track_async(&client, &track_input, &settings, Some(&profile_uid)).await {
             let lib_conn = open_lib_conn(&profile_uid);
             let update = db::MetadataUpdate {
                 title: track_result.title,
@@ -1314,7 +1312,7 @@ async fn enrich_artist(
     };
 
     let client = enrichment::make_client()?;
-    let result = enrichment::enrich_artist_async(&client, &artist.name, &settings).await;
+    let result = enrichment::enrich_artist_async(&client, &artist.name, &settings, Some(&profile_uid)).await;
 
     {
         let lib_conn = open_lib_conn(&profile_uid);
@@ -1383,8 +1381,7 @@ async fn enrich_all_albums(app: AppHandle, state: State<'_, AppState>) -> Result
         });
 
         if let Some(artist) = artist {
-            let result =
-                enrichment::enrich_album_async(&client, &album.title, &artist, &settings).await;
+            let result = enrichment::enrich_album_async(&client, &album.title, &artist, &settings, Some(&profile_uid)).await;
             let lib_conn = open_lib_conn(&profile_uid);
             let update = db::AlbumUpdate {
                 title: None,
@@ -1463,7 +1460,7 @@ async fn enrich_all_artists(app: AppHandle, state: State<'_, AppState>) -> Resul
     let client = enrichment::make_client()?;
 
     for artist in &artists {
-        let result = enrichment::enrich_artist_async(&client, &artist.name, &settings).await;
+        let result = enrichment::enrich_artist_async(&client, &artist.name, &settings, Some(&profile_uid)).await;
         let lib_conn = open_lib_conn(&profile_uid);
         let update = db::ArtistUpdate {
             name: None,
@@ -1713,7 +1710,8 @@ async fn spotify_enrich_track_cmd(uid: String, state: State<'_, AppState>) -> Re
         .and_then(|v| v.into_iter().next())
         .unwrap_or_default();
 
-    let Some(meta) = spotify_auth::enrich_track(&profile_uid, title, &artist).await? else {
+    let client = enrichment::make_client()?;
+    let Some(meta) = enrichment::spotify::enrich_track(&client, &profile_uid, title, &artist).await else {
         return Ok(());
     };
 
@@ -1771,7 +1769,8 @@ async fn spotify_enrich_album_cmd(uid: String, state: State<'_, AppState>) -> Re
         .unwrap_or("")
         .to_string();
 
-    let Some(meta) = spotify_auth::enrich_album(&profile_uid, &album.title, &artist).await? else {
+    let client = enrichment::make_client()?;
+    let Some(meta) = enrichment::spotify::enrich_album(&client, &profile_uid, &album.title, &artist).await else {
         return Ok(());
     };
 
@@ -1816,7 +1815,8 @@ async fn spotify_enrich_artist_cmd(uid: String, state: State<'_, AppState>) -> R
         .map_err(|e| e.to_string())?
         .ok_or_else(|| format!("Artist not found: {}", uid))?;
 
-    let Some(meta) = spotify_auth::enrich_artist(&profile_uid, &artist.name).await? else {
+    let client = enrichment::make_client()?;
+    let Some(meta) = enrichment::spotify::enrich_artist(&client, &profile_uid, &artist.name).await else {
         return Ok(());
     };
 

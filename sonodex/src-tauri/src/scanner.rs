@@ -1,7 +1,7 @@
 use crate::db::{
     create_album, create_artist, generate_uid, get_all_albums, get_all_artists, get_setting,
-    update_album, update_artist, update_track_metadata_by_uid, upsert_track, Album, AlbumUpdate,
-    Artist, ArtistUpdate, MetadataUpdate, Track,
+    update_album, update_track_metadata_by_uid, upsert_track, Album, AlbumUpdate,
+    Artist, MetadataUpdate, Track,
 };
 use lofty::file::AudioFile;
 use lofty::file::TaggedFileExt;
@@ -1107,6 +1107,8 @@ pub fn scan_directory_with_progress(conn: &Connection, dir: &str, app: &AppHandl
                         client,
                         &track_input,
                         settings,
+                        None,
+
                     )) {
                         track.title = result.title.or(track.title);
                         track.artists = result.artists.or(track.artists);
@@ -1258,6 +1260,8 @@ pub fn scan_directory_with_progress(conn: &Connection, dir: &str, app: &AppHandl
                             &album.title,
                             &artist,
                             settings,
+                            None,
+
                         ));
                         let update = AlbumUpdate {
                             title: None,
