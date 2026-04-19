@@ -402,6 +402,7 @@ pub fn read_track_with_settings(
 
     let properties = tagged_file.properties();
     let duration_ms = Some(properties.duration().as_millis() as i64);
+    let bitrate = properties.overall_bitrate().map(|b| b as i64);
 
     let tag = tagged_file
         .primary_tag()
@@ -420,6 +421,7 @@ pub fn read_track_with_settings(
         tag_year,
         tag_rating,
         tag_track_number,
+        tag_disc_number,
         bpm,
         key,
         artwork_blob,
@@ -435,6 +437,13 @@ pub fn read_track_with_settings(
                     .next()
                     .and_then(|n| n.trim().parse::<u32>().ok())
             });
+        let disc_number = tag
+            .get_string(&lofty::tag::ItemKey::DiscNumber)
+            .and_then(|s| {
+                s.split('/')
+                    .next()
+                    .and_then(|n| n.trim().parse::<u32>().ok())
+            });
         (
             tag.title().map(|s| s.to_string()),
             tag.artist().map(|s| s.to_string()),
@@ -445,6 +454,7 @@ pub fn read_track_with_settings(
             tag.year().map(|y| y.to_string()),
             rating,
             track_number,
+            disc_number,
             tag.get_string(&lofty::tag::ItemKey::Bpm)
                 .and_then(|s| s.parse::<f32>().ok()),
             tag.get_string(&lofty::tag::ItemKey::InitialKey)
@@ -453,7 +463,7 @@ pub fn read_track_with_settings(
         )
     } else {
         (
-            None, None, None, None, None, None, None, None, None, None, None,
+            None, None, None, None, None, None, None, None, None, None, None, None,
         )
     };
 
@@ -584,7 +594,8 @@ pub fn read_track_with_settings(
         album_entries.push(serde_json::json!({
             "uid": "",
             "name": a,
-            "track_number": tag_track_number
+            "track_number": tag_track_number,
+            "disc": tag_disc_number,
         }));
     }
 
@@ -603,7 +614,8 @@ pub fn read_track_with_settings(
                     album_entries.push(serde_json::json!({
                         "uid": "",
                         "name": fa_trimmed,
-                        "track_number": tag_track_number
+                        "track_number": tag_track_number,
+                        "disc": null,
                     }));
                 }
             }
@@ -636,6 +648,11 @@ pub fn read_track_with_settings(
         _ => tag_year_val.or(filename_year_val).or(folder_year_val),
     };
 
+    let format = path
+        .extension()
+        .and_then(|e| e.to_str())
+        .map(|e| e.to_uppercase());
+
     Some(Track {
         id: None,
         uid: generate_uid("t"),
@@ -657,6 +674,8 @@ pub fn read_track_with_settings(
         label: None,
         artwork_blob,
         artwork_path: None,
+        format: format,
+        bitrate: bitrate,
     })
 }
 
@@ -866,6 +885,8 @@ pub fn process_track(conn: &Connection, track: &Track) {
                                 label: None,
                                 artwork_blob: None,
                                 artwork_path: None,
+                                format: None,
+                                bitrate: None,
                             },
                         );
                     }

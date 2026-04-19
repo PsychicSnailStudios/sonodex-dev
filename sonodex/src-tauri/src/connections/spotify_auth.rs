@@ -410,6 +410,8 @@ pub async fn spotify_import_playlist(
                 artwork_blob: None,
                 artwork_path: None,
                 user_options: None,
+                format: None,
+                bitrate: None,
             };
 
             upsert_track(&lib_conn, &stub).map_err(|e| e.to_string())?;

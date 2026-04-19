@@ -590,6 +590,8 @@ async fn replace_track_path(
             artwork_blob: fresh_track.artwork_blob,
             artwork_path: None,
             user_options: None,
+            format: fresh_track.format,
+            bitrate: fresh_track.bitrate,
         };
         db::track_manager::update_track_metadata_by_uid(&lib_conn, &uid, &merged)
             .map_err(|e| e.to_string())?;
@@ -1035,6 +1037,8 @@ async fn enrich_track(
             artwork_blob: result.artwork,
             artwork_path: None,
             user_options: None,
+            format: None,
+            bitrate: None,
         };
 
         if let Some(ref genres_json) = update.genres {
@@ -1119,6 +1123,8 @@ async fn enrich_all(app: AppHandle, state: State<'_, AppState>) -> Result<(), St
                     artwork_blob: result.artwork,
                     artwork_path: None,
                     user_options: None,
+                    format: None,
+                    bitrate: None,
                 };
                 if let Some(ref genres_json) = update.genres {
                     if let Ok(names) = serde_json::from_str::<Vec<String>>(genres_json) {
@@ -1273,6 +1279,8 @@ async fn enrich_album(
                 artwork_blob: track_result.artwork,
                 artwork_path: None,
                 user_options: None,
+                format: None,
+                bitrate: None,
             };
             if let Some(ref genres_json) = update.genres {
                 if let Ok(names) = serde_json::from_str::<Vec<String>>(genres_json) {
@@ -1737,6 +1745,8 @@ async fn spotify_enrich_track_cmd(uid: String, state: State<'_, AppState>) -> Re
         artwork_blob: None,
         artwork_path: None,
         user_options: None,
+        format: None,
+        bitrate: None,
     };
 
 	if let Some(ref genres_json) = update.genres {

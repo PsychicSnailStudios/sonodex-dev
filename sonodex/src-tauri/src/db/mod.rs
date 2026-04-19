@@ -116,7 +116,9 @@ pub fn init_lib_db(conn: &Connection) -> Result<()> {
 			label TEXT,
 			artwork_blob BLOB,
 			artwork_path TEXT,
-			user_options TEXT
+			user_options TEXT,
+			format TEXT,
+			bitrate INTEGER
 		);
 
 		CREATE TABLE IF NOT EXISTS albums (
