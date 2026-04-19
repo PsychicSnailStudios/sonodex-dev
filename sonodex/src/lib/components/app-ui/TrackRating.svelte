@@ -10,7 +10,7 @@
 
 	let { uid, rating, tags }: { uid: string; rating: number | null, tags: string[] } = $props();
 
-	let value = $state(rating != null ? String(Math.round(rating * 10) / 10) : "—");
+	let value = $state(rating != null ? String(Math.round(rating * 10) / 10) : "-");
 	let saving = $state(false);
 	let localTags = $state<string[]>(
 		Array.isArray(tags)
@@ -84,7 +84,12 @@
 			<Star class="w-4 h-4" />
 		</div>
 	{:else}
-		<span class="text-sm font-mono">{value}</span>
+		{#if value === "rate"}
+			<span class="text-sm font-mono uppercase p-1 border rounded-md">{value}</span>
+		{:else}
+			<span class="text-sm font-mono">{value}</span>
+		{/if}
+
 	{/if}
   </DropdownMenu.Trigger>
   <DropdownMenu.Content>

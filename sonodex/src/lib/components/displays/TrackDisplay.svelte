@@ -72,10 +72,16 @@
 							{/if}
 
 						</div>
-						<span>|</span>
-						<span>{track.year ?? "—"}</span>
+						{#if track.year}
+							<span>|</span>
+							<span>{track.year}</span>
+						{/if}
 						<span>|</span>
 						<span>{formatDuration(track.duration_ms)}</span>
+						<span>|</span>
+						<span>{track.format ?? "Unknown Format"}</span>
+						<span>|</span>
+						<span>{track.bitrate ?? "0"}</span><span>kbps</span>
 					</div>
 					<div>
 						<TrackRating uid={track.uid} rating={track.rating} tags={track.tags} />
@@ -133,7 +139,7 @@
 							{@const featArtistUID = getArtistUidFromName(artistName)}
 							<button
 								onclick={() => setSelection(featArtistUID, "artist")}
-								class="flex items-center gap-2 flex-row cursor-pointer p-2 rounded-md bg-muted/50 hover:bg-muted">
+								class="flex items-center gap-2 flex-row cursor-pointer p-2 mb-2 rounded-md bg-muted/50 hover:bg-muted">
 
 								<ArtworkDisplay uid={featArtistUID} type="artist" size={40} />
 								{artistName}

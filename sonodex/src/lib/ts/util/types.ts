@@ -29,6 +29,8 @@ export type Track = {
 	user_options: string | null;
 	credits: string | null;
 	label: string | null;
+	format: string | null;
+	bitrate: number | null;
 };
 
 export type Album = {
