@@ -266,6 +266,7 @@ pub async fn enrich_album(
 		format: None,
 		description: None,
 		artwork,
+		mbid: None,
 	})
 }
 

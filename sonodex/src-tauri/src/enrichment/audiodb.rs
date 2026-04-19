@@ -256,5 +256,6 @@ pub async fn search_album(
         format: a.str_release_format,
         description: a.str_description_en,
         artwork,
+        mbid: None,
     })
 }

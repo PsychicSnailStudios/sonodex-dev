@@ -129,3 +129,47 @@ pub async fn search(client: &Client, title: &str, artist: &str) -> Option<Enrich
         ..Default::default()
     })
 }
+
+pub async fn fetch_cover_art(client: &Client, mbid: &str) -> Option<Vec<u8>> {
+	let url = format!("https://coverartarchive.org/release-group/{}/front", mbid);
+	let res = client.get(&url).send().await.ok()?;
+	if res.status().is_success() {
+		res.bytes().await.ok().map(|b| b.to_vec())
+	} else {
+		let url2 = format!("https://coverartarchive.org/release/{}/front", mbid);
+		let res2 = client.get(&url2).send().await.ok()?;
+		if res2.status().is_success() {
+			res2.bytes().await.ok().map(|b| b.to_vec())
+		} else {
+			None
+		}
+	}
+}
+
+pub async fn search_album(client: &Client, album: &str, artist: &str) -> Option<String> {
+	sleep(Duration::from_millis(1100)).await;
+
+	let query = format!("release:\"{}\" AND artist:\"{}\"", album, artist);
+	let url = format!(
+		"{}/release?query={}&limit=1&fmt=json",
+		MB_BASE,
+		urlencoding::encode(&query)
+	);
+
+	#[derive(Deserialize)]
+	struct MbReleaseSearch {
+		releases: Vec<MbReleaseResult>,
+	}
+	#[derive(Deserialize)]
+	struct MbReleaseResult {
+		id: String,
+	}
+
+	let resp = client.get(&url).send().await.ok()?;
+	if !resp.status().is_success() {
+		return None;
+	}
+	let body = resp.text().await.ok()?;
+	let data: MbReleaseSearch = serde_json::from_str(&body).ok()?;
+	data.releases.into_iter().next().map(|r| r.id)
+}

@@ -47,6 +47,7 @@ pub struct EnrichedAlbum {
 	pub format: Option<String>,
 	pub description: Option<String>,
 	pub artwork: Option<Vec<u8>>,
+	pub mbid: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -284,6 +285,12 @@ pub async fn enrich_track_async(
 		return Err("Track not found in any API".to_string());
 	}
 
+	if merged.artwork.is_none() {
+		if let Some(ref mbid) = merged.mbid {
+			merged.artwork = musicbrainz::fetch_cover_art(client, mbid).await;
+		}
+	}
+
 	Ok(EnrichResult {
 		title: apply_string(merged.title, track.title.clone(), &settings.priority_title),
 		artists: apply_string(merged.artists, track.artists.clone(), &settings.priority_artists),
@@ -385,6 +392,12 @@ pub async fn enrich_album_async(
 			if merged.genres.is_none() {
 				merged.genres = r.genres;
 			}
+		}
+	}
+
+	if merged.artwork.is_none() {
+		if let Some(mbid) = musicbrainz::search_album(client, album_title, artist).await {
+			merged.artwork = musicbrainz::fetch_cover_art(client, &mbid).await;
 		}
 	}
 

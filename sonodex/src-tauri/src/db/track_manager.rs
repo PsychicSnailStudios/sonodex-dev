@@ -32,7 +32,7 @@ pub struct DuplicateGroup {
 	pub tracks: Vec<Track>,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct MetadataUpdate {
 	pub title: Option<String>,
 	pub artists: Option<String>,

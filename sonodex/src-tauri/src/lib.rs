@@ -1162,143 +1162,161 @@ async fn enrich_all(app: AppHandle, state: State<'_, AppState>) -> Result<(), St
 
 #[tauri::command]
 async fn enrich_album(
-    app: AppHandle,
-    state: State<'_, AppState>,
-    uid: String,
+	app: AppHandle,
+	state: State<'_, AppState>,
+	uid: String,
 ) -> Result<(), String> {
-    let profile_uid = state.get_uid();
+	let profile_uid = state.get_uid();
 
-    let (album, settings) = {
-        let lib_conn = open_lib_conn(&profile_uid);
-        let settings_conn = open_settings_conn(&profile_uid);
-        let album = get_album_by_uid(&lib_conn, &uid)
-            .map_err(|e| e.to_string())?
-            .ok_or("Album not found")?;
-        let settings = load_enrich_settings(&settings_conn);
-        (album, settings)
-    };
+	let (album, settings) = {
+		let lib_conn = open_lib_conn(&profile_uid);
+		let settings_conn = open_settings_conn(&profile_uid);
+		let album = get_album_by_uid(&lib_conn, &uid)
+			.map_err(|e| e.to_string())?
+			.ok_or("Album not found")?;
+		let settings = load_enrich_settings(&settings_conn);
+		(album, settings)
+	};
 
-    let artist = album
-        .album_artist
-        .clone()
-        .or_else(|| {
-            album.artists.as_deref().and_then(|a| {
-                serde_json::from_str::<Vec<String>>(a)
-                    .ok()
-                    .and_then(|v| v.into_iter().next())
-            })
-        })
-        .ok_or("Album has no artist")?;
+	let artist = album
+		.album_artist
+		.clone()
+		.or_else(|| {
+			album.artists.as_deref().and_then(|a| {
+				serde_json::from_str::<Vec<String>>(a)
+					.ok()
+					.and_then(|v| v.into_iter().next())
+			})
+		})
+		.ok_or("Album has no artist")?;
 
-    let client = enrichment::make_client()?;
-    let result = enrichment::enrich_album_async(&client, &album.title, &artist, &settings, Some(&profile_uid)).await;
+	let track_uids: Vec<String> = album
+		.tracks
+		.as_deref()
+		.and_then(|t| serde_json::from_str::<Vec<serde_json::Value>>(t).ok())
+		.unwrap_or_default()
+		.into_iter()
+		.filter_map(|e| e["uid"].as_str().map(|s| s.to_string()))
+		.filter(|s| !s.is_empty())
+		.collect();
 
-    {
-        let lib_conn = open_lib_conn(&profile_uid);
-        let update = db::AlbumUpdate {
-            title: None,
-            format: result.format,
-            rating: None,
-            artists: None,
-            album_artist: None,
-            release_date: result.release_date,
-            tags: None,
-            genres: result.genres,
-            tracks: None,
-            credits: result.description,
-            label: result.label,
-            artwork_blob: result.artwork,
-            artwork_path: None,
-        };
-        if let Some(ref genres_json) = update.genres {
-            if let Ok(names) = serde_json::from_str::<Vec<String>>(genres_json) {
-                for name in names {
-                    crate::db::tag_manager::ensure_tag(
-                        &lib_conn,
-                        &name,
-                        crate::db::tag_manager::TagKind::Genre,
-                    );
-                }
-            }
-        }
-        update_album_by_uid(&lib_conn, &uid, &update).map_err(|e| e.to_string())?;
-    }
+	let client = enrichment::make_client()?;
+	let result = enrichment::enrich_album_async(&client, &album.title, &artist, &settings, Some(&profile_uid)).await;
 
-    let track_uids: Vec<String> = album
-        .tracks
-        .as_deref()
-        .and_then(|t| serde_json::from_str::<Vec<serde_json::Value>>(t).ok())
-        .unwrap_or_default()
-        .into_iter()
-        .filter_map(|e| e["uid"].as_str().map(|s| s.to_string()))
-        .filter(|s| !s.is_empty())
-        .collect();
+	{
+		let lib_conn = open_lib_conn(&profile_uid);
+		let update = db::AlbumUpdate {
+			title: None,
+			format: result.format,
+			rating: None,
+			artists: None,
+			album_artist: None,
+			release_date: result.release_date,
+			tags: None,
+			genres: result.genres,
+			tracks: None,
+			credits: result.description,
+			label: result.label,
+			artwork_blob: result.artwork,
+			artwork_path: None,
+		};
+		if let Some(ref genres_json) = update.genres {
+			if let Ok(names) = serde_json::from_str::<Vec<String>>(genres_json) {
+				for name in names {
+					crate::db::tag_manager::ensure_tag(
+						&lib_conn,
+						&name,
+						crate::db::tag_manager::TagKind::Genre,
+					);
+				}
+			}
+		}
+		update_album_by_uid(&lib_conn, &uid, &update).map_err(|e| e.to_string())?;
 
-    for track_uid in track_uids {
-        let (track_input, numeric_id) = {
-            let lib_conn = open_lib_conn(&profile_uid);
-            let track = match db::get_track_by_uid(&lib_conn, &track_uid) {
-                Ok(Some(t)) => t,
-                _ => continue,
-            };
-            let numeric_id = match track.id {
-                Some(id) => id,
-                None => continue,
-            };
-            let artwork = db::get_track_artwork(&lib_conn, numeric_id).ok().flatten();
-            let input = enrichment::TrackInput {
-                id: numeric_id,
-                title: track.title,
-                artists: track.artists,
-                album_artist: track.album_artist,
-                albums: track.albums,
-                year: track.year,
-                genres: track.genres,
-                bpm: track.bpm,
-                key: track.key,
-                existing_artwork: artwork,
-            };
-            (input, numeric_id)
-        };
+		if let Some(ref art) = update.artwork_blob {
+			for track_uid in &track_uids {
+				let lib_conn = open_lib_conn(&profile_uid);
+				let has_art = db::get_track_artwork_by_uid(&lib_conn, track_uid)
+					.ok()
+					.flatten()
+					.map(|b| !b.is_empty())
+					.unwrap_or(false);
+				if !has_art {
+					let art_update = db::MetadataUpdate {
+						artwork_blob: Some(art.clone()),
+						..Default::default()
+					};
+					db::update_track_metadata_by_uid(&lib_conn, track_uid, &art_update).ok();
+				}
+			}
+		}
+	}
 
-        if let Ok(track_result) = enrichment::enrich_track_async(&client, &track_input, &settings, Some(&profile_uid)).await {
-            let lib_conn = open_lib_conn(&profile_uid);
-            let update = db::MetadataUpdate {
-                title: track_result.title,
-                artists: track_result.artists,
-                album_artist: track_result.album_artist,
-                albums: track_result.albums,
-                year: track_result.year,
-                genres: track_result.genres,
-                bpm: track_result.bpm,
-                rating: None,
-                tags: None,
-                key: track_result.key,
-                credits: None,
-                label: None,
-                artwork_blob: track_result.artwork,
-                artwork_path: None,
-                user_options: None,
-                format: None,
-                bitrate: None,
-            };
-            if let Some(ref genres_json) = update.genres {
-                if let Ok(names) = serde_json::from_str::<Vec<String>>(genres_json) {
-                    for name in names {
-                        crate::db::tag_manager::ensure_tag(
-                            &lib_conn,
-                            &name,
-                            crate::db::tag_manager::TagKind::Genre,
-                        );
-                    }
-                }
-            }
-            db::update_track_metadata(&lib_conn, numeric_id, &update).ok();
-        }
-    }
+	for track_uid in track_uids {
+		let (track_input, numeric_id) = {
+			let lib_conn = open_lib_conn(&profile_uid);
+			let track = match db::get_track_by_uid(&lib_conn, &track_uid) {
+				Ok(Some(t)) => t,
+				_ => continue,
+			};
+			let numeric_id = match track.id {
+				Some(id) => id,
+				None => continue,
+			};
+			let artwork = db::get_track_artwork(&lib_conn, numeric_id).ok().flatten();
+			let input = enrichment::TrackInput {
+				id: numeric_id,
+				title: track.title,
+				artists: track.artists,
+				album_artist: track.album_artist,
+				albums: track.albums,
+				year: track.year,
+				genres: track.genres,
+				bpm: track.bpm,
+				key: track.key,
+				existing_artwork: artwork,
+			};
+			(input, numeric_id)
+		};
 
-    app.emit("library:updated", ()).ok();
-    Ok(())
+		if let Ok(track_result) = enrichment::enrich_track_async(&client, &track_input, &settings, Some(&profile_uid)).await {
+			let lib_conn = open_lib_conn(&profile_uid);
+			let update = db::MetadataUpdate {
+				title: track_result.title,
+				artists: track_result.artists,
+				album_artist: track_result.album_artist,
+				albums: track_result.albums,
+				year: track_result.year,
+				genres: track_result.genres,
+				bpm: track_result.bpm,
+				rating: None,
+				tags: None,
+				key: track_result.key,
+				credits: None,
+				label: None,
+				artwork_blob: track_result.artwork,
+				artwork_path: None,
+				user_options: None,
+				format: None,
+				bitrate: None,
+			};
+			if let Some(ref genres_json) = update.genres {
+				if let Ok(names) = serde_json::from_str::<Vec<String>>(genres_json) {
+					for name in names {
+						crate::db::tag_manager::ensure_tag(
+							&lib_conn,
+							&name,
+							crate::db::tag_manager::TagKind::Genre,
+						);
+					}
+				}
+			}
+			db::update_track_metadata(&lib_conn, numeric_id, &update).ok();
+		}
+	}
+
+	app.emit("library:updated", ()).ok();
+	Ok(())
 }
 
 #[tauri::command]
