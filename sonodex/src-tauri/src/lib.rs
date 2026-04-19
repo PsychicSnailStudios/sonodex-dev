@@ -1644,6 +1644,15 @@ async fn update_now_playing(uid: String, state: State<'_, AppState>) -> Result<(
 // ─────────────────────────────────────────────
 
 #[tauri::command]
+async fn spotify_get_playlist_info_cmd(
+	playlist_id: String,
+	state: State<'_, AppState>,
+) -> Result<spotify_auth::SpotifyPlaylistInfo, String> {
+	let uid = state.get_uid();
+	spotify_auth::spotify_get_playlist_info(&uid, &playlist_id).await
+}
+
+#[tauri::command]
 fn spotify_get_auth_url(state: State<'_, AppState>) -> Result<(String, String), String> {
     let uid = state.get_uid();
     let conn = open_settings_conn(&uid);
@@ -2213,6 +2222,7 @@ pub fn run() {
             spotify_enrich_track_cmd,
             spotify_enrich_album_cmd,
             spotify_enrich_artist_cmd,
+            spotify_get_playlist_info_cmd,
             add_uid_remap,
             resolve_uid,
             replace_track_path,

@@ -4,7 +4,7 @@
 	import { Input } from "$lib/components/ui/input/index.js";
 
 	import ImportPlaylist from "$lib/components/dialogs/playlists/ImportPlaylist.svelte";
-	import SpotifyImport from "$lib/components/dialogs/playlists/SpotifyImport.svelte";
+	import SpotifyURLImport from "$lib/components/dialogs/playlists/SpotifyUrlImport.svelte";
 	
 	import { createPlaylist } from "$lib/ts/audio/playlistManager.svelte";
 	import { profileState } from "$lib/ts/profiles.svelte";
@@ -55,7 +55,7 @@
 			</Tabs.Content>
 
 			<Tabs.Content value="spotify">
-				<SpotifyImport folder={folder} onClose={() => { open = false; }} />
+				<SpotifyURLImport folder={folder} onClose={() => { open = false; }} />
 			</Tabs.Content>
 
 			<Tabs.Content value="url">

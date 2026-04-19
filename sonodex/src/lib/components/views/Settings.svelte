@@ -13,6 +13,8 @@
 	import { Switch } from "$lib/components/ui/switch/index.js";
 	import { Label } from "$lib/components/ui/label/index.js";
 
+	import SpotifyImport from "$lib/components/dialogs/playlists/SpotifyImport.svelte";
+
 	// SCRIPTS
 	import { loadLibrary, reloadLibrary } from "$lib/ts/library.svelte";
 	import { scanState } from "$lib/ts/app-states/state_session.svelte";
@@ -27,6 +29,7 @@
 
 	let lastfmConnected = $state(false);
 	let spotifyConnected = $state(false);
+	let spotifyImportOpen = $state(false);
 
 	let themeOptions = [
 		{ value: "system", label: "System" },
@@ -134,6 +137,8 @@
 	}
 
 </script>
+
+<SpotifyImport bind:open={spotifyImportOpen} />
 
 <div class="flex flex-col gap-2 p-2 border-2 rounded-md h-full w-full overflow-hidden">
 	<h2 class="h2">Settings</h2>
@@ -329,7 +334,8 @@
 							</p>
 					</div>
 					{#if spotifyConnected}
-							<Button variant="outline" onclick={handleSpotifyDisconnect}>Disconnect</Button>
+						<Button variant="outline" onclick={handleSpotifyDisconnect}>Disconnect</Button>
+						<Button variant="outline" onclick={() => spotifyImportOpen = true}>Import Playlists</Button>
 					{:else}
 							<Button onclick={handleSpotifyConnect}>Connect</Button>
 					{/if}
@@ -350,8 +356,7 @@
 							onchange={(e) => saveSetting("spotify_client_id", (e.target as HTMLInputElement).value)}
 					/>
 				</div>
-				{/if}
-	
+				{/if}	
 			</div>
 	
 			<h3 class="font-semibold">Metadata API's</h3>
