@@ -13,16 +13,17 @@
 	import { dragState, endDrag } from "$lib/ts/app-states/state_drag.svelte"
 	import { generateViewId, trackSelection, setTrackSelectionContext, clearTrackSelection, copySelectedToClipboard } from "$lib/ts/app/trackSelection.svelte"
 	import { removeTracksFromPlaylist, reorderPlaylistTracks, addTracksToPlaylist, parseTracks } from "$lib/ts/audio/playlistManager.svelte"
-	
+	import type { DiscBreakEntry } from "$lib/ts/util/discHelpers";
+
 	// TYPES
 	import type { ColumnState } from "$lib/ts/app/columnConfig.svelte"
 	import type { SortState } from "$lib/ts/app/sortConfig.svelte"
 	import type { Track } from "$lib/ts/util/types"
-    import { library } from "$lib/ts/library.svelte";
+   import { library } from "$lib/ts/library.svelte";
 
 	// PROPS
-	let { tracks, columns, sort, compact = false, playlistUid = null, } =$props<{
-		tracks: Track[]; columns: ColumnState; sort: SortState; compact?: boolean; playlistUid?: string | null;
+	let { tracks, columns, sort, compact = false, playlistUid = null, discBreaks = new Map<string, DiscBreakEntry>() } = $props<{
+		tracks: Track[]; columns: ColumnState; sort: SortState; compact?: boolean; playlistUid?: string | null; discBreaks?: Map<string, DiscBreakEntry>;
 	}>();
 
 	// VARIABLES
@@ -277,6 +278,13 @@
 
 	<div>
 		{#each sortedTracks as track, i (track.uid)}
+			{#if discBreaks.has(track.uid)}
+				{@const entry = discBreaks.get(track.uid)!}
+				<div class="flex items-center gap-2 px-3 py-3 text-xs font-medium text-muted-foreground">
+					<svelte:component this={entry.Icon} class="size-3.5 shrink-0" />
+					<span>{entry.label}</span>
+				</div>
+			{/if}
 			<div
 				class="relative"
 				role="row"
