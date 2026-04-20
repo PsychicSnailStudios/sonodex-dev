@@ -37,6 +37,7 @@
 	let artists = $state("");
 	let releaseDate = $state("");
 	let format = $state("");
+	let type = $state("None");
 	let genreList = $state<string[]>([]);
 	let label = $state("");
 	let rating = $state<string>("");
@@ -57,6 +58,12 @@
 		{ value: "Reissue", label: "Reissue" },
 		{ value: "Soundtrack", label: "Soundtrack" }
 	];
+	const emulateTypes = [
+		{ value: "None", label: "None (Digital)" },
+		{ value: "Vinyl", label: "Vinyl" },
+		{ value: "Cassette", label: "Cassette" },
+		{ value: "Disc", label: "Disc" }
+	];
 
 	// APP FUNCTIONS
 	onMount(async () => {
@@ -73,6 +80,7 @@
 		credits = album.credits ?? "";
 		rating = album.rating != null ? String(album.rating) : "";
 		artworkPath = album.artwork_path ?? null;
+		type = album.emulate_type ?? "None";
 
 		try {
 			const arr = album.artists ? JSON.parse(album.artists) : [];
@@ -137,6 +145,7 @@
 				credits: credits || null,
 				tags: tagList.length ? JSON.stringify(tagList) : null,
 				artwork_path: artworkPath,
+				emulate_type: type,
 			};
 
 			await invoke("update_album_entry", { uid, update });
@@ -172,31 +181,11 @@
 				<Label for="album-title">Title</Label>
 				<Input id="album-title" bind:value={title} />
 			</div>
-			<div class="grid grid-cols-3 gap-3 pt-2">
+
+			<div class="grid grid-cols-2 gap-3 pt-2">
 				<div class="space-y-1.5">
 					<Label for="album-release">Release Date</Label>
 					<Input id="album-release" bind:value={releaseDate} />
-				</div>
-				<div class="space-y-1.5">
-					<Label for="album-format">Format</Label>
-					<Select.Root type="single" name="album-format" bind:value={format}>
-						<Select.Trigger class="text-sm w-full">
-							{format || "Select..."}
-						</Select.Trigger>
-						<Select.Content>
-							<Select.Group>
-								<Select.Label>Format</Select.Label>
-								{#each albumTypes as t (t.value)}
-								<Select.Item
-									value={t.value}
-									label={t.label}
-								>
-									{t.label}
-								</Select.Item>
-								{/each}
-							</Select.Group>
-						</Select.Content>
-					</Select.Root>
 				</div>
 				<div class="space-y-1.5">
 					<Label for="album-rating">Rating</Label>
@@ -222,6 +211,51 @@
 					</div>
 				</div>
 			</div>
+			<div class="grid grid-cols-2 gap-3 pt-2">
+				<div class="space-y-1.5">
+					<Label for="album-format">Format</Label>
+					<Select.Root type="single" name="album-format" bind:value={format}>
+						<Select.Trigger class="text-sm w-full">
+							{format || "Select..."}
+						</Select.Trigger>
+						<Select.Content>
+							<Select.Group>
+								<Select.Label>Format</Select.Label>
+								{#each albumTypes as t (t.value)}
+								<Select.Item
+									value={t.value}
+									label={t.label}
+								>
+									{t.label}
+								</Select.Item>
+								{/each}
+							</Select.Group>
+						</Select.Content>
+					</Select.Root>
+				</div>
+				<div class="space-y-1.5">
+					<Label for="album-type">Emulate Type</Label>
+					<Select.Root type="single" name="album-type" bind:value={type}>
+						<Select.Trigger class="text-sm w-full">
+							{type || "Select..."}
+						</Select.Trigger>
+						<Select.Content>
+							<Select.Group>
+								<Select.Label>Emulate Type</Select.Label>
+								{#each emulateTypes as t (t.value)}
+								<Select.Item
+									value={t.value}
+									label={t.label}
+								>
+									{t.label}
+								</Select.Item>
+								{/each}
+							</Select.Group>
+						</Select.Content>
+					</Select.Root>
+				</div>
+			</div>
+
 			<div class="space-y-1.5 pt-2">
 				<Label>Genres</Label>
 				<TagSelector bind:value={genreList} isGenre={true} placeholder="Add genre…" />
