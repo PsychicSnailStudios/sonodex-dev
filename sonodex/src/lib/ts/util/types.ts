@@ -2,6 +2,7 @@ export type TrackAlbumEntry = {
 	uid: string;
 	name: string;
 	track_number: number | null;
+	disc: number | null;
 };
 
 export type PlaylistTrackEntry = {

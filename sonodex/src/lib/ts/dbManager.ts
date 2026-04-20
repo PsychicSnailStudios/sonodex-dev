@@ -1,11 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { showWarning } from "$lib/ts/app/dialogManager.svelte";
-
-export type AlbumEntry = {
-	uid: string;
-	name: string;
-	track_number: number | null;
-};
+import type {TrackAlbumEntry} from "$lib/ts/util/types";
 
 // ─── Internal helpers ─────────────────────────────────────────────────────────
 
@@ -272,13 +267,13 @@ export function warnEmptyFields(hasEmpty: boolean): Promise<boolean> {
 // ─── Album sync ───────────────────────────────────────────────────────────────
 
 export async function syncAlbums(
-	cleanedAlbums: AlbumEntry[],
+	cleanedAlbums: TrackAlbumEntry[],
 	trackUid: string,
 	trackTitle: string,
 	trackAlbumArtist: string
-): Promise<AlbumEntry[]> {
+): Promise<TrackAlbumEntry[]> {
 	const allAlbums = await invoke<any[]>("get_albums");
-	const finalAlbumEntries: AlbumEntry[] = [];
+	const finalAlbumEntries: TrackAlbumEntry[] = [];
 
 	for (const entry of cleanedAlbums) {
 		const nameLower = entry.name.toLowerCase();
@@ -304,7 +299,7 @@ export async function syncAlbums(
 				await invoke("update_album_entry", { uid: match.uid, update: { tracks: JSON.stringify(existingTracks) } });
 			}
 
-			finalAlbumEntries.push({ uid: match.uid, name: entry.name, track_number: entry.track_number });
+			finalAlbumEntries.push({ uid: match.uid, name: entry.name, track_number: entry.track_number, disc: entry.disc });
 		} else {
 			const newAlbum = {
 				uid: `a-${crypto.randomUUID()}`,
@@ -335,6 +330,7 @@ export async function syncAlbums(
 				uid: created?.uid ?? newAlbum.uid,
 				name: entry.name,
 				track_number: entry.track_number,
+				disc: entry.disc,
 			});
 		}
 	}
@@ -405,7 +401,7 @@ export async function createStubTrack(
 	});
 
 	if (album) {
-		const albumEntries: AlbumEntry[] = [{ uid: "", name: album, track_number: trackNumber ?? null }];
+		const albumEntries: TrackAlbumEntry[] = [{ uid: "", name: album, track_number: trackNumber ?? null, disc: null }];
 		const synced = await syncAlbums(albumEntries, uid, title, albumArtist);
 		await invoke("update_track_metadata", {
 			uid,

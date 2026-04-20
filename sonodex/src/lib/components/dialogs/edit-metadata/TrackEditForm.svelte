@@ -5,7 +5,7 @@
 	import { onMount } from "svelte";
 
 	// COMPONENTS
-	import { X, Plus, ChevronUp, ChevronDown, Star } from "lucide-svelte";
+	import { X, Plus, ChevronUp, ChevronDown, Star, Disc, Hash } from "lucide-svelte";
 
 	import * as Tabs from "$lib/components/ui/tabs";
 	import { Label } from "$lib/components/ui/label";
@@ -18,6 +18,7 @@
 
 	// CUSTOM COMPONENTS
 	import ArtworkEditor from "./ArtworkEditor.svelte";
+	import IconInput from "$lib/components/app-ui/IconInput.svelte";
 
 	// SCRIPTS
 	import { closeEditModal } from "$lib/ts/app/editModal.svelte";
@@ -30,10 +31,11 @@
 		renameArtistInLibrary,
 		renameAlbumInTracks,
 		warnEmptyFields,
-		type AlbumEntry,
 	} from "$lib/ts/dbManager";
 	import { enrichTrack, fetchLyrics } from "$lib/ts/app/enrichment";
 	import TagSelector from "$lib/components/app-ui/TagSelector.svelte";
+
+	import type { TrackAlbumEntry } from "$lib/ts/util/types";
 
 	// PROPS
 	let { uid } = $props<{ uid: string }>();
@@ -42,7 +44,7 @@
 	let title = $state("");
 	let artists = $state("");
 	let albumArtist = $state("");
-	let albums = $state<AlbumEntry[]>([]);
+	let albums = $state<TrackAlbumEntry[]>([]);
 	let originalAlbumUids = $state<string[]>([]);
 	let originalArtists = $state<string[]>([]);
 	let originalAlbumArtist = $state("");
@@ -89,8 +91,12 @@
 
 		try {
 			const parsed = track.albums ? JSON.parse(track.albums) : [];
-			albums = parsed;
-			originalAlbumUids = parsed.map((a: AlbumEntry) => a.uid).filter(Boolean);
+			albums = parsed.map((a: any) => ({
+				...a,
+				track_number: a.track_number ?? null,
+				disc: a.disc ?? null,
+			}));
+			originalAlbumUids = parsed.map((a: TrackAlbumEntry) => a.uid).filter(Boolean);
 		} catch { albums = []; }
 
 		try { genreList = track.genres ? JSON.parse(track.genres) : []; } catch { genreList = []; }
@@ -99,7 +105,7 @@
 
 	// FUNCTIONS
 	function addAlbum() {
-		albums = [...albums, { uid: "", name: "", track_number: null }];
+		albums = [...albums, { uid: "", name: "", track_number: null, disc: null }];
 	}
 
 	function removeAlbum(index: number) {
@@ -148,6 +154,7 @@
 					uid: a.uid ?? "",
 					name: a.name.trim(),
 					track_number: a.track_number != null && !isNaN(Number(a.track_number)) ? Number(a.track_number) : null,
+					disc: a.disc != null && !isNaN(Number(a.disc)) ? Number(a.disc) : null,
 				}));
 
 			const renamedArtists = originalArtists.filter((orig) => {
@@ -305,12 +312,8 @@
 									bind:value={album.name}
 									class="flex-1"
 								/>
-								<Input
-									placeholder="Track #"
-									type="number"
-									bind:value={album.track_number}
-									class="w-24"
-								/>
+								<IconInput bind:value={album.track_number} placeholder="Track #" type="number" Icon={Hash} classes="w-20" />
+								<IconInput bind:value={album.disc} placeholder="Disc #" type="number" Icon={Disc} classes="w-18" />
 								<Button
 									variant="ghost"
 									size="icon"
