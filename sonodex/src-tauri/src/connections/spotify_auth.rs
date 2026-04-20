@@ -594,6 +594,13 @@ pub async fn spotify_import_playlist(
 		artwork_blob,
 		artwork_path: None,
 		folder: None,
+		version: 1,
+		versions_data: None,
+		link_url: Some(format!("https://open.spotify.com/playlist/{}", spotify_playlist_id)),
+		emulate_type: None,
+		emulate_settings: None,
+		pending_tracks: None,
+		share_settings: None,
 	};
 
 	create_playlist(&lib_conn, &playlist).map_err(|e| e.to_string())?;

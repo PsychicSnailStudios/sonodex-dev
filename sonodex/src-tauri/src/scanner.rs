@@ -737,6 +737,7 @@ fn find_or_create_album(
                     label: None,
                     artwork_blob: None,
                     artwork_path: None,
+                    emulate_type: None,
                 },
             )
             .ok()?;
@@ -770,6 +771,7 @@ fn find_or_create_album(
         label: None,
         artwork_blob,
         artwork_path: None,
+        emulate_type: None,
     };
 
     create_album(conn, &album).ok()?;
@@ -1298,6 +1300,7 @@ pub fn scan_directory_with_progress(conn: &Connection, dir: &str, app: &AppHandl
                             label: result.label,
                             artwork_blob: result.artwork,
                             artwork_path: None,
+                            emulate_type: None,
                         };
                         let _ = crate::db::update_album_by_uid(conn, album_uid, &update);
                     }

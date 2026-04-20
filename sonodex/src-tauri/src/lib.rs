@@ -1219,6 +1219,7 @@ async fn enrich_album(
 			label: result.label,
 			artwork_blob: result.artwork,
 			artwork_path: None,
+            emulate_type: None,
 		};
 		if let Some(ref genres_json) = update.genres {
 			if let Ok(names) = serde_json::from_str::<Vec<String>>(genres_json) {
@@ -1423,6 +1424,7 @@ async fn enrich_all_albums(app: AppHandle, state: State<'_, AppState>) -> Result
                 label: result.label,
                 artwork_blob: result.artwork,
                 artwork_path: None,
+                emulate_type: None,
             };
             if let Some(ref genres_json) = update.genres {
                 if let Ok(names) = serde_json::from_str::<Vec<String>>(genres_json) {
@@ -1828,6 +1830,7 @@ async fn spotify_enrich_album_cmd(uid: String, state: State<'_, AppState>) -> Re
         label: meta.label,
         artwork_blob: None,
         artwork_path: None,
+        emulate_type: None,
     };
 
 	if let Some(ref genres_json) = update.genres {

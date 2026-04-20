@@ -136,7 +136,8 @@ pub fn init_lib_db(conn: &Connection) -> Result<()> {
 			credits TEXT,
 			label TEXT,
 			artwork_blob BLOB,
-			artwork_path TEXT
+			artwork_path TEXT,
+			emulate_type TEXT
 		);
 
 		CREATE TABLE IF NOT EXISTS artists (
@@ -164,7 +165,14 @@ pub fn init_lib_db(conn: &Connection) -> Result<()> {
 			tracks TEXT DEFAULT '[]',
 			folder TEXT,
 			artwork_blob BLOB,
-			artwork_path TEXT
+			artwork_path TEXT,
+			version INTEGER NOT NULL DEFAULT 1,
+			versions_data TEXT,
+			link_url TEXT,
+			emulate_type TEXT,
+			emulate_settings TEXT,
+			pending_tracks TEXT,
+			share_settings TEXT
 		);
 
 		CREATE TABLE IF NOT EXISTS lyrics (

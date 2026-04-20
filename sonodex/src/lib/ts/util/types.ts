@@ -48,6 +48,7 @@ export type Album = {
 	credits: string | null;
 	label: string | null;
 	artwork_path: string | null;
+	emulate_type: string | null;
 };
 
 export type Artist = {
@@ -73,6 +74,13 @@ export type Playlist = {
 	tracks: PlaylistTrackEntry[] | null;
 	artwork_path: string | null;
 	folder: string | null;
+	version: number;
+	versions_data: string | null;
+	link_url: string | null;
+	emulate_type: string | null;
+	emulate_settings: string | null;
+	pending_tracks: string | null;
+	share_settings: string | null;
 };
 
 export type Lyrics = {
