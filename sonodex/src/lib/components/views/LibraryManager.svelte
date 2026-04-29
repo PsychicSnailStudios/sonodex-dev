@@ -129,78 +129,95 @@
 		await invoke("rescan");
 	}
 
-	// ─── Filtered lists ───────────────────────────────────────────────────────────
-	const tracksFuse = $derived(
-		new Fuse(library.tracks, {
+	let tracksFuseInstance: Fuse<(typeof library.tracks)[0]> | null = $state(null);
+	let lastTracksRef: typeof library.tracks | null = null;
+
+	function getTracksFuse() {
+		if (tracksFuseInstance && lastTracksRef === library.tracks) return tracksFuseInstance;
+		lastTracksRef = library.tracks;
+		tracksFuseInstance = new Fuse(library.tracks, {
 			keys: [
-					{ name: "title",        weight: 0.5,  getFn: (t) => t.title ?? ""                        },
-					{ name: "artists",      weight: 0.25, getFn: (t) => parseArtists(t.artists ?? "[]")      },
-					{ name: "album_artist", weight: 0.15, getFn: (t) => t.album_artist ?? ""                 },
-					{ name: "albums",       weight: 0.1,  getFn: (t) => parseAlbum(t.albums ?? "[]")         },
-					{ name: "tags",       	weight: 0.05,  getFn: (t) => t.tags ?? ""     			 		     },
-					{ name: "genres",       weight: 0.05,  getFn: (t) => t.genres ?? ""     				     },
+				{ name: "title",        weight: 0.5,  getFn: (t) => t.title ?? ""                    },
+				{ name: "artists",      weight: 0.25, getFn: (t) => parseArtists(t.artists ?? "[]")  },
+				{ name: "album_artist", weight: 0.15, getFn: (t) => t.album_artist ?? ""             },
+				{ name: "albums",       weight: 0.1,  getFn: (t) => parseAlbum(t.albums ?? "[]")     },
+				{ name: "tags",         weight: 0.05, getFn: (t) => t.tags ?? ""                     },
+				{ name: "genres",       weight: 0.05, getFn: (t) => t.genres ?? ""                   },
 			],
-			threshold:          0.35,  // 0 = exact only, 1 = match anything
-			ignoreLocation:     true,  // don't penalise matches deep in a string
-			includeScore:       false,
-			useExtendedSearch:  false,
-			minMatchCharLength: 2,     // ignore single-character queries
-		})
-	);
+			threshold: 0.35,
+			ignoreLocation: true,
+			includeScore: false,
+			useExtendedSearch: false,
+			minMatchCharLength: 2,
+		});
+		return tracksFuseInstance;
+	}
 
 	const filteredTracks = $derived(
 		(() => {
 			const pool = ghosts ? library.tracks.filter((t) => t.path === "") : library.tracks;
 			return trackSearch.trim().length < 2
 				? pool
-				: tracksFuse.search(trackSearch).map((r) => r.item).filter((t) => !ghosts || t.path === "");
+				: getTracksFuse().search(trackSearch).map((r) => r.item).filter((t) => !ghosts || t.path === "");
 		})()
 	);
 
-	const albumFuse = $derived(
-		new Fuse(library.albums, {
+	let albumFuseInstance: Fuse<(typeof library.albums)[0]> | null = $state(null);
+	let lastAlbumsRef: typeof library.albums | null = null;
+
+	function getAlbumFuse() {
+		if (albumFuseInstance && lastAlbumsRef === library.albums) return albumFuseInstance;
+		lastAlbumsRef = library.albums;
+		albumFuseInstance = new Fuse(library.albums, {
 			keys: [
-					{ name: "title",        weight: 0.5,  getFn: (t) => t.title ?? ""                        },
-					{ name: "artists",      weight: 0.25, getFn: (t) => parseArtists(t.artists ?? "[]")      },
-					{ name: "album_artist", weight: 0.15, getFn: (t) => t.album_artist ?? ""                 },
-					{ name: "year",    	   weight: 0.1,  getFn: (t) => t.release_date ?? ""                 },
-					{ name: "tags",       	weight: 0.05,  getFn: (t) => t.tags ?? ""     			 		     },
-					{ name: "genres",       weight: 0.05,  getFn: (t) => t.genres ?? ""     				     },
+				{ name: "title",        weight: 0.5,  getFn: (t) => t.title ?? ""                    },
+				{ name: "artists",      weight: 0.25, getFn: (t) => parseArtists(t.artists ?? "[]")  },
+				{ name: "album_artist", weight: 0.15, getFn: (t) => t.album_artist ?? ""             },
+				{ name: "year",         weight: 0.1,  getFn: (t) => t.release_date ?? ""             },
+				{ name: "tags",         weight: 0.05, getFn: (t) => t.tags ?? ""                     },
+				{ name: "genres",       weight: 0.05, getFn: (t) => t.genres ?? ""                   },
 			],
-			threshold:          0.35,  // 0 = exact only, 1 = match anything
-			ignoreLocation:     true,  // don't penalise matches deep in a string
-			includeScore:       false,
-			useExtendedSearch:  false,
-			minMatchCharLength: 2,     // ignore single-character queries
-		})
-	);
+			threshold: 0.35,
+			ignoreLocation: true,
+			includeScore: false,
+			useExtendedSearch: false,
+			minMatchCharLength: 2,
+		});
+		return albumFuseInstance;
+	}
 
 	const filteredAlbums = $derived(
 		albumSearch.trim().length < 2
 			? library.albums
-			: albumFuse.search(albumSearch).map((r) => r.item)
+			: getAlbumFuse().search(albumSearch).map((r) => r.item)
 	);
 
-	const artistFuse = $derived(
-		new Fuse(library.artists, {
+	let artistFuseInstance: Fuse<(typeof library.artists)[0]> | null = $state(null);
+	let lastArtistsRef: typeof library.artists | null = null;
+
+	function getArtistFuse() {
+		if (artistFuseInstance && lastArtistsRef === library.artists) return artistFuseInstance;
+		lastArtistsRef = library.artists;
+		artistFuseInstance = new Fuse(library.artists, {
 			keys: [
-					{ name: "name",         weight: 0.5,  getFn: (t) => t.name ?? ""                         },
-					{ name: "akas",     	   weight: 0.35, getFn: (t) => t.aka ?? ""						 		  },
-					{ name: "tags",       	weight: 0.05,  getFn: (t) => t.tags ?? ""     			 		     },
-					{ name: "genres",       weight: 0.05,  getFn: (t) => t.genres ?? ""     				     },
+				{ name: "name",   weight: 0.5,  getFn: (t) => t.name ?? ""   },
+				{ name: "akas",   weight: 0.35, getFn: (t) => t.aka ?? ""    },
+				{ name: "tags",   weight: 0.05, getFn: (t) => t.tags ?? ""   },
+				{ name: "genres", weight: 0.05, getFn: (t) => t.genres ?? "" },
 			],
-			threshold:          0.35,  // 0 = exact only, 1 = match anything
-			ignoreLocation:     true,  // don't penalise matches deep in a string
-			includeScore:       false,
-			useExtendedSearch:  false,
-			minMatchCharLength: 2,     // ignore single-character queries
-		})
-	);
+			threshold: 0.35,
+			ignoreLocation: true,
+			includeScore: false,
+			useExtendedSearch: false,
+			minMatchCharLength: 2,
+		});
+		return artistFuseInstance;
+	}
 
 	const filteredArtists = $derived(
 		artistSearch.trim().length < 2
 			? library.artists
-			: artistFuse.search(artistSearch).map((r) => r.item)
+			: getArtistFuse().search(artistSearch).map((r) => r.item)
 	);
 
 	// ─── Track selection derived ──────────────────────────────────────────────────
@@ -387,7 +404,7 @@
 		<div class="flex flex-col gap-4 p-2 pr-4">
 			<Tabs.Root value="paths" class="flex flex-col min-h-0 flex-1">
 				<Tabs.List class="w-full">
-					<Tabs.Trigger value="paths" class="flex-1">Paths</Tabs.Trigger>
+					<Tabs.Trigger value="paths" class="flex-1">Library</Tabs.Trigger>
 					<Tabs.Trigger value="tracks" class="flex-1">Tracks</Tabs.Trigger>
 					<Tabs.Trigger value="albums" class="flex-1">Albums</Tabs.Trigger>
 					<Tabs.Trigger value="artists" class="flex-1">Artists</Tabs.Trigger>

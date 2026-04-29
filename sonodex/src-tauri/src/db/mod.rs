@@ -76,6 +76,12 @@ pub fn init_settings_db(conn: &Connection) -> Result<()> {
 			('auto_enrich_artists', 'true'),
 			('scan_try_parse_ampersand', 'true'),
 			('auto_fetch_lyrics', 'false'),
+			('download_path', ''),
+			('download_path_style', '{artist}/{album}'),
+			('download_filename_style', '{track_number} - {title} - {artist}'),
+			('download_convert_mp3', 'false'),
+			('offline_mode_auto', 'false'),
+			('offline_subscriptions', '[]'),
 			('api_lastfm_key', ''),
 			('api_discogs_key', ''),
 			('api_lastfm_secret',     ''),
@@ -118,7 +124,10 @@ pub fn init_lib_db(conn: &Connection) -> Result<()> {
 			artwork_path TEXT,
 			user_options TEXT,
 			format TEXT,
-			bitrate INTEGER
+			bitrate INTEGER,
+			remote_path TEXT,
+			remote_data TEXT,
+			track_data  TEXT
 		);
 
 		CREATE TABLE IF NOT EXISTS albums (

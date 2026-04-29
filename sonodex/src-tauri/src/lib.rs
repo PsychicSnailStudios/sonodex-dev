@@ -266,21 +266,23 @@ fn remove_path(state: State<AppState>, path: String) -> Result<(), String> {
     lib_conn
         .execute(
             "DELETE FROM albums WHERE uid NOT IN (
-				SELECT DISTINCT json_each.value
-				FROM tracks, json_each(tracks.albums, '$[*].uid')
-				WHERE json_each.value != ''
-			)",
+                SELECT DISTINCT json_extract(json_each.value, '$.uid')
+                FROM tracks, json_each(tracks.albums)
+                WHERE json_extract(json_each.value, '$.uid') IS NOT NULL
+                AND json_extract(json_each.value, '$.uid') != ''
+            )",
             [],
         )
         .map_err(|e| e.to_string())?;
     lib_conn
         .execute(
             "DELETE FROM artists WHERE name NOT IN (
-				SELECT DISTINCT json_each.value
-				FROM tracks, json_each(tracks.artists)
-			) AND name NOT IN (
-				SELECT DISTINCT album_artist FROM tracks WHERE album_artist IS NOT NULL
-			)",
+                SELECT DISTINCT json_each.value
+                FROM tracks, json_each(tracks.artists)
+                WHERE tracks.artists IS NOT NULL AND tracks.artists != '[]'
+            ) AND name NOT IN (
+                SELECT DISTINCT album_artist FROM tracks WHERE album_artist IS NOT NULL
+            )",
             [],
         )
         .map_err(|e| e.to_string())?;
@@ -376,6 +378,27 @@ fn delete_track_file(
     db::delete_track_by_uid(&conn, &uid).map_err(|e| e.to_string())?;
     app.emit("library:updated", ()).ok();
     Ok(())
+}
+
+#[tauri::command]
+fn merge_remote_local_tracks(
+	app: AppHandle,
+	state: State<AppState>,
+	keep_uid: String,
+	drop_uid: String,
+) -> Result<(), String> {
+	let profile_uid = state.get_uid();
+	let conn = open_lib_conn(&profile_uid);
+
+	let drop_track = db::get_track_by_uid(&conn, &drop_uid)
+		.map_err(|e| e.to_string())?
+		.ok_or("Drop track not found")?;
+
+	scanner::merge_paths_into_existing(&conn, &keep_uid, &drop_track);
+	db::delete_track_by_uid(&conn, &drop_uid).map_err(|e| e.to_string())?;
+
+	app.emit("library:updated", ()).ok();
+	Ok(())
 }
 
 #[tauri::command]
@@ -583,15 +606,13 @@ async fn replace_track_path(
             genres: fresh_track.genres,
             bpm: fresh_track.bpm,
             rating: fresh_track.rating,
-            tags: None,
             key: fresh_track.key,
             credits: fresh_track.credits,
             label: fresh_track.label,
             artwork_blob: fresh_track.artwork_blob,
-            artwork_path: None,
-            user_options: None,
             format: fresh_track.format,
             bitrate: fresh_track.bitrate,
+            ..Default::default()
         };
         db::track_manager::update_track_metadata_by_uid(&lib_conn, &uid, &merged)
             .map_err(|e| e.to_string())?;
@@ -1029,16 +1050,9 @@ async fn enrich_track(
             year: result.year,
             genres: result.genres,
             bpm: result.bpm,
-            rating: None,
-            tags: None,
             key: result.key,
-            credits: None,
-            label: None,
             artwork_blob: result.artwork,
-            artwork_path: None,
-            user_options: None,
-            format: None,
-            bitrate: None,
+            ..Default::default()
         };
 
         if let Some(ref genres_json) = update.genres {
@@ -1115,16 +1129,9 @@ async fn enrich_all(app: AppHandle, state: State<'_, AppState>) -> Result<(), St
                     year: result.year,
                     genres: result.genres,
                     bpm: result.bpm,
-                    rating: None,
-                    tags: None,
                     key: result.key,
-                    credits: None,
-                    label: None,
                     artwork_blob: result.artwork,
-                    artwork_path: None,
-                    user_options: None,
-                    format: None,
-                    bitrate: None,
+                    ..Default::default()
                 };
                 if let Some(ref genres_json) = update.genres {
                     if let Ok(names) = serde_json::from_str::<Vec<String>>(genres_json) {
@@ -1290,16 +1297,9 @@ async fn enrich_album(
 				year: track_result.year,
 				genres: track_result.genres,
 				bpm: track_result.bpm,
-				rating: None,
-				tags: None,
 				key: track_result.key,
-				credits: None,
-				label: None,
 				artwork_blob: track_result.artwork,
-				artwork_path: None,
-				user_options: None,
-				format: None,
-				bitrate: None,
+                ..Default::default()
 			};
 			if let Some(ref genres_json) = update.genres {
 				if let Ok(names) = serde_json::from_str::<Vec<String>>(genres_json) {
@@ -1660,6 +1660,376 @@ async fn update_now_playing(uid: String, state: State<'_, AppState>) -> Result<(
 }
 
 // ─────────────────────────────────────────────
+// DOWNLOAD
+// ─────────────────────────────────────────────
+
+#[tauri::command]
+async fn download_track_cmd(
+	app: AppHandle,
+	state: State<'_, AppState>,
+	uid: String,
+) -> Result<String, String> {
+	use std::path::PathBuf;
+	use tauri_plugin_shell::ShellExt;
+
+	let profile_uid = state.get_uid();
+	let lib_conn = open_lib_conn(&profile_uid);
+	let settings_conn = open_settings_conn(&profile_uid);
+
+	let track = db::get_track_by_uid(&lib_conn, &uid)
+		.map_err(|e| e.to_string())?
+		.ok_or("Track not found")?;
+
+	let remote_path = track.remote_path.clone().ok_or("Track has no remote path")?;
+
+	let download_base = db::settings_manager::get_setting(&settings_conn, "download_path")
+		.ok()
+		.flatten()
+		.unwrap_or_default();
+	if download_base.is_empty() {
+		return Err("Download path not configured".to_string());
+	}
+
+	let path_style = db::settings_manager::get_setting(&settings_conn, "download_path_style")
+		.ok()
+		.flatten()
+		.unwrap_or_else(|| "{artist}/{album}".to_string());
+
+	let filename_style = db::settings_manager::get_setting(&settings_conn, "download_filename_style")
+		.ok()
+		.flatten()
+		.unwrap_or_else(|| "{track_number} - {title}".to_string());
+
+	let convert_mp3 = db::settings_manager::get_setting(&settings_conn, "download_convert_mp3")
+		.ok()
+		.flatten()
+		.map(|v| v == "true")
+		.unwrap_or(false);
+
+	let artist = track
+		.album_artist
+		.clone()
+		.or_else(|| {
+			track.artists.as_deref().and_then(|a| {
+				serde_json::from_str::<Vec<String>>(a)
+					.ok()
+					.and_then(|v| v.into_iter().next())
+			})
+		})
+		.unwrap_or_else(|| "Unknown Artist".to_string());
+
+	let album = track
+		.albums
+		.as_deref()
+		.and_then(|a| serde_json::from_str::<Vec<serde_json::Value>>(a).ok())
+		.and_then(|v| v.into_iter().next())
+		.and_then(|e| e["name"].as_str().map(|s| s.to_string()))
+		.unwrap_or_else(|| "Unknown Album".to_string());
+
+	let track_number = track
+		.albums
+		.as_deref()
+		.and_then(|a| serde_json::from_str::<Vec<serde_json::Value>>(a).ok())
+		.and_then(|v| v.into_iter().next())
+		.and_then(|e| e["track_number"].as_u64())
+		.map(|n| format!("{:02}", n))
+		.unwrap_or_else(|| "00".to_string());
+
+	let year = track.year.clone().unwrap_or_else(|| "Unknown Year".to_string());
+	let title = track.title.clone().unwrap_or_else(|| "Unknown Title".to_string());
+
+	let sanitize = |s: &str| -> String {
+		s.chars()
+			.map(|c| match c {
+				'/' | '\\' | ':' | '*' | '?' | '"' | '<' | '>' | '|' => '_',
+				c => c,
+			})
+			.collect()
+	};
+
+	let folder = path_style
+		.replace("{artist}", &sanitize(&artist))
+		.replace("{album}", &sanitize(&album))
+		.replace("{year}", &sanitize(&year));
+
+	let ext = if convert_mp3 {
+		"mp3".to_string()
+	} else {
+		remote_path
+			.rsplit('.')
+			.next()
+			.unwrap_or("mp3")
+			.to_string()
+			.to_lowercase()
+	};
+
+	let filename_base = filename_style
+		.replace("{track_number}", &track_number)
+		.replace("{title}", &sanitize(&title))
+		.replace("{artist}", &sanitize(&artist))
+		.replace("{album}", &sanitize(&album))
+		.replace("{year}", &sanitize(&year));
+
+	let dest_dir = PathBuf::from(&download_base).join(&folder);
+	std::fs::create_dir_all(&dest_dir).map_err(|e| e.to_string())?;
+	let dest_path = dest_dir.join(format!("{}.{}", filename_base, ext));
+	let dest_str = dest_path.to_string_lossy().to_string();
+
+	if convert_mp3 {
+		let ffmpeg_output = app
+			.shell()
+			.sidecar("ffmpeg")
+			.map_err(|e| e.to_string())?
+			.args(["-y", "-i", &remote_path, "-b:a", "320k", &dest_str])
+			.output()
+			.await
+			.map_err(|e| e.to_string())?;
+
+		if !ffmpeg_output.status.success() {
+			let stderr = String::from_utf8_lossy(&ffmpeg_output.stderr).to_string();
+			return Err(format!("FFmpeg failed: {}", stderr));
+		}
+	} else {
+		if remote_path.starts_with("http://") || remote_path.starts_with("https://") {
+			let client = enrichment::make_client()?;
+			let bytes = client
+				.get(&remote_path)
+				.send()
+				.await
+				.map_err(|e| e.to_string())?
+				.bytes()
+				.await
+				.map_err(|e| e.to_string())?;
+			std::fs::write(&dest_path, &bytes).map_err(|e| e.to_string())?;
+		} else {
+			std::fs::copy(&remote_path, &dest_path).map_err(|e| e.to_string())?;
+		}
+	}
+
+	let format = ext.to_uppercase();
+
+	let bitrate: Option<i64> = if let Ok(metadata) = std::fs::metadata(&dest_path) {
+		let duration_secs = track.duration_ms.unwrap_or(0) as f64 / 1000.0;
+		if duration_secs > 0.0 {
+			Some(((metadata.len() as f64 * 8.0) / duration_secs / 1000.0) as i64)
+		} else {
+			None
+		}
+	} else {
+		None
+	};
+
+	let track_data = serde_json::json!({
+		"bitrate": bitrate,
+		"format": format,
+		"is_ghost": false
+	})
+	.to_string();
+
+	db::update_track_metadata_by_uid(
+		&lib_conn,
+		&uid,
+		&db::MetadataUpdate {
+			format: Some(format),
+			bitrate,
+			track_data: Some(track_data),
+			..Default::default()
+		},
+	)
+	.map_err(|e| e.to_string())?;
+
+	lib_conn
+		.execute(
+			"UPDATE tracks SET path = ?1 WHERE uid = ?2",
+			rusqlite::params![dest_str, uid],
+		)
+		.map_err(|e| e.to_string())?;
+
+	app.emit("library:updated", ()).ok();
+
+	Ok(dest_str)
+}
+
+#[tauri::command]
+async fn download_album_tracks_cmd(
+	app: AppHandle,
+	state: State<'_, AppState>,
+	uid: String,
+	subscribe: bool,
+) -> Result<(), String> {
+	let profile_uid = state.get_uid();
+	let lib_conn = open_lib_conn(&profile_uid);
+
+	let album = db::get_album_by_uid(&lib_conn, &uid)
+		.map_err(|e| e.to_string())?
+		.ok_or("Album not found")?;
+
+	let track_uids: Vec<String> = album
+		.tracks
+		.as_deref()
+		.and_then(|t| serde_json::from_str::<Vec<serde_json::Value>>(t).ok())
+		.unwrap_or_default()
+		.into_iter()
+		.filter_map(|e| e["uid"].as_str().map(|s| s.to_string()))
+		.filter(|s| !s.is_empty())
+		.collect();
+
+	for track_uid in track_uids {
+		let track = match db::get_track_by_uid(&lib_conn, &track_uid) {
+			Ok(Some(t)) => t,
+			_ => continue,
+		};
+		if track.remote_path.is_none() {
+			continue;
+		}
+		let local_path_ok = !track.path.is_empty()
+			&& !track.path.starts_with("t-")
+			&& std::path::Path::new(&track.path).exists();
+		if local_path_ok {
+			continue;
+		}
+		let _ = download_track_cmd(app.clone(), state.clone(), track_uid).await;
+	}
+
+	if subscribe {
+		let settings_conn = open_settings_conn(&profile_uid);
+		let mut subs: Vec<String> = db::settings_manager::get_setting(&settings_conn, "offline_subscriptions")
+			.ok()
+			.flatten()
+			.and_then(|v| serde_json::from_str(&v).ok())
+			.unwrap_or_default();
+		if !subs.contains(&uid) {
+			subs.push(uid);
+			db::settings_manager::set_setting(
+				&settings_conn,
+				"offline_subscriptions",
+				&serde_json::to_string(&subs).unwrap_or_else(|_| "[]".to_string()),
+			)
+			.ok();
+		}
+	}
+
+	app.emit("library:updated", ()).ok();
+	Ok(())
+}
+
+#[tauri::command]
+async fn download_playlist_tracks_cmd(
+	app: AppHandle,
+	state: State<'_, AppState>,
+	uid: String,
+	subscribe: bool,
+) -> Result<(), String> {
+	let profile_uid = state.get_uid();
+	let lib_conn = open_lib_conn(&profile_uid);
+
+	let playlist = db::get_playlist_by_uid(&lib_conn, &uid)
+		.map_err(|e| e.to_string())?
+		.ok_or("Playlist not found")?;
+
+	let track_uids: Vec<String> = playlist
+		.tracks
+		.as_deref()
+		.and_then(|t| serde_json::from_str::<Vec<serde_json::Value>>(t).ok())
+		.unwrap_or_default()
+		.into_iter()
+		.filter_map(|e| e["uid"].as_str().map(|s| s.to_string()))
+		.filter(|s| !s.is_empty())
+		.collect();
+
+	for track_uid in track_uids {
+		let track = match db::get_track_by_uid(&lib_conn, &track_uid) {
+			Ok(Some(t)) => t,
+			_ => continue,
+		};
+		if track.remote_path.is_none() {
+			continue;
+		}
+		let local_path_ok = !track.path.is_empty()
+			&& !track.path.starts_with("t-")
+			&& std::path::Path::new(&track.path).exists();
+		if local_path_ok {
+			continue;
+		}
+		let _ = download_track_cmd(app.clone(), state.clone(), track_uid).await;
+	}
+
+	if subscribe {
+		let settings_conn = open_settings_conn(&profile_uid);
+		let mut subs: Vec<String> = db::settings_manager::get_setting(&settings_conn, "offline_subscriptions")
+			.ok()
+			.flatten()
+			.and_then(|v| serde_json::from_str(&v).ok())
+			.unwrap_or_default();
+		if !subs.contains(&uid) {
+			subs.push(uid);
+			db::settings_manager::set_setting(
+				&settings_conn,
+				"offline_subscriptions",
+				&serde_json::to_string(&subs).unwrap_or_else(|_| "[]".to_string()),
+			)
+			.ok();
+		}
+	}
+
+	app.emit("library:updated", ()).ok();
+	Ok(())
+}
+
+#[tauri::command]
+async fn sync_offline_subscriptions_cmd(
+	app: AppHandle,
+	state: State<'_, AppState>,
+) -> Result<(), String> {
+	let profile_uid = state.get_uid();
+	let settings_conn = open_settings_conn(&profile_uid);
+
+	let subs: Vec<String> = db::settings_manager::get_setting(&settings_conn, "offline_subscriptions")
+		.ok()
+		.flatten()
+		.and_then(|v| serde_json::from_str(&v).ok())
+		.unwrap_or_default();
+
+	for sub_uid in subs {
+		match sub_uid.chars().take(2).collect::<String>().as_str() {
+			"a-" => {
+				let _ = download_album_tracks_cmd(app.clone(), state.clone(), sub_uid, false).await;
+			}
+			"p-" => {
+				let _ = download_playlist_tracks_cmd(app.clone(), state.clone(), sub_uid, false).await;
+			}
+			_ => {}
+		}
+	}
+
+	Ok(())
+}
+
+#[tauri::command]
+async fn unsubscribe_offline_cmd(
+	state: State<'_, AppState>,
+	uid: String,
+) -> Result<(), String> {
+	let profile_uid = state.get_uid();
+	let settings_conn = open_settings_conn(&profile_uid);
+
+	let mut subs: Vec<String> = db::settings_manager::get_setting(&settings_conn, "offline_subscriptions")
+		.ok()
+		.flatten()
+		.and_then(|v| serde_json::from_str(&v).ok())
+		.unwrap_or_default();
+
+	subs.retain(|s| s != &uid);
+
+	db::settings_manager::set_setting(
+		&settings_conn,
+		"offline_subscriptions",
+		&serde_json::to_string(&subs).unwrap_or_else(|_| "[]".to_string()),
+	)
+	.map_err(|e| e.to_string())
+}
+
+// ─────────────────────────────────────────────
 // SPOTIFY
 // ─────────────────────────────────────────────
 
@@ -1758,24 +2128,12 @@ async fn spotify_enrich_track_cmd(uid: String, state: State<'_, AppState>) -> Re
             .artists
             .as_ref()
             .map(|v| serde_json::to_string(v).unwrap_or_default()),
-        album_artist: None,
-        albums: None,
         year: meta.year,
         genres: meta
             .genres
             .as_ref()
             .map(|v| serde_json::to_string(v).unwrap_or_default()),
-        bpm: None,
-        rating: None,
-        tags: None,
-        key: None,
-        credits: None,
-        label: None,
-        artwork_blob: None,
-        artwork_path: None,
-        user_options: None,
-        format: None,
-        bitrate: None,
+        ..Default::default()
     };
 
 	if let Some(ref genres_json) = update.genres {
@@ -2247,6 +2605,7 @@ pub fn run() {
             add_uid_remap,
             resolve_uid,
             replace_track_path,
+            merge_remote_local_tracks,
             open_in_explorer,
             get_all_tags_cmd,
             add_tag_cmd,
@@ -2258,6 +2617,11 @@ pub fn run() {
             create_tag_group_cmd,
             update_tag_group_cmd,
             delete_tag_group_cmd,
+            download_track_cmd,
+            download_album_tracks_cmd,
+            download_playlist_tracks_cmd,
+            sync_offline_subscriptions_cmd,
+            unsubscribe_offline_cmd,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

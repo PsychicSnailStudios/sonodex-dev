@@ -17,6 +17,7 @@
    import DefultPlaylistArt from "$lib/components/app-ui/playlist/DefultPlaylistArt.svelte";
 	import NavButtons from "$lib/components/app-ui/NavButtons.svelte";
 	import SearchBar from "$lib/components/app-ui/search/SearchBar.svelte";
+	import DownloadButton from "$lib/components/app-ui/DownloadButton.svelte";
 
 	// SCRIPTS
 	import Fuse from "fuse.js";
@@ -48,28 +49,34 @@
 		return getPlaylistTracks(playlist.uid, view.sort);
 	});
 
-	const fuse = $derived(
-		new Fuse(library.tracks, {
+	let fuseInstance: Fuse<(typeof library.tracks)[0]> | null = $state(null);
+	let lastTracksRef: typeof library.tracks | null = null;
+
+	function getFuse() {
+		if (fuseInstance && lastTracksRef === library.tracks) return fuseInstance;
+		lastTracksRef = library.tracks;
+		fuseInstance = new Fuse(library.tracks, {
 			keys: [
-					{ name: "title",        weight: 0.5,  getFn: (t) => t.title ?? ""                        },
-					{ name: "artists",      weight: 0.25, getFn: (t) => parseArtists(t.artists ?? "[]")      },
-					{ name: "album_artist", weight: 0.15, getFn: (t) => t.album_artist ?? ""                 },
-					{ name: "albums",       weight: 0.1,  getFn: (t) => parseAlbum(t.albums ?? "[]")         },
-					{ name: "tags",       	weight: 0.05,  getFn: (t) => t.tags ?? ""     			 		     },
-					{ name: "genres",       weight: 0.05,  getFn: (t) => t.genres ?? ""     				     },
+				{ name: "title",        weight: 0.5,  getFn: (t) => t.title ?? ""                    },
+				{ name: "artists",      weight: 0.25, getFn: (t) => parseArtists(t.artists ?? "[]")  },
+				{ name: "album_artist", weight: 0.15, getFn: (t) => t.album_artist ?? ""             },
+				{ name: "albums",       weight: 0.1,  getFn: (t) => parseAlbum(t.albums ?? "[]")     },
+				{ name: "tags",         weight: 0.05, getFn: (t) => t.tags ?? ""                     },
+				{ name: "genres",       weight: 0.05, getFn: (t) => t.genres ?? ""                   },
 			],
-			threshold:          0.35,  // 0 = exact only, 1 = match anything
-			ignoreLocation:     true,  // don't penalise matches deep in a string
-			includeScore:       false,
-			useExtendedSearch:  false,
-			minMatchCharLength: 2,     // ignore single-character queries
-		})
-	);
+			threshold: 0.35,
+			ignoreLocation: true,
+			includeScore: false,
+			useExtendedSearch: false,
+			minMatchCharLength: 2,
+		});
+		return fuseInstance;
+	}
 
 	const filteredTracks = $derived(
 		search.trim().length < 2
 			? library.tracks
-			: fuse.search(search).map((r) => r.item)
+			: getFuse().search(search).map((r) => r.item)
 	);
 
 	// APP FUNCTIONS
@@ -109,13 +116,9 @@
 		endDrag();
 	}
 
-	function allTracksAreGhosts(): boolean {
-		for (let track of tracks) {
-			if (/^[a-z]+-[0-9a-f-]{36}$/.test(track.path) === false || track.path != "") return false;
-		}
-
-		return true;
-	}
+	let allGhosts = $derived(tracks.every(t =>
+		/^[a-z]+-[0-9a-f-]{36}$/.test(t.path) || t.path === ""
+	));
 </script>
 
 <div
@@ -159,13 +162,14 @@
 			<div class="flex gap-2 justify-between items-center flex-wrap p-2 rounded-md"
 				  style="background: {color};">
 				<div>
-					<Button variant="default" disabled={allTracksAreGhosts()} onclick={() => queueTracksByObject(tracks, true)}>{ tracks.length === 1 ? "Play" : "Play All"}</Button>
+					<Button variant="default" disabled={allGhosts} onclick={() => queueTracksByObject(tracks, true)}>{ tracks.length === 1 ? "Play" : "Play All"}</Button>
 					{#if tracks.length > 1}
-					<Button variant="outline" disabled={allTracksAreGhosts()} onclick={() => queueTracksByObject(tracks, true, true)}>Shuffle</Button>
+					<Button variant="outline" disabled={allGhosts} onclick={() => queueTracksByObject(tracks, true, true)}>Shuffle</Button>
 					{/if}
 				</div>
 				
 				<div class="flex gap-1 items-center">
+					<DownloadButton uid={playlist.uid} variant="ghost" />
 					<Button variant="ghost" size="icon" onclick={() => openEditModal({ type: "playlist", uid: playlist!.uid })}><Pencil /></Button>
 					<TrackTableSettings cols={view.cols} sort={view.sort} compact={view.compact} onCompactChange={(v) => view.compact = v} />
 				</div>

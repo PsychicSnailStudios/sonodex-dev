@@ -1,14 +1,20 @@
 <script lang="ts">
-	import { Trash2, Check, FileX } from "lucide-svelte";
+	import { Trash2, Check, FileX, GitMerge } from "lucide-svelte";
 	import * as Tooltip from "$lib/components/ui/tooltip/index.js";
 	import { Button, buttonVariants } from "$lib/components/ui/button/index.js";
 	import ArtworkDisplay from "$lib/components/app-ui/ArtworkDisplay.svelte";
 	import ArtistsList from "$lib/components/app-ui/ArtistsList.svelte";
 	import { formatDuration } from "$lib/ts/util/helpers";
-	import { keepTrack, deleteTrackFile } from "$lib/ts/app/libraryManager";
-	import type { DuplicateGroup } from "$lib/ts/types";
+	import { keepTrack, deleteTrackFile, mergeRemoteLocal } from "$lib/ts/app/libraryManager";
+	import type { DuplicateGroup } from "$lib/ts/util/types";
 
 	let { group, onresolved }: { group: DuplicateGroup; onresolved: () => void } = $props();
+
+	const isRemoteLocalPair = $derived(
+		group.tracks.length === 2 &&
+		group.tracks.some(t => t.path && t.path.length > 0) &&
+		group.tracks.some(t => (!t.path || t.path.length === 0) && t.remote_path && t.remote_path.length > 0)
+	);
 
 	async function handleKeep(uid: string) {
 		await keepTrack(uid, group);
@@ -19,11 +25,27 @@
 		await deleteTrackFile(uid, path);
 		onresolved();
 	}
+
+	async function handleMerge() {
+		await mergeRemoteLocal(group);
+		onresolved();
+	}
 </script>
 
 <div class="border-2 rounded-md overflow-hidden">
-	<div class="px-3 py-2 bg-muted text-xs text-muted-foreground font-medium">
-		{group.tracks.length} duplicates — {group.tracks[0]?.title ?? "Unknown"}
+	<div class="px-3 py-2 bg-muted text-xs text-muted-foreground font-medium flex items-center justify-between">
+		<span>{group.tracks.length} duplicates — {group.tracks[0]?.title ?? "Unknown"}</span>
+		{#if isRemoteLocalPair}
+			<Tooltip.Root>
+				<Tooltip.Trigger
+					class={buttonVariants({ variant: "outline", size: "sm" })}
+					onclick={handleMerge}
+				>
+					<GitMerge class="w-3 h-3 mr-1" /> Merge
+				</Tooltip.Trigger>
+				<Tooltip.Content><p>Merge into one track with both local and remote paths</p></Tooltip.Content>
+			</Tooltip.Root>
+		{/if}
 	</div>
 	<div class="flex flex-col divide-y divide-border">
 		{#each group.tracks as track}
@@ -38,7 +60,9 @@
 								{" · "}{formatDuration(track.duration_ms)}
 							{/if}
 						</div>
-						<span class="text-xs text-muted-foreground truncate opacity-60">{track.path || "No file path"}</span>
+						<span class="text-xs text-muted-foreground truncate opacity-60">
+							{track.path || track.remote_path || "No file path"}
+						</span>
 					</div>
 				</div>
 
@@ -67,7 +91,7 @@
 						<Tooltip.Root>
 							<Tooltip.Trigger
 								class={buttonVariants({ variant: "destructive", size: "icon" })}
-								onclick={() => handleKeep(group.tracks.find(t => t.uid !== track.uid)?.uid ?? group.tracks[0].uid, )}
+								onclick={() => handleKeep(group.tracks.find(t => t.uid !== track.uid)?.uid ?? group.tracks[0].uid)}
 							>
 								<FileX />
 							</Tooltip.Trigger>

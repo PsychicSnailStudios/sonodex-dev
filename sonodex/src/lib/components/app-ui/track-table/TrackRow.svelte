@@ -59,8 +59,14 @@
 	}>();
 
 	// VARIABLES
-	const isGhosted = $derived(track.path === "" || /^[a-z]+-[0-9a-f-]{36}$/.test(track.path));
+	const isGhosted = $derived(isGhostTrack());
 	let isSelected = $derived(trackSelection.isSelected(track.uid, viewId));
+
+	function isGhostTrack(): boolean {
+		if (track.remote_path && track.remote_path.length > 0) return false;
+		if (!track.path || track.path === "" || track.path === track.uid) return true;
+		return false;
+	}
 	
 	// FUNCTIONS
 	function handleRowClick(e: MouseEvent) {

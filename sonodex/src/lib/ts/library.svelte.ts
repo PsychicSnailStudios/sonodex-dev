@@ -3,6 +3,7 @@ import type { Track, Album, Artist, Playlist, Lyrics } from "$lib/ts/util/types"
 import { SortState } from "$lib/ts/app/sortConfig.svelte";
 import { parseUidType } from "$lib/ts/util/helpers";
 import { loadTags } from '$lib/ts/tagManager.svelte';
+import { prefetchArtwork } from "$lib/ts/app/artworkPrefetch";
 
 export const library = $state({
 	tracks: [] as Track[],
@@ -19,7 +20,12 @@ export async function loadLibrary() {
 	library.artists = await invoke("get_artists");
 	library.playlists = await invoke("get_playlists");
 	await loadTags();
+	
 	library.loaded = true;
+
+	prefetchArtwork(library.albums.map(a => a.uid), "album");
+	prefetchArtwork(library.artists.map(a => a.uid), "artist");
+	prefetchArtwork(library.playlists.map(p => p.uid), "playlist");
 }
 
 export async function reloadLibrary(type: "tracks" | "all" | "tags" | "albums" | "artists" | "playlists" | "lyrics") {
@@ -29,12 +35,15 @@ export async function reloadLibrary(type: "tracks" | "all" | "tags" | "albums" |
 			break;
 		case "albums":
 			library.albums = await invoke("get_albums");
+			prefetchArtwork(library.albums.map(a => a.uid), "album");
 			break;
 		case "artists":
 			library.artists = await invoke("get_artists");
+		prefetchArtwork(library.artists.map(a => a.uid), "artist");
 			break;
 		case "playlists":
 			library.playlists = await invoke("get_playlists");
+			prefetchArtwork(library.playlists.map(p => p.uid), "playlist");
 			break;
 		case "lyrics":
 			const allLyrics = await Promise.all(
@@ -56,8 +65,9 @@ export async function reloadSingle(uid: string) {
 
 	switch (type) {
 		case "track":
-			let newTrack = await invoke("get_track", { uid });
-			library.tracks.find(a => a.uid === uid) === newTrack;
+			const newTrack = await invoke<any>("get_track", { uid });
+			const trackIdx = library.tracks.findIndex(t => t.uid === uid);
+			if (trackIdx >= 0 && newTrack) library.tracks[trackIdx] = newTrack;
 
 			const updatedLyrics = await invoke<Lyrics | null>("get_track_lyrics", { uid });
 			const existingIdx = library.lyrics.findIndex(l => l.track_uid === uid);
@@ -69,16 +79,19 @@ export async function reloadSingle(uid: string) {
 			}
 			break;
 		case "album":
-			let newAlbum = await invoke("get_album", { uid });
-			library.albums.find(a => a.uid === uid) === newAlbum;
+			const newAlbum = await invoke<any>("get_album", { uid });
+			const albumIdx = library.albums.findIndex(a => a.uid === uid);
+			if (albumIdx >= 0 && newAlbum) library.albums[albumIdx] = newAlbum;
 			break;
 		case "artist":
-			let newArtist = await invoke("get_artist", { uid });
-			library.artists.find(a => a.uid === uid) === newArtist;
+			const newArtist = await invoke<any>("get_artist", { uid });
+			const artistIdx = library.artists.findIndex(a => a.uid === uid);
+			if (artistIdx >= 0 && newArtist) library.artists[artistIdx] = newArtist;
 			break;
 		case "playlist":
-			let newPlaylist = await invoke("get_playlist", { uid });
-			library.playlists.find(a => a.uid === uid) === newPlaylist;
+			const newPlaylist = await invoke<any>("get_playlist", { uid });
+			const playlistIdx = library.playlists.findIndex(p => p.uid === uid);
+			if (playlistIdx >= 0 && newPlaylist) library.playlists[playlistIdx] = newPlaylist;
 			break;
 	}
 }

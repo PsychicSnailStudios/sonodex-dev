@@ -28,26 +28,32 @@
 		colPreset: "album",
 	});
 
-	const fuse = $derived(
-		new Fuse(library.artists, {
-			keys: [
-					{ name: "name",         weight: 0.5,  getFn: (t) => t.name ?? ""                         },
-					{ name: "akas",     	   weight: 0.35, getFn: (t) => t.aka ?? ""						 		  },
-					{ name: "tags",       	weight: 0.05,  getFn: (t) => t.tags ?? ""     			 		     },
-					{ name: "genres",       weight: 0.05,  getFn: (t) => t.genres ?? ""     				     },
-			],
-			threshold:          0.35,  // 0 = exact only, 1 = match anything
-			ignoreLocation:     true,  // don't penalise matches deep in a string
-			includeScore:       false,
-			useExtendedSearch:  false,
-			minMatchCharLength: 2,     // ignore single-character queries
-		})
-	);
+	let fuseInstance: Fuse<(typeof library.artists)[0]> | null = $state(null);
+	let lastArtistsRef: typeof library.artists | null = null;
 
-	const filteredArtists = $derived(() => {
+	function getFuse() {
+		if (fuseInstance && lastArtistsRef === library.artists) return fuseInstance;
+		lastArtistsRef = library.artists;
+		fuseInstance = new Fuse(library.artists, {
+			keys: [
+				{ name: "name",   weight: 0.5,  getFn: (t) => t.name ?? ""   },
+				{ name: "akas",   weight: 0.35, getFn: (t) => t.aka ?? ""    },
+				{ name: "tags",   weight: 0.05, getFn: (t) => t.tags ?? ""   },
+				{ name: "genres", weight: 0.05, getFn: (t) => t.genres ?? "" },
+			],
+			threshold: 0.35,
+			ignoreLocation: true,
+			includeScore: false,
+			useExtendedSearch: false,
+			minMatchCharLength: 2,
+		});
+		return fuseInstance;
+	}
+
+	const filteredArtists = $derived.by(() => {
 		const list = search.trim().length < 2
 			? library.artists
-			: fuse.search(search).map((r) => r.item)
+			: getFuse().search(search).map((r) => r.item);
 
 		return [...list].sort((a, b) => {
 			const cmp = a.name.localeCompare(b.name);
@@ -91,7 +97,7 @@
 		<ScrollArea class="min-h-0 min-w-0 pr-2">
 		{#if view.compact}
 			<div class="pr-4 pl-4 pb-4">
-				{#each filteredArtists() as artist}
+				{#each filteredArtists as artist}
 					<div
 						class="grid items-center px-3 border-b hover:bg-muted/50"
 						style="grid-template-columns: 40px 1fr; height: 56px;"
@@ -105,7 +111,7 @@
 			</div>
 		{:else}
 			<MediaGrid>
-				{#each filteredArtists() as artist}
+				{#each filteredArtists as artist}
 					<button onclick={() => setSelection(artist.uid, "artist")} class="flex flex-col items-center gap-2 p-2 rounded-md bg-background border hover:border-primary transition-colors cursor-default">
 						<div class="w-full aspect-square rounded-full bg-muted flex items-center justify-center overflow-hidden">
 							<ArtworkDisplay uid={artist.uid} type="artist" />

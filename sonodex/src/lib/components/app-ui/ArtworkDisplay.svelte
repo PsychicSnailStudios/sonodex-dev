@@ -10,12 +10,13 @@
 	
 	// SCRIPTS
 	import { library } from "$lib/ts/library.svelte";
-	import type { AudioCatagories } from "$lib/ts/util/types";
-    import { trackSelection } from "$lib/ts/app/trackSelection.svelte";
+	import type { AudioCatagories, Track } from "$lib/ts/util/types";
+	import { trackSelection } from "$lib/ts/app/trackSelection.svelte";
+	import { artworkCache, artworkInflight } from "$lib/ts/app-states/artworkCache";
 	
 	// PROPS
 	let { uid, size = null, type = "track", previewPath = null }: { uid: string; size?: number | null; type?: AudioCatagories; previewPath?: string | null } = $props();
-	
+
 	// VARIABLES
 	let artworkUrl: string | null = $state(null);
 	let loaded = $state(false);
@@ -34,13 +35,45 @@
 		album: () => library.albums.find(a => a.uid === uid)?.artwork_path ?? null,
 		artist: () => library.artists.find(a => a.uid === uid)?.profile_art_path ?? null,
 		playlist: () => library.playlists.find(p => p.uid === uid)?.artwork_path ?? null,
+		unknown: () => null,
 	};
 
 	const isGhost = $derived.by(() => {
 		if (type !== "track") return false;
-		const track = library.tracks.find(t => t.uid === uid);
-		return track ? track.path === "" : false;
+		const track: Track | undefined = library.tracks.find(t => t.uid === uid);
+		if (track) return isGhostTrack(track);
+		return true;
 	});
+
+	function isGhostTrack(track: Track): boolean {
+		if (track.remote_path && track.remote_path.length > 0) return false;
+		if (!track.path || track.path === "" || track.path === track.uid) return true;
+		return false;
+	}
+
+	async function fetchAndCache(cacheKey: string, command: string, fetchUid: string): Promise<string | null> {
+		if (artworkCache.has(cacheKey)) return artworkCache.get(cacheKey)!;
+
+		if (artworkInflight.has(cacheKey)) return artworkInflight.get(cacheKey)!;
+
+		const promise = invoke<number[] | null>(command, { uid: fetchUid }).then((bytes) => {
+			let url: string | null = null;
+			if (bytes) {
+				const blob = new Blob([new Uint8Array(bytes)], { type: "image/jpeg" });
+				url = URL.createObjectURL(blob);
+			}
+			artworkCache.set(cacheKey, url);
+			artworkInflight.delete(cacheKey);
+			return url;
+		}).catch(() => {
+			artworkCache.set(cacheKey, null);
+			artworkInflight.delete(cacheKey);
+			return null;
+		});
+
+		artworkInflight.set(cacheKey, promise);
+		return promise;
+	}
 
 	// APP FUNCTIONS
 	$effect(() => {
@@ -59,8 +92,6 @@
 			return;
 		}
 
-		let observer: IntersectionObserver | null = null;
-
 		loaded = false;
 
 		const localPath = untrack(() => pathMap[currentType]?.() ?? null);
@@ -71,24 +102,26 @@
 			return;
 		}
 
+		// Check cache immediately before setting up observer
+		if (artworkCache.has(currentKey)) {
+			artworkUrl = artworkCache.get(currentKey) ?? null;
+			fetchedKey = currentKey;
+			return;
+		}
+
 		artworkUrl = null;
+
+		let observer: IntersectionObserver | null = null;
 
 		if (el) {
 			observer = new IntersectionObserver(async ([entry]) => {
 				if (entry.isIntersecting) {
 					observer?.disconnect();
-					try {
-						const bytes: number[] | null = await invoke(commandMap[currentType], { uid: currentUid });
-						if (bytes) {
-							const blob = new Blob([new Uint8Array(bytes)], { type: "image/jpeg" });
-							artworkUrl = URL.createObjectURL(blob);
-							fetchedKey = currentKey;
-						} else {
-							artworkUrl = null;
-						}
-					} catch {
-						artworkUrl = null;
-					}
+					const command = commandMap[currentType as keyof typeof commandMap];
+					if (!command) return;
+					const url = await fetchAndCache(currentKey, command, currentUid);
+					artworkUrl = url;
+					fetchedKey = currentKey;
 				}
 			}, { rootMargin: "200px" });
 

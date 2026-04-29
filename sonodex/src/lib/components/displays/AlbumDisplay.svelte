@@ -16,6 +16,7 @@
 	import AudioCard from "$lib/components/app-ui/AudioCard.svelte";
 	import NavButtons from "$lib/components/app-ui/NavButtons.svelte";
 	import TagList from "$lib/components/app-ui/TagList.svelte";
+	import DownloadButton from "$lib/components/app-ui/DownloadButton.svelte";
 
 	// SCRIPTS
 	import { selection, setSelection } from "$lib/ts/app-states/state_session.svelte";
@@ -61,23 +62,18 @@
 	// APP FUNCTIONS
 	$effect(() => {
 		const uid = selection.uid;
-		album = null;
-		invoke("get_album", { uid }).then((a) => {
-			album = a as Album;
-		});
-
+		if (!uid) return;
+		color = "var(--muted)";
 		invoke("get_album_artwork", { uid }).then((bytes) => {
-			if (bytes) getArtworkColor(bytes as number[], 0.3).then((c) => color = c)
+			if (bytes) getArtworkColor(bytes as number[], 0.3).then((c) => color = c);
 		});
 	});
-	
-	function allTracksAreGhosts(): boolean {
-		for (let track of tracks) {;
-			if (/^[a-z]+-[0-9a-f-]{36}$/.test(track.path) === false || track.path != "") return false;
-		}
 
-		return true;
-	}
+	let allGhosts = $derived(
+		tracks.length > 0 && tracks.every(t =>
+			t.path === "" || t.path === t.uid
+		)
+	);
 </script>
 
 <div class="flex flex-col gap-4 p-4 border-2 h-full w-full overflow-hidden rounded-md" style="background: linear-gradient(180deg, {color} 0%, transparent 80%)">
@@ -119,18 +115,23 @@
 		<div class="flex gap-2 justify-between items-center flex-wrap p-2 rounded-md"
 			  style="background: {color};">
 			<div>
-				<Button variant="default" disabled={allTracksAreGhosts()} onclick={() => queueTracksByObject(tracks, true)}>{ tracks.length === 1 ? "Play" : "Play All"}</Button>
+				<Button variant="default" disabled={allGhosts} onclick={() => queueTracksByObject(tracks, true)}>{ tracks.length === 1 ? "Play" : "Play All"}</Button>
 				{#if tracks.length > 1}
-					<Button variant="outline" disabled={allTracksAreGhosts()} onclick={() => queueTracksByObject(tracks, true, true)}>Shuffle</Button>
+					<Button variant="outline" disabled={allGhosts} onclick={() => queueTracksByObject(tracks, true, true)}>Shuffle</Button>
 				{/if}
 			</div>
 			<div class="flex gap-1 items-center">
+				<DownloadButton uid={album.uid} variant="ghost" />
 				<Button variant="ghost" onclick={() => openEditModal({ type: "album", uid: album!.uid })}><Pencil /></Button>
 				<TrackTableSettings cols={view.cols} sort={view.sort} compact={view.compact} onCompactChange={(v) => view.compact = v} />
 			</div>
 		</div>
 
 		<TrackTable tracks={tracks} columns={view.cols} sort={view.sort} compact={view.compact} discBreaks={discBreaks} />
+
+		{#if album.label}
+			<span class="text-muted-foreground text-sm">{album.label}</span>
+		{/if}
 
 		<div class="flex flex-col gap-2 w-full pt-4">
 			<h4>More by {album.album_artist}</h4>

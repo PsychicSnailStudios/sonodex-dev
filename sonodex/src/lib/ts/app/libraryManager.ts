@@ -121,10 +121,8 @@ export async function keepTrack(keepUid: string, group: DuplicateGroup): Promise
 }
 
 export async function deleteTrackFile(uid: string, path: string): Promise<void> {
-
-	const confirmed = await showWarning({ title: "Delete Track?", description: "This action cannot be undone",});
+	const confirmed = await showWarning({ title: "Delete Track?", description: "This action cannot be undone" });
 	if (!confirmed) return;
-	
 	await invoke("delete_track_file", { uid, path });
 	await loadLibrary();
 }
@@ -132,4 +130,12 @@ export async function deleteTrackFile(uid: string, path: string): Promise<void> 
 export async function mergeKeepFirst(group: DuplicateGroup): Promise<void> {
 	if (group.tracks.length < 2) return;
 	await keepTrack(group.tracks[0].uid, group);
+}
+
+export async function mergeRemoteLocal(group: DuplicateGroup): Promise<void> {
+	const local = group.tracks.find((t) => t.path && t.path.length > 0);
+	const remote = group.tracks.find((t) => (!t.path || t.path.length === 0) && t.remote_path && t.remote_path.length > 0);
+	if (!local || !remote) return;
+	await invoke("merge_remote_local_tracks", { keepUid: local.uid, dropUid: remote.uid });
+	await loadLibrary();
 }

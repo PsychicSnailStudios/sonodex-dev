@@ -56,7 +56,7 @@
 			<RecentlyPlayed />
 			<Tabs.Content value="lyrics">
 				<ScrollArea class="min-h-0 min-w-0 h-[400px] pl-4 pr-2">
-					<LyricsViewer uid={currentlyPlaying.track.uid} />
+					<LyricsViewer uid={currentlyPlaying.track!.uid} />
 				</ScrollArea>
 			</Tabs.Content>
 		</Tabs.Root>

@@ -122,6 +122,7 @@ export async function createPlaylist(
 			tracks: tracks ? JSON.stringify(tracks) : null,
 			artwork_path: null,
 			folder: folder,
+			version: 1,
 		},
 	})
 

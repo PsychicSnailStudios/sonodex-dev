@@ -1,4 +1,7 @@
 <script lang="ts">
+
+	// APP
+	import { invoke } from "@tauri-apps/api/core";
 	
 	// COMPONENTS
    import { Pencil } from "lucide-svelte";
@@ -15,12 +18,13 @@
 	import TagList from "$lib/components/app-ui/TagList.svelte";
    import ArtistsList from "$lib/components/app-ui/ArtistsList.svelte";
    import LyricsViewer from "$lib/components/app-ui/LyricsViewer.svelte";
+	import DownloadButton from "$lib/components/app-ui/DownloadButton.svelte";
 
 	// SCRIPTS
 	import { getAlbumUidFromName, getArtistUidFromName, getLyrics, library } from "$lib/ts/library.svelte";
 	import { currentTrackTab, selection, setSelection } from "$lib/ts/app-states/state_session.svelte";
 	import { openEditModal } from "$lib/ts/app/editModal.svelte";
-	import { formatDuration, parseAlbumEntries, parseTags } from '$lib/ts/util/helpers';
+	import { formatDuration, getArtworkColor, parseAlbumEntries, parseTags } from '$lib/ts/util/helpers';
    import { playTrackByObject } from "$lib/ts/audio/audioManager.svelte";
 
 	// VARIABLES
@@ -28,6 +32,7 @@
 	let fetchingLyrics = $state(false);
 	let genres = $derived(track?.genres ? parseTags(track.genres) : null);
 	let tags = $derived(track?.tags ? parseTags(track.tags) : null);
+	let color = $state("rgb(30, 30, 30)")
 
 	// All albums this track appears on
 	let featuredOnAlbums = $derived.by(() => {
@@ -45,7 +50,22 @@
 		return all.filter(a => a.toLowerCase() !== main);
 	});
 
+	let featuredArtistUIDs = $derived(
+		featuredArtists.map(name => ({ name, uid: getArtistUidFromName(name) }))
+	);
+
 	let artistUID = $derived(getArtistUidFromName(track?.album_artist ?? "Unknown Artist"));
+
+	$effect(() => {
+		const uid = selection.uid;
+		if (!uid) return;
+
+		color = "var(--muted)";
+
+		invoke("get_track_artwork", { uid: uid }).then((trackBytes) => {
+			if (trackBytes) getArtworkColor(trackBytes as number[], 0.3).then((c) => color = c);
+		});
+	});
 
 </script>
 
@@ -89,10 +109,14 @@
 				</div>
 			</div>
 
-			<div class="flex gap-1 flex-wrap">
+			<div class="flex gap-2 justify-between items-center flex-wrap p-2 rounded-md"
+				  style="background: {color};">
 				<Button variant="default" onclick={() => playTrackByObject(track)}>Play</Button>
-				<TrackPlaylistEditButton track={track} />
-				<Button variant="ghost" size="icon" onclick={() => openEditModal({ type: "track", uid: track!.uid })}><Pencil /></Button>
+				<div>
+					<TrackPlaylistEditButton track={track} />
+					<Button variant="ghost" size="icon" onclick={() => openEditModal({ type: "track", uid: track!.uid })}><Pencil /></Button>
+					<DownloadButton uid={track.uid} variant="ghost" />
+				</div>
 			</div>
 
 			<Tabs.Root bind:value={currentTrackTab.id} class="flex flex-col min-h-0 flex-1">
@@ -101,6 +125,7 @@
 					<Tabs.Trigger value="tags">Tags</Tabs.Trigger>
 					<Tabs.Trigger value="credits">Credits</Tabs.Trigger>
 					<Tabs.Trigger value="explore">Featured On</Tabs.Trigger>
+					<Tabs.Trigger value="paths">File Paths</Tabs.Trigger>
 				</Tabs.List>
 
 				<Tabs.Content value="lyrics" class="flex-1 overflow-y-auto mt-2">
@@ -135,8 +160,7 @@
 
 					<h4 class="text-foreground text-lg mt-4">Featured Artists</h4>
 					{#if featuredArtists.length > 0}
-						{#each featuredArtists as artistName}
-							{@const featArtistUID = getArtistUidFromName(artistName)}
+						{#each featuredArtistUIDs as { name: artistName, uid: featArtistUID }}
 							<button
 								onclick={() => setSelection(featArtistUID, "artist")}
 								class="flex items-center gap-2 flex-row cursor-pointer p-2 mb-2 rounded-md bg-muted/50 hover:bg-muted">
@@ -154,6 +178,11 @@
 						<pre class="text-sm whitespace-pre-wrap font-sans">{track.credits}</pre>
 					{:else}
 						<p class="text-muted-foreground text-sm">No credits available.</p>
+					{/if}
+
+					{#if track.label}
+						<h4 class="text-foreground text-lg mt-4">Label</h4>
+						<pre class="text-sm whitespace-pre-wrap font-sans">{track.label}</pre>
 					{/if}
 				</Tabs.Content>
 
@@ -175,6 +204,13 @@
 					{:else}
 						<p class="text-muted-foreground text-sm">No albums found.</p>
 					{/if}
+				</Tabs.Content>
+
+				<Tabs.Content value="paths" class="flex-1 overflow-y-auto mt-2">
+					<div class="flex flex-col gap-2 mt-2">
+						<span class="text-muted-foreground text-sm"><b>Local Path:</b> {track.path}</span>
+						<span class="text-muted-foreground text-sm"><b>Remote Path:</b> {track.remote_path}</span>
+					</div>
 				</Tabs.Content>
 			</Tabs.Root>
 		{:else}

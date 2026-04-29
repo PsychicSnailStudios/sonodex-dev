@@ -26,7 +26,7 @@
     ],
     "macOSPrivateApi": true,
 	"security": {
-	  "csp": "default-src 'self' ipc: http://ipc.localhost; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' asset: http://asset.localhost blob: data:; media-src 'self' asset: http://asset.localhost blob:",
+	  "csp": "default-src 'self' ipc: http://ipc.localhost; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' asset: http://asset.localhost blob: data:; media-src 'self' asset: http://asset.localhost blob: https:",
 	  "assetProtocol": {
 	    "enable": true,
 	    "scope": {
@@ -46,6 +46,9 @@
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
+    ],
+    "externalBin": [
+      "binaries/ffmpeg"
     ]
   },
 	"plugins": {

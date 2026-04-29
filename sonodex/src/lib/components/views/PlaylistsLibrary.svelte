@@ -75,24 +75,30 @@
 		search.trim() === "" ? getSortedFolders(playlists, currentPath, sortField, sortDir) : []
 	);
 
-	const fuse = $derived(
-		new Fuse(library.playlists, {
+	let fuseInstance: Fuse<(typeof library.playlists)[0]> | null = $state(null);
+	let lastPlaylistsRef: typeof library.playlists | null = null;
+
+	function getFuse() {
+		if (fuseInstance && lastPlaylistsRef === library.playlists) return fuseInstance;
+		lastPlaylistsRef = library.playlists;
+		fuseInstance = new Fuse(library.playlists, {
 			keys: [
-					{ name: "title",        weight: 0.5,  getFn: (t) => t.title ?? ""                  },
-					{ name: "owner",   	   weight: 0.25, getFn: (t) => t.owner ?? ""                  },
+				{ name: "title", weight: 0.5,  getFn: (t) => t.title ?? "" },
+				{ name: "owner", weight: 0.25, getFn: (t) => t.owner ?? "" },
 			],
-			threshold:          0.35,  // 0 = exact only, 1 = match anything
-			ignoreLocation:     true,  // don't penalise matches deep in a string
-			includeScore:       false,
-			useExtendedSearch:  false,
-			minMatchCharLength: 2,     // ignore single-character queries
-		})
-	);
+			threshold: 0.35,
+			ignoreLocation: true,
+			includeScore: false,
+			useExtendedSearch: false,
+			minMatchCharLength: 2,
+		});
+		return fuseInstance;
+	}
 
 	const filteredDirect = $derived(
 		search.trim() === ""
 			? getDirectPlaylists(playlists, currentPath, sortField, sortDir)
-			: search.trim().length < 2 ? library.playlists : fuse.search(search).map((r) => r.item)
+			: search.trim().length < 2 ? library.playlists : getFuse().search(search).map((r) => r.item)
 	);
 
 	const allFolderPaths = $derived(

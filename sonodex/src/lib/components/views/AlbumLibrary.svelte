@@ -32,10 +32,10 @@
 		colPreset: "album",
 	});
 
-	const filteredAlbums = $derived(() => {
+	const filteredAlbums = $derived.by(() => {
 		const list = search.trim().length < 2
 			? library.albums
-			: fuse.search(search).map((r) => r.item)
+			: getFuse().search(search).map((r) => r.item);
 
 		return [...list].sort((a, b) => {
 			let cmp = 0;
@@ -50,23 +50,29 @@
 		});
 	});
 
-	const fuse = $derived(
-		new Fuse(library.albums, {
+	let fuseInstance: Fuse<typeof library.albums[0]> | null = $state(null);
+	let lastAlbumsRef: typeof library.albums | null = null;
+
+	function getFuse() {
+		if (fuseInstance && lastAlbumsRef === library.albums) return fuseInstance;
+		lastAlbumsRef = library.albums;
+		fuseInstance = new Fuse(library.albums, {
 			keys: [
-					{ name: "title",        weight: 0.5,  getFn: (t) => t.title ?? ""                        },
-					{ name: "artists",      weight: 0.25, getFn: (t) => parseArtists(t.artists ?? "[]")      },
-					{ name: "album_artist", weight: 0.15, getFn: (t) => t.album_artist ?? ""                 },
-					{ name: "year",    	   weight: 0.1,  getFn: (t) => t.release_date ?? ""                 },
-					{ name: "tags",       	weight: 0.05,  getFn: (t) => t.tags ?? ""     			 		     },
-					{ name: "genres",       weight: 0.05,  getFn: (t) => t.genres ?? ""     				     },
+				{ name: "title",        weight: 0.5,  getFn: (t) => t.title ?? ""               },
+				{ name: "artists",      weight: 0.25, getFn: (t) => parseArtists(t.artists ?? "[]") },
+				{ name: "album_artist", weight: 0.15, getFn: (t) => t.album_artist ?? ""         },
+				{ name: "year",         weight: 0.1,  getFn: (t) => t.release_date ?? ""         },
+				{ name: "tags",         weight: 0.05, getFn: (t) => t.tags ?? ""                 },
+				{ name: "genres",       weight: 0.05, getFn: (t) => t.genres ?? ""               },
 			],
-			threshold:          0.35,  // 0 = exact only, 1 = match anything
-			ignoreLocation:     true,  // don't penalise matches deep in a string
-			includeScore:       false,
-			useExtendedSearch:  false,
-			minMatchCharLength: 2,     // ignore single-character queries
-		})
-	);
+			threshold: 0.35,
+			ignoreLocation: true,
+			includeScore: false,
+			useExtendedSearch: false,
+			minMatchCharLength: 2,
+		});
+		return fuseInstance;
+	}
 
 	// FUNCTIONS
 	function toggleAlbumSort(field: "name" | "artist" | "year") {
@@ -169,7 +175,7 @@
 		<ScrollArea class="min-h-0 min-w-0 pr-2">
 		{#if view.compact}
 			<div class="pr-4 pl-4 pb-4">
-				{#each filteredAlbums() as album}
+				{#each filteredAlbums as album}
 					<div
 						class="grid items-center px-3 border-b hover:bg-muted/50"
 						style="grid-template-columns: 40px 1fr 1fr 40px; height: 56px;"
@@ -185,7 +191,7 @@
 			</div>
 		{:else}
 			<MediaGrid>
-				{#each filteredAlbums() as album}
+				{#each filteredAlbums as album}
 					<AudioCard title={album.title} subTitle={album.album_artist} artworkUid={album.uid} type="album" />
 				{/each}
 			</MediaGrid>

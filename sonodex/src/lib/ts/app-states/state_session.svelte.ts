@@ -13,6 +13,7 @@ type Selection = {
 export let activeView = $state({ "id": "home"});
 export let currentArtistTab = $state({ "id": "home"});
 export let currentTrackTab = $state({ "id": "lyrics"});
+export let offlineMode = $state({ "offline": false});
 let viewIndex = $state(0);
 let viewHistory = $state([] as Selection[]);
 

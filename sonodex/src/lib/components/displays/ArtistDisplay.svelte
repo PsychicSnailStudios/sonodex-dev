@@ -34,26 +34,24 @@
 	let artistAlbums: Album[] = $derived.by(() => {
 		if (!artist) return [];
 
-		// Collect all known names for this artist: their main name + all AKAs
-		const akaNames: string[] = artist.aka
-			? (JSON.parse(artist.aka) as string[]).map(n => n.toLowerCase())
-			: [];
+		const akaNames: string[] = artist.aka ? (JSON.parse(artist.aka) as string[]).map(n => n.toLowerCase()) : [];
 		const allNames = new Set([artist.name.toLowerCase(), ...akaNames]);
 
+		const albumUidsWithArtist = new Set<string>();
+		for (const t of library.tracks) {
+			if (!t.artists) continue;
+			let artistsArr: string[];
+			try { artistsArr = JSON.parse(t.artists); } catch { continue; }
+			if (!artistsArr.some(a => allNames.has(a.toLowerCase()))) continue;
+			if (!t.albums) continue;
+			let albumsArr: { uid: string }[];
+			try { albumsArr = JSON.parse(t.albums); } catch { continue; }
+			for (const a of albumsArr) albumUidsWithArtist.add(a.uid);
+		}
+
 		return library.albums.filter(album => {
-			// Include if album_artist matches any known name
-			if (album.album_artist && allNames.has(album.album_artist.toLowerCase())) {
-				return true;
-			}
-			// Include if this artist appears as a contributing artist on any track in the album
-			const albumTracks = library.tracks.filter(t =>
-				t.albums && JSON.parse(t.albums).some((a: { uid: string }) => a.uid === album.uid)
-			);
-			return albumTracks.some(t => {
-				if (!t.artists) return false;
-				const trackArtists: string[] = JSON.parse(t.artists).map((a: string) => a.toLowerCase());
-				return trackArtists.some(a => allNames.has(a));
-			});
+			if (album.album_artist && allNames.has(album.album_artist.toLowerCase())) return true;
+			return albumUidsWithArtist.has(album.uid);
 		});
 	});
 

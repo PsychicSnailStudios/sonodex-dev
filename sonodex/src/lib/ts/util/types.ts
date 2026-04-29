@@ -15,6 +15,7 @@ export type Track = {
 	id: number;
 	uid: string;
 	path: string;
+	remote_path: string | null;
 	last_modified: number;
 	title: string | null;
 	artists: string | null;
@@ -32,6 +33,8 @@ export type Track = {
 	label: string | null;
 	format: string | null;
 	bitrate: number | null;
+	remote_data: string | null;
+	track_data: string | null;
 };
 
 export type Album = {
