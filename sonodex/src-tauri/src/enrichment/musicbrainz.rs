@@ -131,18 +131,17 @@ pub async fn search(client: &Client, title: &str, artist: &str) -> Option<Enrich
 }
 
 pub async fn fetch_cover_art(client: &Client, mbid: &str) -> Option<Vec<u8>> {
-	let url = format!("https://coverartarchive.org/release-group/{}/front", mbid);
+	let url = format!("https://coverartarchive.org/release/{}/front", mbid);
 	let res = client.get(&url).send().await.ok()?;
 	if res.status().is_success() {
-		res.bytes().await.ok().map(|b| b.to_vec())
+		return res.bytes().await.ok().map(|b| b.to_vec());
+	}
+	let url2 = format!("https://coverartarchive.org/release-group/{}/front", mbid);
+	let res2 = client.get(&url2).send().await.ok()?;
+	if res2.status().is_success() {
+		res2.bytes().await.ok().map(|b| b.to_vec())
 	} else {
-		let url2 = format!("https://coverartarchive.org/release/{}/front", mbid);
-		let res2 = client.get(&url2).send().await.ok()?;
-		if res2.status().is_success() {
-			res2.bytes().await.ok().map(|b| b.to_vec())
-		} else {
-			None
-		}
+		None
 	}
 }
 
@@ -172,4 +171,57 @@ pub async fn search_album(client: &Client, album: &str, artist: &str) -> Option<
 	let body = resp.text().await.ok()?;
 	let data: MbReleaseSearch = serde_json::from_str(&body).ok()?;
 	data.releases.into_iter().next().map(|r| r.id)
+}
+
+// ─────────────────────────────────────────────
+// RELEASE DETAILS (for album enrichment)
+// ─────────────────────────────────────────────
+
+pub struct MbReleaseInfo {
+	pub release_date: Option<String>,
+	pub genres: Option<String>,
+}
+
+pub async fn search_release_details(client: &Client, mbid: &str) -> Option<MbReleaseInfo> {
+	sleep(Duration::from_millis(1100)).await;
+
+	let url = format!(
+		"{}/release/{}?inc=tags+genres&fmt=json",
+		MB_BASE, mbid
+	);
+
+	#[derive(Deserialize)]
+	struct MbReleaseDetail {
+		date: Option<String>,
+		tags: Option<Vec<MbTag>>,
+		genres: Option<Vec<MbTag>>,
+	}
+
+	let resp = client.get(&url).send().await.ok()?;
+	if !resp.status().is_success() {
+		return None;
+	}
+
+	let body = resp.text().await.ok()?;
+	let data: MbReleaseDetail = serde_json::from_str(&body).ok()?;
+
+	let release_date = data.date
+		.and_then(|d| d.split('-').next().map(|s| s.to_string()))
+		.filter(|y| y.len() == 4);
+
+	let mut all_tags = data.tags.unwrap_or_default();
+	if let Some(mut g) = data.genres {
+		all_tags.append(&mut g);
+	}
+	all_tags.sort_by(|a, b| b.count.cmp(&a.count));
+	all_tags.dedup_by(|a, b| a.name == b.name);
+
+	let genres = if all_tags.is_empty() {
+		None
+	} else {
+		let genre_vec: Vec<String> = all_tags.into_iter().take(5).map(|t| t.name).collect();
+		serde_json::to_string(&genre_vec).ok()
+	};
+
+	Some(MbReleaseInfo { release_date, genres })
 }

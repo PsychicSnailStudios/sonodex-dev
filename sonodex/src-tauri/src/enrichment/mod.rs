@@ -339,8 +339,7 @@ pub async fn enrich_album_async(
 	}
 
 	if merged.artwork.is_none() || merged.genres.is_none() {
-		let audiodb = audiodb::search_album(client, album_title, artist, &settings.audiodb_key).await;
-		if let Some(r) = audiodb {
+		if let Some(r) = audiodb::search_album(client, album_title, artist, &settings.audiodb_key).await {
 			if merged.release_date.is_none() {
 				merged.release_date = r.release_date;
 			}
@@ -363,8 +362,7 @@ pub async fn enrich_album_async(
 	}
 
 	if merged.artwork.is_none() || merged.genres.is_none() {
-		let discogs = discogs::search(client, album_title, artist, &settings.discogs_key).await;
-		if let Some(r) = discogs {
+		if let Some(r) = discogs::search(client, album_title, artist, &settings.discogs_key).await {
 			if merged.release_date.is_none() {
 				merged.release_date = r.year;
 			}
@@ -383,21 +381,21 @@ pub async fn enrich_album_async(
 		}
 	}
 
-	if merged.release_date.is_none() || merged.genres.is_none() {
-		let mb = musicbrainz::search(client, album_title, artist).await;
-		if let Some(r) = mb {
-			if merged.release_date.is_none() {
-				merged.release_date = r.year;
-			}
-			if merged.genres.is_none() {
-				merged.genres = r.genres;
-			}
-		}
-	}
-
-	if merged.artwork.is_none() {
+	if merged.release_date.is_none() || merged.genres.is_none() || merged.artwork.is_none() {
 		if let Some(mbid) = musicbrainz::search_album(client, album_title, artist).await {
-			merged.artwork = musicbrainz::fetch_cover_art(client, &mbid).await;
+			if merged.release_date.is_none() || merged.genres.is_none() {
+				if let Some(details) = musicbrainz::search_release_details(client, &mbid).await {
+					if merged.release_date.is_none() {
+						merged.release_date = details.release_date;
+					}
+					if merged.genres.is_none() {
+						merged.genres = details.genres;
+					}
+				}
+			}
+			if merged.artwork.is_none() {
+				merged.artwork = musicbrainz::fetch_cover_art(client, &mbid).await;
+			}
 		}
 	}
 
@@ -432,8 +430,7 @@ pub async fn enrich_artist_async(
 		}
 	}
 
-	let audiodb_result = audiodb::search_artist(client, artist_name, &settings.audiodb_key).await;
-	if let Some(r) = audiodb_result {
+	if let Some(r) = audiodb::search_artist(client, artist_name, &settings.audiodb_key).await {
 		if merged.about.is_none() {
 			merged.about = r.about;
 		}
@@ -451,8 +448,7 @@ pub async fn enrich_artist_async(
 		}
 	}
 
-	let lastfm_result = lastfm::search_artist(client, artist_name, &settings.lastfm_key).await;
-	if let Some(r) = lastfm_result {
+	if let Some(r) = lastfm::search_artist(client, artist_name, &settings.lastfm_key).await {
 		if merged.about.is_none() {
 			merged.about = r.about;
 		}
