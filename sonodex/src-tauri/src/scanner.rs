@@ -170,6 +170,7 @@ struct FilenameMetadata {
 	artist: Option<String>,
 	album: Option<String>,
 	year: Option<String>,
+	disc: Option<u32>,
 }
 
 fn parse_filename(path: &Path, custom_pattern: &str) -> FilenameMetadata {
@@ -201,6 +202,7 @@ fn parse_filename(path: &Path, custom_pattern: &str) -> FilenameMetadata {
 		artist: None,
 		album: None,
 		year: None,
+		disc: None,
 	}
 }
 
@@ -215,6 +217,7 @@ fn try_parse_pattern(stem: &str, pattern: &[&str]) -> Option<FilenameMetadata> {
 		artist: None,
 		album: None,
 		year: None,
+		disc: None,
 	};
 
 	for (i, &field) in pattern.iter().enumerate() {
@@ -269,6 +272,7 @@ fn parse_custom_pattern(stem: &str, pattern: &str) -> FilenameMetadata {
 		artist: None,
 		album: None,
 		year: None,
+		disc: None,
 	};
 	for (i, field) in fields.iter().enumerate() {
 		if let Some(value) = values.get(i) {
@@ -301,6 +305,7 @@ fn parse_folder_path(path: &Path) -> FilenameMetadata {
 			artist: None,
 			album: None,
 			year: None,
+			disc: None,
 		};
 	}
 
@@ -315,6 +320,7 @@ fn parse_folder_path(path: &Path) -> FilenameMetadata {
 				artist: Some(artist),
 				album: Some(folder.to_string()),
 				year: Some(maybe_year.to_string()),
+				disc: None,
 			};
 		}
 	}
@@ -325,6 +331,7 @@ fn parse_folder_path(path: &Path) -> FilenameMetadata {
 			artist: Some(artist),
 			album: Some(captures.0),
 			year: Some(captures.1),
+			disc: None,
 		};
 	}
 
@@ -333,6 +340,7 @@ fn parse_folder_path(path: &Path) -> FilenameMetadata {
 		artist: Some(artist),
 		album: Some(folder.to_string()),
 		year: None,
+		disc: None,
 	}
 }
 
@@ -353,6 +361,45 @@ fn extract_year_from_folder(folder: &str) -> Option<(String, String)> {
 		}
 	}
 
+	None
+}
+
+fn parse_disc_from_folder(path: &Path) -> Option<u32> {
+	let folder = path
+		.parent()
+		.and_then(|p| p.file_name())
+		.and_then(|n| n.to_str())?;
+
+	let lower = folder.to_lowercase();
+
+	let prefixes = ["disc", "disk", "cd", "side", "volume", "vol"];
+	for prefix in &prefixes {
+		if lower.starts_with(prefix) {
+			let rest = lower[prefix.len()..].trim_start_matches(|c: char| c == '.' || c == ' ' || c == '-');
+			if rest.is_empty() {
+				return Some(1);
+			}
+			let num_str: String = rest.chars().take_while(|c| c.is_alphanumeric()).collect();
+			if num_str.is_empty() {
+				continue;
+			}
+			if let Ok(n) = num_str.parse::<u32>() {
+				return Some(n);
+			}
+			let letter_disc = match num_str.as_str() {
+				"a" => Some(1u32),
+				"b" => Some(2),
+				"c" => Some(3),
+				"d" => Some(4),
+				"e" => Some(5),
+				"f" => Some(6),
+				_ => None,
+			};
+			if letter_disc.is_some() {
+				return letter_disc;
+			}
+		}
+	}
 	None
 }
 
@@ -396,14 +443,14 @@ pub fn find_remote_local_counterpart(conn: &Connection, incoming: &Track) -> Opt
 		.unwrap_or(false)
 		|| incoming.path.is_empty();
 
-    let mut stmt = conn
-        .prepare(
-            "SELECT uid, path, remote_path, duration_ms, album_artist, artists
-                FROM tracks
-                WHERE LOWER(TRIM(title)) = LOWER(TRIM(?1))",
-        )
-        .ok()?;
-    
+	let mut stmt = conn
+		.prepare(
+			"SELECT uid, path, remote_path, duration_ms, album_artist, artists
+				FROM tracks
+				WHERE LOWER(TRIM(title)) = LOWER(TRIM(?1))",
+		)
+		.ok()?;
+
 	let rows: Vec<(String, Option<String>, Option<String>, Option<i64>, Option<String>, Option<String>)> = {
 		stmt.query_map(rusqlite::params![incoming_title], |row| {
 			Ok((
@@ -424,18 +471,15 @@ pub fn find_remote_local_counterpart(conn: &Connection, incoming: &Track) -> Opt
 		let existing_is_remote = remote_path.as_deref().map(|rp| !rp.is_empty()).unwrap_or(false)
 			|| path.as_deref().map(|p| p.is_empty()).unwrap_or(true);
 
-		// Only match if one is remote and the other is local
 		if existing_is_remote == incoming_is_remote {
 			continue;
 		}
 
-		// Duration check
 		let dur = duration_ms.unwrap_or(0);
 		if (dur - incoming_duration).abs() > 1000 {
 			continue;
 		}
 
-		// Artist check
 		let existing_artist: Option<String> = album_artist
 			.as_deref()
 			.map(|s| s.to_lowercase())
@@ -497,7 +541,6 @@ pub fn merge_paths_into_existing(conn: &Connection, existing_uid: &str, incoming
 		}
 	}
 
-	// Fill in other fields only if they are currently NULL
 	let _ = conn.execute(
 		"UPDATE tracks SET
 			title        = COALESCE(title,        ?2),
@@ -761,6 +804,13 @@ pub fn read_track_with_settings(
 		_ => tag_album_val.or(filename_album_val),
 	};
 
+	let folder_disc = if tag_disc_number.is_none() {
+		parse_disc_from_folder(path)
+	} else {
+		None
+	};
+	let effective_disc = tag_disc_number.or(folder_disc);
+
 	let mut album_entries: Vec<serde_json::Value> = Vec::new();
 
 	if let Some(ref a) = primary_album_name {
@@ -768,7 +818,7 @@ pub fn read_track_with_settings(
 			"uid": "",
 			"name": a,
 			"track_number": tag_track_number,
-			"disc": tag_disc_number,
+			"disc": effective_disc,
 		}));
 	}
 
@@ -787,7 +837,7 @@ pub fn read_track_with_settings(
 						"uid": "",
 						"name": fa_trimmed,
 						"track_number": tag_track_number,
-						"disc": null,
+						"disc": effective_disc,
 					}));
 				}
 			}
@@ -888,6 +938,7 @@ fn find_or_create_album(
 	track_uid: &str,
 	track_title: Option<&str>,
 	track_number: Option<u32>,
+	label: Option<&str>,
 ) -> Option<(i64, String)> {
 	let existing = get_all_albums(conn).ok()?;
 
@@ -907,16 +958,20 @@ fn find_or_create_album(
 			.and_then(|t| serde_json::from_str(t).ok())
 			.unwrap_or_default();
 
-		if !existing_tracks
+		let needs_label_update = album.label.is_none() && label.is_some();
+		let track_already_present = existing_tracks
 			.iter()
-			.any(|t| t["uid"].as_str() == Some(track_uid))
-		{
+			.any(|t| t["uid"].as_str() == Some(track_uid));
+
+		if !track_already_present || needs_label_update {
 			let mut updated = existing_tracks;
-			updated.push(serde_json::json!({
-				"uid": track_uid,
-				"name": track_title.unwrap_or(""),
-				"track_number": track_number
-			}));
+			if !track_already_present {
+				updated.push(serde_json::json!({
+					"uid": track_uid,
+					"name": track_title.unwrap_or(""),
+					"track_number": track_number
+				}));
+			}
 			let tracks_json = serde_json::to_string(&updated).ok()?;
 
 			update_album(
@@ -933,7 +988,7 @@ fn find_or_create_album(
 					genres: None,
 					tracks: Some(tracks_json),
 					credits: None,
-					label: None,
+					label: if needs_label_update { label.map(|s| s.to_string()) } else { None },
 					artwork_blob: None,
 					artwork_path: None,
 					emulate_type: None,
@@ -967,7 +1022,7 @@ fn find_or_create_album(
 		genres: genres.map(|s| s.to_string()),
 		tracks: Some(tracks_json),
 		credits: None,
-		label: None,
+		label: label.map(|s| s.to_string()),
 		artwork_blob: artwork_blob.clone(),
 		artwork_thumb: artwork_blob.as_deref().and_then(crate::thumb::make_thumb),
 		artwork_path: None,
@@ -1056,11 +1111,13 @@ pub fn process_track(conn: &Connection, track: &Track) {
 							&track_uid,
 							track_title,
 							track_number,
+							track.label.as_deref(),
 						) {
 							updated_album_entries.push(serde_json::json!({
 								"uid": album_uid,
 								"name": album_name,
-								"track_number": track_number
+								"track_number": track_number,
+								"disc": album_entry["disc"]
 							}));
 						}
 					}
@@ -1211,66 +1268,70 @@ pub fn scan_directory_with_progress(conn: &Connection, dir: &str, app: &AppHandl
 				.collect()
 		})
 		.unwrap_or_else(|| GENRE_DELIMITERS.iter().map(|s| s.to_string()).collect());
-	let genre_delimiters: Vec<&str> = genre_delimiters_owned.iter().map(|s| s.as_str()).collect();
+	let genre_delimiters: Vec<&str> = genre_delimiters_owned
+		.iter()
+		.map(|s| s.as_str())
+		.collect();
 
-	let enrich_settings = if auto_enrich_tracks || auto_enrich_albums {
-		Some(crate::enrichment::EnrichSettings {
-			primary_api: get_setting(conn, "enrich_primary_api")
-				.ok()
-				.flatten()
-				.unwrap_or_else(|| "musicbrainz".to_string()),
-			lastfm_key: get_setting(conn, "api_lastfm_key")
-				.ok()
-				.flatten()
-				.unwrap_or_default(),
-			discogs_key: get_setting(conn, "api_discogs_key")
-				.ok()
-				.flatten()
-				.unwrap_or_default(),
-			audiodb_key: get_setting(conn, "api_audiodb_key")
-				.ok()
-				.flatten()
-				.unwrap_or_default(),
-			priority_title: get_setting(conn, "enrich_priority_title")
-				.ok()
-				.flatten()
-				.unwrap_or_else(|| "local".to_string()),
-			priority_artists: get_setting(conn, "enrich_priority_artists")
-				.ok()
-				.flatten()
-				.unwrap_or_else(|| "local".to_string()),
-			priority_album_artist: get_setting(conn, "enrich_priority_album_artist")
-				.ok()
-				.flatten()
-				.unwrap_or_else(|| "local".to_string()),
-			priority_album: get_setting(conn, "enrich_priority_album")
-				.ok()
-				.flatten()
-				.unwrap_or_else(|| "local".to_string()),
-			priority_year: get_setting(conn, "enrich_priority_year")
-				.ok()
-				.flatten()
-				.unwrap_or_else(|| "local".to_string()),
-			priority_genres: get_setting(conn, "enrich_priority_genres")
-				.ok()
-				.flatten()
-				.unwrap_or_else(|| "local".to_string()),
-			priority_bpm: get_setting(conn, "enrich_priority_bpm")
-				.ok()
-				.flatten()
-				.unwrap_or_else(|| "local".to_string()),
-			priority_key: get_setting(conn, "enrich_priority_key")
-				.ok()
-				.flatten()
-				.unwrap_or_else(|| "local".to_string()),
-			priority_artwork: get_setting(conn, "enrich_priority_artwork")
-				.ok()
-				.flatten()
-				.unwrap_or_else(|| "local".to_string()),
-		})
-	} else {
-		None
-	};
+	let enrich_settings: Option<crate::enrichment::EnrichSettings> =
+		if auto_enrich_tracks || auto_enrich_albums {
+			Some(crate::enrichment::EnrichSettings {
+				primary_api: get_setting(conn, "enrich_primary_api")
+					.ok()
+					.flatten()
+					.unwrap_or_else(|| "musicbrainz".to_string()),
+				lastfm_key: get_setting(conn, "api_lastfm_key")
+					.ok()
+					.flatten()
+					.unwrap_or_default(),
+				discogs_key: get_setting(conn, "api_discogs_key")
+					.ok()
+					.flatten()
+					.unwrap_or_default(),
+				audiodb_key: get_setting(conn, "api_audiodb_key")
+					.ok()
+					.flatten()
+					.unwrap_or_default(),
+				priority_title: get_setting(conn, "enrich_priority_title")
+					.ok()
+					.flatten()
+					.unwrap_or_else(|| "local".to_string()),
+				priority_artists: get_setting(conn, "enrich_priority_artists")
+					.ok()
+					.flatten()
+					.unwrap_or_else(|| "local".to_string()),
+				priority_album_artist: get_setting(conn, "enrich_priority_album_artist")
+					.ok()
+					.flatten()
+					.unwrap_or_else(|| "local".to_string()),
+				priority_album: get_setting(conn, "enrich_priority_album")
+					.ok()
+					.flatten()
+					.unwrap_or_else(|| "local".to_string()),
+				priority_year: get_setting(conn, "enrich_priority_year")
+					.ok()
+					.flatten()
+					.unwrap_or_else(|| "local".to_string()),
+				priority_genres: get_setting(conn, "enrich_priority_genres")
+					.ok()
+					.flatten()
+					.unwrap_or_else(|| "local".to_string()),
+				priority_bpm: get_setting(conn, "enrich_priority_bpm")
+					.ok()
+					.flatten()
+					.unwrap_or_else(|| "local".to_string()),
+				priority_key: get_setting(conn, "enrich_priority_key")
+					.ok()
+					.flatten()
+					.unwrap_or_else(|| "local".to_string()),
+				priority_artwork: get_setting(conn, "enrich_priority_artwork")
+					.ok()
+					.flatten()
+					.unwrap_or_else(|| "local".to_string()),
+			})
+		} else {
+			None
+		};
 
 	let all_files: Vec<_> = WalkDir::new(dir)
 		.follow_links(true)
@@ -1310,8 +1371,6 @@ pub fn scan_directory_with_progress(conn: &Connection, dir: &str, app: &AppHandl
 			&genre_delimiters,
 			try_ampersand,
 		) {
-			// Check if this track is the remote/local counterpart of an existing one.
-			// If so, merge paths into the existing record and skip inserting a new one.
 			if let Some(existing_uid) = find_remote_local_counterpart(conn, &track) {
 				merge_paths_into_existing(conn, &existing_uid, &track);
 				scanned += 1;
