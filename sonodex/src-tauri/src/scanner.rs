@@ -372,7 +372,7 @@ fn parse_disc_from_folder(path: &Path) -> Option<u32> {
 
 	let lower = folder.to_lowercase();
 
-	let prefixes = ["disc", "disk", "cd", "side", "volume", "vol"];
+	let prefixes = ["disc", "disk", "cd", "side", "volume", "vol", "digital media"];
 	for prefix in &prefixes {
 		if lower.starts_with(prefix) {
 			let rest = lower[prefix.len()..].trim_start_matches(|c: char| c == '.' || c == ' ' || c == '-');
