@@ -5,6 +5,7 @@ mod profiles;
 mod scanner;
 mod state;
 mod watcher;
+pub mod thumb;
 
 use db::{
     add_library_path, create_album, create_artist, create_playlist, delete_album_by_uid,

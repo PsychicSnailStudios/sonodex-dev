@@ -35,6 +35,7 @@ export type Track = {
 	bitrate: number | null;
 	remote_data: string | null;
 	track_data: string | null;
+	artwork_thumb: string | null;
 };
 
 export type Album = {
@@ -53,6 +54,7 @@ export type Album = {
 	label: string | null;
 	artwork_path: string | null;
 	emulate_type: string | null;
+	artwork_thumb: string | null;
 };
 
 export type Artist = {
@@ -67,6 +69,8 @@ export type Artist = {
 	members: string | null;
 	profile_art_path: string | null;
 	banner_art_path: string | null;
+	profile_art_thumb: string | null;
+	banner_art_thumb: string | null;
 };
 
 export type Playlist = {
@@ -85,6 +89,7 @@ export type Playlist = {
 	emulate_settings: string | null;
 	pending_tracks: string | null;
 	share_settings: string | null;
+	artwork_thumb: string | null;
 };
 
 export type Lyrics = {

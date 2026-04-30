@@ -2,35 +2,36 @@
 
 	// APP
 	import { invoke } from "@tauri-apps/api/core";
-   import { onMount } from "svelte";
+	import { onMount, untrack } from "svelte";
 
 	// COMPONENTS
 	import { Pencil } from "lucide-svelte";
 
 	import * as Tabs from "$lib/components/ui/tabs/index.js";
 	import { Button } from "$lib/components/ui/button/index.js";
-   import ScrollArea from "$lib/components/ui/scroll-area/scroll-area.svelte";
+	import ScrollArea from "$lib/components/ui/scroll-area/scroll-area.svelte";
 
 	// CUSTOM COMPONENTS
 	import ArtworkDisplay from "$lib/components/app-ui/ArtworkDisplay.svelte";
 	import AudioCard from "$lib/components/app-ui/AudioCard.svelte";
-   import NavButtons from "$lib/components/app-ui/NavButtons.svelte";
-   import TopTracks from "$lib/components/app-ui/TopTracks.svelte";
+	import NavButtons from "$lib/components/app-ui/NavButtons.svelte";
+	import TopTracks from "$lib/components/app-ui/TopTracks.svelte";
 	import TagList from "$lib/components/app-ui/TagList.svelte";
 
 	// SCRIPTS
 	import { selection } from "$lib/ts/app-states/state_session.svelte";
 	import { library } from "$lib/ts/library.svelte";
 	import { openEditModal } from "$lib/ts/app/editModal.svelte";
-   import { parseTags } from "$lib/ts/util/helpers";
+	import { parseTags } from "$lib/ts/util/helpers";
 	import { currentArtistTab } from "$lib/ts/app-states/state_session.svelte";
 	import type { Artist, Track, Album } from "$lib/ts/util/types";
 
 	// VARIABLES
 	let artist = $state<Artist | null>(null);
+	let bannerUrl = $state<string | null>(null);
 	let genres = $derived(artist?.genres ? parseTags(artist.genres) : null);
 	let tags = $derived(artist?.tags ? parseTags(artist.tags) : null);
-	
+
 	let artistAlbums: Album[] = $derived.by(() => {
 		if (!artist) return [];
 
@@ -60,9 +61,32 @@
 		const uid = selection.uid;
 		if (!uid) return;
 		artist = null;
+
+		untrack(() => {
+			if (bannerUrl) {
+				URL.revokeObjectURL(bannerUrl);
+				bannerUrl = null;
+			}
+		});
+
 		invoke<string>("resolve_uid", { uid }).then((resolvedUid) => {
 			invoke("get_artist", { uid: resolvedUid }).then((a) => {
 				artist = a as Artist;
+
+				if (artist.banner_art_path) {
+					bannerUrl = null;
+					return;
+				}
+
+				invoke<number[] | null>("get_artist_banner_art", { uid: resolvedUid }).then((bytes) => {
+					if (bytes && bytes.length > 0) {
+						untrack(() => {
+							if (bannerUrl) URL.revokeObjectURL(bannerUrl);
+						});
+						const blob = new Blob([new Uint8Array(bytes)], { type: "image/jpeg" });
+						bannerUrl = URL.createObjectURL(blob);
+					}
+				});
 			});
 		});
 	});
@@ -75,8 +99,8 @@
 		<div class="relative">
 			<NavButtons class="absolute top-4 left-4"/>
 
-			{#if artist.banner_art_path}
-				<img src={artist.banner_art_path} alt="" class="w-full h-32 object-cover rounded-t-md" />
+			{#if artist.banner_art_path || bannerUrl}
+				<img src={artist.banner_art_path ?? bannerUrl} alt="" class="w-full h-32 object-cover rounded-t-md" />
 			{:else}
 				<div class="w-full h-32 bg-muted rounded-t-md"></div>
 			{/if}

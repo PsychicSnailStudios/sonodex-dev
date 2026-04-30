@@ -21,6 +21,7 @@ pub struct Track {
 	pub credits: Option<String>,
 	pub label: Option<String>,
 	pub artwork_blob: Option<Vec<u8>>,
+	pub artwork_thumb: Option<String>,
 	pub artwork_path: Option<String>,
 	pub user_options: Option<String>,
 	pub format: Option<String>,
@@ -61,7 +62,6 @@ pub struct MetadataUpdate {
 }
 
 pub fn upsert_track(conn: &Connection, track: &Track) -> Result<()> {
-	// Resolve the uid to use — if a track with this remote_path already exists, reuse its uid
 	let track_uid = if let Some(ref rp) = track.remote_path {
 		if !rp.is_empty() {
 			let existing_uid: Option<String> = conn
@@ -106,13 +106,14 @@ pub fn upsert_track(conn: &Connection, track: &Track) -> Result<()> {
 				credits       = ?14,
 				label         = ?15,
 				artwork_blob  = COALESCE(?16, artwork_blob),
-				artwork_path  = ?17,
-				user_options  = ?18,
-				format        = ?19,
-				bitrate       = ?20,
-				remote_path   = ?21,
-				remote_data   = ?22,
-				track_data    = ?23
+				artwork_thumb = COALESCE(?17, artwork_thumb),
+				artwork_path  = ?18,
+				user_options  = ?19,
+				format        = ?20,
+				bitrate       = ?21,
+				remote_path   = ?22,
+				remote_data   = ?23,
+				track_data    = ?24
 			WHERE uid = ?1",
 			params![
 				track_uid,
@@ -131,6 +132,7 @@ pub fn upsert_track(conn: &Connection, track: &Track) -> Result<()> {
 				track.credits,
 				track.label,
 				track.artwork_blob,
+				track.artwork_thumb,
 				track.artwork_path,
 				track.user_options,
 				track.format,
@@ -142,8 +144,8 @@ pub fn upsert_track(conn: &Connection, track: &Track) -> Result<()> {
 		)?;
 	} else {
 		conn.execute(
-			"INSERT INTO tracks (uid, path, last_modified, title, artists, album_artist, albums, genres, year, rating, duration_ms, bpm, key, credits, label, artwork_blob, artwork_path, user_options, format, bitrate, remote_path, remote_data, track_data)
-			 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21, ?22, ?23)
+			"INSERT INTO tracks (uid, path, last_modified, title, artists, album_artist, albums, genres, year, rating, duration_ms, bpm, key, credits, label, artwork_blob, artwork_thumb, artwork_path, user_options, format, bitrate, remote_path, remote_data, track_data)
+			 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21, ?22, ?23, ?24)
 			 ON CONFLICT(uid) DO UPDATE SET
 				last_modified = excluded.last_modified,
 				title         = excluded.title,
@@ -159,6 +161,7 @@ pub fn upsert_track(conn: &Connection, track: &Track) -> Result<()> {
 				credits       = excluded.credits,
 				label         = excluded.label,
 				artwork_blob  = excluded.artwork_blob,
+				artwork_thumb = excluded.artwork_thumb,
 				artwork_path  = excluded.artwork_path,
 				format        = excluded.format,
 				bitrate       = excluded.bitrate,
@@ -182,6 +185,7 @@ pub fn upsert_track(conn: &Connection, track: &Track) -> Result<()> {
 				track.credits,
 				track.label,
 				track.artwork_blob,
+				track.artwork_thumb,
 				track.artwork_path,
 				track.user_options,
 				track.format,
@@ -213,7 +217,7 @@ pub fn delete_track_by_uid(conn: &Connection, uid: &str) -> Result<()> {
 
 pub fn get_all_tracks(conn: &Connection) -> Result<Vec<Track>> {
 	let mut stmt = conn.prepare(
-		"SELECT id, uid, path, last_modified, title, artists, album_artist, albums, genres, year, rating, tags, duration_ms, bpm, key, credits, label, format, bitrate, artwork_path, user_options, remote_path, remote_data, track_data
+		"SELECT id, uid, path, last_modified, title, artists, album_artist, albums, genres, year, rating, tags, duration_ms, bpm, key, credits, label, format, bitrate, artwork_path, artwork_thumb, user_options, remote_path, remote_data, track_data
 		 FROM tracks ORDER BY album_artist, albums, title"
 	)?;
 	let tracks = stmt
@@ -240,10 +244,11 @@ pub fn get_all_tracks(conn: &Connection) -> Result<Vec<Track>> {
 				bitrate: row.get(18)?,
 				artwork_blob: None,
 				artwork_path: row.get(19)?,
-				user_options: row.get(20)?,
-				remote_path: row.get(21)?,
-				remote_data: row.get(22)?,
-				track_data: row.get(23)?,
+				artwork_thumb: row.get(20)?,
+				user_options: row.get(21)?,
+				remote_path: row.get(22)?,
+				remote_data: row.get(23)?,
+				track_data: row.get(24)?,
 			})
 		})?
 		.collect::<Result<Vec<_>>>()?;
@@ -252,7 +257,7 @@ pub fn get_all_tracks(conn: &Connection) -> Result<Vec<Track>> {
 
 pub fn get_track_by_uid(conn: &Connection, uid: &str) -> Result<Option<Track>> {
 	let mut stmt = conn.prepare(
-		"SELECT id, uid, path, last_modified, title, artists, album_artist, albums, genres, year, rating, tags, duration_ms, bpm, key, credits, label, format, bitrate, artwork_path, user_options, remote_path, remote_data, track_data
+		"SELECT id, uid, path, last_modified, title, artists, album_artist, albums, genres, year, rating, tags, duration_ms, bpm, key, credits, label, format, bitrate, artwork_path, artwork_thumb, user_options, remote_path, remote_data, track_data
 		 FROM tracks WHERE uid = ?1"
 	)?;
 	let mut rows = stmt.query(params![uid])?;
@@ -279,10 +284,11 @@ pub fn get_track_by_uid(conn: &Connection, uid: &str) -> Result<Option<Track>> {
 			bitrate: row.get(18)?,
 			artwork_blob: None,
 			artwork_path: row.get(19)?,
-			user_options: row.get(20)?,
-			remote_path: row.get(21)?,
-			remote_data: row.get(22)?,
-			track_data: row.get(23)?,
+			artwork_thumb: row.get(20)?,
+			user_options: row.get(21)?,
+			remote_path: row.get(22)?,
+			remote_data: row.get(23)?,
+			track_data: row.get(24)?,
 		}))
 	} else {
 		Ok(None)
@@ -311,9 +317,9 @@ pub fn get_track_artwork_by_uid(conn: &Connection, uid: &str) -> Result<Option<V
 
 pub fn find_duplicates(conn: &Connection) -> Result<Vec<DuplicateGroup>> {
 	let mut stmt = conn.prepare(
-		"SELECT id, uid, path, last_modified, title, artists, album_artist, albums, genres, year, rating, tags, duration_ms, bpm, key, credits, label, format, bitrate, artwork_path, user_options, remote_path, remote_data, track_data
+		"SELECT id, uid, path, last_modified, title, artists, album_artist, albums, genres, year, rating, tags, duration_ms, bpm, key, credits, label, format, bitrate, artwork_path, artwork_thumb, user_options, remote_path, remote_data, track_data
 		 FROM (
-			 SELECT a.id, a.uid, a.path, a.last_modified, a.title, a.artists, a.album_artist, a.albums, a.genres, a.year, a.rating, a.tags, a.duration_ms, a.bpm, a.key, a.credits, a.label, a.format, a.bitrate, a.artwork_path, a.user_options, a.remote_path, a.remote_data, a.track_data
+			 SELECT a.id, a.uid, a.path, a.last_modified, a.title, a.artists, a.album_artist, a.albums, a.genres, a.year, a.rating, a.tags, a.duration_ms, a.bpm, a.key, a.credits, a.label, a.format, a.bitrate, a.artwork_path, a.artwork_thumb, a.user_options, a.remote_path, a.remote_data, a.track_data
 			 FROM tracks a
 			 INNER JOIN tracks b ON (
 				 a.id < b.id
@@ -322,7 +328,7 @@ pub fn find_duplicates(conn: &Connection) -> Result<Vec<DuplicateGroup>> {
 				 AND ABS(COALESCE(a.duration_ms, 0) - COALESCE(b.duration_ms, 0)) <= 1000
 			 )
 			 UNION
-			 SELECT b.id, b.uid, b.path, b.last_modified, b.title, b.artists, b.album_artist, b.albums, b.genres, b.year, b.rating, b.tags, b.duration_ms, b.bpm, b.key, b.credits, b.label, b.format, b.bitrate, b.artwork_path, b.user_options, b.remote_path, b.remote_data, b.track_data
+			 SELECT b.id, b.uid, b.path, b.last_modified, b.title, b.artists, b.album_artist, b.albums, b.genres, b.year, b.rating, b.tags, b.duration_ms, b.bpm, b.key, b.credits, b.label, b.format, b.bitrate, b.artwork_path, b.artwork_thumb, b.user_options, b.remote_path, b.remote_data, b.track_data
 			 FROM tracks a
 			 INNER JOIN tracks b ON (
 				 a.id < b.id
@@ -358,10 +364,11 @@ pub fn find_duplicates(conn: &Connection) -> Result<Vec<DuplicateGroup>> {
 				bitrate: row.get(18)?,
 				artwork_blob: None,
 				artwork_path: row.get(19)?,
-				user_options: row.get(20)?,
-				remote_path: row.get(21)?,
-				remote_data: row.get(22)?,
-				track_data: row.get(23)?,
+				artwork_thumb: row.get(20)?,
+				user_options: row.get(21)?,
+				remote_path: row.get(22)?,
+				remote_data: row.get(23)?,
+				track_data: row.get(24)?,
 			})
 		})?
 		.collect::<Result<Vec<_>>>()?;
@@ -435,6 +442,8 @@ pub fn update_track_metadata(conn: &Connection, id: i64, update: &MetadataUpdate
 	}
 	if let Some(ref blob) = update.artwork_blob {
 		conn.execute("UPDATE tracks SET artwork_blob = ?1 WHERE id = ?2", params![blob, id])?;
+		let thumb = crate::thumb::make_thumb(blob);
+		conn.execute("UPDATE tracks SET artwork_thumb = ?1 WHERE id = ?2", params![thumb, id])?;
 	}
 	if let Some(ref path) = update.artwork_path {
 		conn.execute("UPDATE tracks SET artwork_path = ?1 WHERE id = ?2", params![path, id])?;
@@ -503,6 +512,8 @@ pub fn update_track_metadata_by_uid(
 	}
 	if let Some(ref blob) = update.artwork_blob {
 		conn.execute("UPDATE tracks SET artwork_blob = ?1 WHERE uid = ?2", params![blob, uid])?;
+		let thumb = crate::thumb::make_thumb(blob);
+		conn.execute("UPDATE tracks SET artwork_thumb = ?1 WHERE uid = ?2", params![thumb, uid])?;
 	}
 	if let Some(ref path) = update.artwork_path {
 		conn.execute("UPDATE tracks SET artwork_path = ?1 WHERE uid = ?2", params![path, uid])?;

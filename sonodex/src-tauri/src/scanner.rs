@@ -861,8 +861,9 @@ pub fn read_track_with_settings(
 		user_options: None,
 		credits: None,
 		label: tag_label,
-		artwork_blob,
+		artwork_blob: artwork_blob.clone(),
 		artwork_path: None,
+		artwork_thumb: artwork_blob.as_deref().and_then(crate::thumb::make_thumb),
 		format: format.clone(),
 		bitrate: bitrate,
 		remote_data: None,
@@ -967,7 +968,8 @@ fn find_or_create_album(
 		tracks: Some(tracks_json),
 		credits: None,
 		label: None,
-		artwork_blob,
+		artwork_blob: artwork_blob.clone(),
+		artwork_thumb: artwork_blob.as_deref().and_then(crate::thumb::make_thumb),
 		artwork_path: None,
 		emulate_type: None,
 	};
@@ -1006,6 +1008,8 @@ fn find_or_create_artist(conn: &Connection, name: &str) -> Option<(i64, String)>
 		profile_art_path: None,
 		banner_art_blob: None,
 		banner_art_path: None,
+		profile_art_thumb: None,
+		banner_art_thumb: None,
 	};
 
 	create_artist(conn, &artist).ok()?;

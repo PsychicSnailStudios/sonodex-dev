@@ -122,12 +122,13 @@ pub fn init_lib_db(conn: &Connection) -> Result<()> {
 			label TEXT,
 			artwork_blob BLOB,
 			artwork_path TEXT,
+			artwork_thumb TEXT,
 			user_options TEXT,
 			format TEXT,
 			bitrate INTEGER,
 			remote_path TEXT,
 			remote_data TEXT,
-			track_data  TEXT
+			track_data TEXT
 		);
 
 		CREATE TABLE IF NOT EXISTS albums (
@@ -146,6 +147,7 @@ pub fn init_lib_db(conn: &Connection) -> Result<()> {
 			label TEXT,
 			artwork_blob BLOB,
 			artwork_path TEXT,
+			artwork_thumb TEXT,
 			emulate_type TEXT
 		);
 
@@ -161,6 +163,7 @@ pub fn init_lib_db(conn: &Connection) -> Result<()> {
 			members TEXT DEFAULT '[]',
 			profile_art_blob BLOB,
 			profile_art_path TEXT,
+			profile_art_thumb TEXT,
 			banner_art_blob BLOB,
 			banner_art_path TEXT
 		);
@@ -175,6 +178,7 @@ pub fn init_lib_db(conn: &Connection) -> Result<()> {
 			folder TEXT,
 			artwork_blob BLOB,
 			artwork_path TEXT,
+			artwork_thumb TEXT,
 			version INTEGER NOT NULL DEFAULT 1,
 			versions_data TEXT,
 			link_url TEXT,

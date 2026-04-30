@@ -563,6 +563,7 @@ pub async fn spotify_import_playlist(
 				remote_path: None,
 				remote_data: None,
 				track_data: None,
+				artwork_thumb: None,
 			};
 
 			match upsert_track(&lib_conn, &stub) {
@@ -604,6 +605,7 @@ pub async fn spotify_import_playlist(
 		emulate_settings: None,
 		pending_tracks: None,
 		share_settings: None,
+		artwork_thumb: None,
 	};
 
 	create_playlist(&lib_conn, &playlist).map_err(|e| e.to_string())?;
