@@ -69,10 +69,14 @@
 		});
 	});
 
+	function trackIsGhost(t: Track): boolean {
+		const hasLocal = t.path && t.path !== "" && t.path !== t.uid;
+		const hasRemote = t.remote_path && t.remote_path.length > 0;
+		return !hasLocal && !hasRemote;
+	}
+
 	let allGhosts = $derived(
-		tracks.length > 0 && tracks.every(t =>
-			t.path === "" || t.path === t.uid
-		)
+		tracks.length > 0 && tracks.every(t => trackIsGhost(t))
 	);
 </script>
 

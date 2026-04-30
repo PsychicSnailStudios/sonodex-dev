@@ -67,6 +67,12 @@
 		});
 	});
 
+	function trackIsNotGhost(): boolean {
+		const hasLocal = track?.path && track.path !== "" && track.path !== track.uid;
+		const hasRemote = track?.remote_path && track.remote_path.length > 0;
+		return !!(hasLocal || hasRemote);
+	}
+
 </script>
 
 <div class="flex flex-col gap-4 p-4 border-2 h-full w-full overflow-hidden rounded-md">
@@ -111,7 +117,7 @@
 
 			<div class="flex gap-2 justify-between items-center flex-wrap p-2 rounded-md"
 				  style="background: {color};">
-				<Button variant="default" onclick={() => playTrackByObject(track)}>Play</Button>
+				<Button variant="default" disabled={!trackIsNotGhost()} onclick={() => playTrackByObject(track)}>Play</Button>
 				<div>
 					<TrackPlaylistEditButton track={track} />
 					<Button variant="ghost" size="icon" onclick={() => openEditModal({ type: "track", uid: track!.uid })}><Pencil /></Button>

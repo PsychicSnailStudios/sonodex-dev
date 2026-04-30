@@ -116,9 +116,13 @@
 		endDrag();
 	}
 
-	let allGhosts = $derived(tracks.every(t =>
-		/^[a-z]+-[0-9a-f-]{36}$/.test(t.path) || t.path === ""
-	));
+	let allGhosts = $derived(
+		tracks.length > 0 && tracks.every(t => {
+			const hasLocal = t.path && t.path !== "" && t.path !== t.uid;
+			const hasRemote = t.remote_path && t.remote_path.length > 0;
+			return !hasLocal && !hasRemote;
+		})
+	);
 </script>
 
 <div
