@@ -289,61 +289,6 @@ fn parse_custom_pattern(stem: &str, pattern: &str) -> FilenameMetadata {
 	meta
 }
 
-fn parse_folder_path(path: &Path) -> FilenameMetadata {
-	let components: Vec<&str> = path
-		.parent()
-		.map(|p| {
-			p.components()
-				.filter_map(|c| c.as_os_str().to_str())
-				.collect()
-		})
-		.unwrap_or_default();
-
-	if components.len() < 2 {
-		return FilenameMetadata {
-			title: None,
-			artist: None,
-			album: None,
-			year: None,
-			disc: None,
-		};
-	}
-
-	let folder = components[components.len() - 1];
-	let artist = components[components.len() - 2].to_string();
-
-	if components.len() >= 3 {
-		let maybe_year = components[components.len() - 3];
-		if maybe_year.len() == 4 && maybe_year.parse::<u32>().is_ok() {
-			return FilenameMetadata {
-				title: None,
-				artist: Some(artist),
-				album: Some(folder.to_string()),
-				year: Some(maybe_year.to_string()),
-				disc: None,
-			};
-		}
-	}
-
-	if let Some(captures) = extract_year_from_folder(folder) {
-		return FilenameMetadata {
-			title: None,
-			artist: Some(artist),
-			album: Some(captures.0),
-			year: Some(captures.1),
-			disc: None,
-		};
-	}
-
-	FilenameMetadata {
-		title: None,
-		artist: Some(artist),
-		album: Some(folder.to_string()),
-		year: None,
-		disc: None,
-	}
-}
-
 fn extract_year_from_folder(folder: &str) -> Option<(String, String)> {
 	if let Some(pos) = folder.find(" - ") {
 		let maybe_year = &folder[..pos];
@@ -362,6 +307,24 @@ fn extract_year_from_folder(folder: &str) -> Option<(String, String)> {
 	}
 
 	None
+}
+
+fn is_disc_folder(name: &str) -> bool {
+	let lower = name.to_lowercase();
+	let prefixes = ["disc", "disk", "cd", "side", "volume", "vol", "digital media"];
+	for prefix in &prefixes {
+		if lower.starts_with(prefix) {
+			let rest = lower[prefix.len()..].trim_start_matches(|c: char| c == '.' || c == ' ' || c == '-');
+			if rest.is_empty() {
+				return true;
+			}
+			let num_str: String = rest.chars().take_while(|c| c.is_alphanumeric()).collect();
+			if !num_str.is_empty() {
+				return true;
+			}
+		}
+	}
+	false
 }
 
 fn parse_disc_from_folder(path: &Path) -> Option<u32> {
@@ -401,6 +364,80 @@ fn parse_disc_from_folder(path: &Path) -> Option<u32> {
 		}
 	}
 	None
+}
+
+fn parse_folder_path(path: &Path) -> FilenameMetadata {
+	let components: Vec<&str> = path
+		.parent()
+		.map(|p| {
+			p.components()
+				.filter_map(|c| c.as_os_str().to_str())
+				.collect()
+		})
+		.unwrap_or_default();
+
+	if components.len() < 2 {
+		return FilenameMetadata {
+			title: None,
+			artist: None,
+			album: None,
+			year: None,
+			disc: None,
+		};
+	}
+
+	let immediate = components[components.len() - 1];
+
+	// If the immediate parent is a disc folder, skip up to the real album folder
+	let (folder, artist_idx) = if is_disc_folder(immediate) && components.len() >= 3 {
+		(components[components.len() - 2], components.len() - 3)
+	} else {
+		(immediate, components.len() - 2)
+	};
+
+	if artist_idx >= components.len() {
+		return FilenameMetadata {
+			title: None,
+			artist: None,
+			album: None,
+			year: None,
+			disc: None,
+		};
+	}
+
+	let artist = components[artist_idx].to_string();
+
+	// Check for year in the component above artist (Year/Artist/Album structure)
+	if artist_idx >= 1 {
+		let maybe_year = components[artist_idx - 1];
+		if maybe_year.len() == 4 && maybe_year.parse::<u32>().is_ok() {
+			return FilenameMetadata {
+				title: None,
+				artist: Some(artist),
+				album: Some(folder.to_string()),
+				year: Some(maybe_year.to_string()),
+				disc: None,
+			};
+		}
+	}
+
+	if let Some(captures) = extract_year_from_folder(folder) {
+		return FilenameMetadata {
+			title: None,
+			artist: Some(artist),
+			album: Some(captures.0),
+			year: Some(captures.1),
+			disc: None,
+		};
+	}
+
+	FilenameMetadata {
+		title: None,
+		artist: Some(artist),
+		album: Some(folder.to_string()),
+		year: None,
+		disc: None,
+	}
 }
 
 /// Checks whether an incoming track is a remote/local counterpart of an existing track.

@@ -79,6 +79,19 @@ pub fn upsert_track(conn: &Connection, track: &Track) -> Result<()> {
 		track.uid.clone()
 	};
 
+	let track_uid = if !track.path.is_empty() {
+		let existing_uid: Option<String> = conn
+			.query_row(
+				"SELECT uid FROM tracks WHERE path = ?1",
+				params![&track.path],
+				|row| row.get(0),
+			)
+			.ok();
+		existing_uid.unwrap_or(track_uid)
+	} else {
+		track_uid
+	};
+
 	let uid_exists: bool = conn
 		.query_row(
 			"SELECT COUNT(*) FROM tracks WHERE uid = ?1",
