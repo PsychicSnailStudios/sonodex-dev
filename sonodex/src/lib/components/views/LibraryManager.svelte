@@ -33,13 +33,16 @@
 	import type { DuplicateGroup } from "$lib/ts/util/types";
 	import { scanState } from "$lib/ts/app-states/state_session.svelte";
 	import { enrichAllAlbums, enrichAllArtists, enrichAllTracks } from "$lib/ts/app/enrichment";
-   import { parseAlbum, parseArtists } from "$lib/ts/util/helpers";
+	import { parseAlbum, parseArtists } from "$lib/ts/util/helpers";
 
 	// ─── Search ───────────────────────────────────────────────────────────────────
 	let trackSearch = $state("");
 	let albumSearch = $state("");
 	let artistSearch = $state("");
-	let ghosts = $state(false);
+
+	// ─── Track filter mode ────────────────────────────────────────────────────────
+	type TrackFilterMode = "all" | "ghosts" | "remote" | "local";
+	let trackFilterMode = $state<TrackFilterMode>("all");
 
 	// ─── Duplicates ───────────────────────────────────────────────────────────────
 	let duplicates = $state<DuplicateGroup[]>([]);
@@ -155,10 +158,15 @@
 
 	const filteredTracks = $derived(
 		(() => {
-			const pool = ghosts ? library.tracks.filter((t) => t.path === "") : library.tracks;
-			return trackSearch.trim().length < 2
-				? pool
-				: getTracksFuse().search(trackSearch).map((r) => r.item).filter((t) => !ghosts || t.path === "");
+			let pool = library.tracks;
+			if (trackFilterMode === "ghosts") pool = pool.filter((t) => !t.path && !t.remote_path);
+			else if (trackFilterMode === "remote") pool = pool.filter((t) => !!t.remote_path);
+			else if (trackFilterMode === "local") pool = pool.filter((t) => !!t.path);
+
+			if (trackSearch.trim().length < 2) return pool;
+			const results = getTracksFuse().search(trackSearch).map((r) => r.item);
+			const poolUids = new Set(pool.map((t) => t.uid));
+			return results.filter((t) => poolUids.has(t.uid));
 		})()
 	);
 
@@ -390,8 +398,8 @@
 		duplicatesLoaded = true;
 	}
 
-	function onDuplicateResolved() {
-		loadDuplicates();
+	function onDuplicateResolved(groupIndex: number) {
+		duplicates = duplicates.filter((_, i) => i !== groupIndex);
 	}
 </script>
 
@@ -411,7 +419,7 @@
 					<Tabs.Trigger value="tags" class="flex-1">Tags</Tabs.Trigger>
 					<Tabs.Trigger value="duplicates" class="flex-1" onclick={loadDuplicates}>Duplicates</Tabs.Trigger>
 				</Tabs.List>
-				
+
 
 				<!-- PATHS -->
 				<Tabs.Content value="paths">
@@ -471,13 +479,19 @@
 						<div class="flex gap-2 justify-between items-center">
 							<span class="text-sm text-muted-foreground">{filteredTracks.length} {filteredTracks.length === 1 ? "track" : "tracks"}</span>
 							<div class="flex gap-2 items-center">
-								<Button
-									variant={ghosts ? "secondary" : "outline"}
-									size="sm"
-									onclick={() => (ghosts = !ghosts)}
-								>
-									Ghosts only
-								</Button>
+								<div class="flex rounded-md border text-xs ">
+									{#each (["all", "local", "remote", "ghosts"] as TrackFilterMode[]) as mode}
+										<button
+											class="px-2 py-1 capitalize transition-colors"
+											class:bg-primary={trackFilterMode === mode}
+											class:text-primary-foreground={trackFilterMode === mode}
+											class:text-muted-foreground={trackFilterMode !== mode}
+											onclick={() => (trackFilterMode = mode)}
+										>
+											{mode}
+										</button>
+									{/each}
+								</div>
 								<SearchBar bind:search={trackSearch} searchCount={filteredTracks.length} />
 							</div>
 						</div>
@@ -681,7 +695,7 @@
 							<span class="text-sm text-muted-foreground">{duplicates.length} duplicate {duplicates.length === 1 ? "group" : "groups"}</span>
 							<div class="flex flex-col gap-3">
 								{#each duplicates as group, i (i)}
-									<DuplicateGroupCard {group} onresolved={onDuplicateResolved} />
+									<DuplicateGroupCard {group} onresolved={() => onDuplicateResolved(i)} />
 								{/each}
 							</div>
 						{/if}

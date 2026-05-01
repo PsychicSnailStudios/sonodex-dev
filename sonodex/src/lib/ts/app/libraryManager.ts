@@ -50,9 +50,28 @@ export async function openTrackInExplorer(path: string): Promise<void> {
 
 // ─── Album Actions ───────────────────────────────────────────────────────────
 
+async function removeAlbumFromLinkedTracks(albumUid: string): Promise<void> {
+	const allTracks = await invoke<any[]>("get_tracks");
+	for (const track of allTracks) {
+		let entries: any[];
+		try {
+			entries = track.albums ? JSON.parse(track.albums) : [];
+		} catch {
+			entries = [];
+		}
+		const filtered = entries.filter((e: any) => e.uid !== albumUid);
+		if (filtered.length === entries.length) continue;
+		await invoke("update_track_metadata", {
+			uid: track.uid,
+			update: { albums: JSON.stringify(filtered) },
+		});
+	}
+}
+
 export async function removeAlbum(uid: string): Promise<void> {
 	const confirmed = await showWarning({ title: "Delete Album?", description: "This action cannot be undone" });
 	if (!confirmed) return;
+	await removeAlbumFromLinkedTracks(uid);
 	await invoke("delete_album_entry", { uid });
 	await loadLibrary();
 }
@@ -62,6 +81,7 @@ export async function removeAlbums(uids: string[]): Promise<void> {
 	const confirmed = await showWarning({ title: `Delete ${uids.length} Albums?`, description: "This action cannot be undone" });
 	if (!confirmed) return;
 	for (const uid of uids) {
+		await removeAlbumFromLinkedTracks(uid);
 		await invoke("delete_album_entry", { uid });
 	}
 	await loadLibrary();

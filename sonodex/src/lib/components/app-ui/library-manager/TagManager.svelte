@@ -1,661 +1,321 @@
 <script lang="ts">
-	import { Plus, Trash, Pencil, X, Check } from "lucide-svelte";
-	import { onMount } from "svelte";
-
-	import * as Accordion from "$lib/components/ui/accordion/index.js";
-	import * as Tooltip from "$lib/components/ui/tooltip/index.js";
+	import { Trash, Trash2, Upload, Plus, Pencil, Check, X, ChevronDown } from "lucide-svelte";
 	import { Button, buttonVariants } from "$lib/components/ui/button/index.js";
-	import { Input } from "$lib/components/ui/input/index.js";
-	import { Badge } from "$lib/components/ui/badge/index.js";
-	import { ScrollArea } from "$lib/components/ui/scroll-area/index.js";
-	import * as AlertDialog from "$lib/components/ui/alert-dialog/index.js";
-	import * as Dialog from "$lib/components/ui/dialog/index.js";
-	import { Label } from "$lib/components/ui/label/index.js";
+	import { tagStore } from "$lib/ts/tagManager.svelte";
+	import { showWarning } from "$lib/ts/app/dialogManager.svelte";
+	import type { Tag, TagKind } from "$lib/ts/tagManager.svelte";
 
-	import SearchBar from "$lib/components/app-ui/search/SearchBar.svelte";
-	import { tagStore, type Tag, type TagGroup, type TagKind } from "$lib/ts/tagManager.svelte";
+	type Tab = "tags" | "genres";
+	let activeTab = $state<Tab>("tags");
 
-	// ─── View state ───────────────────────────────────────────────────────────────
-	let search = $state("");
-	let activeSection = $state<string>("tags");
-
-	// ─── Inline edit ──────────────────────────────────────────────────────────────
+	let newName = $state("");
 	let editingUid = $state<string | null>(null);
 	let editingName = $state("");
-	let editingColor = $state<string | null>(null);
-	let editError = $state("");
+	let importing = $state(false);
+	let importError = $state("");
 
-	// ─── Add new ──────────────────────────────────────────────────────────────────
-	let addingNew = $state(false);
-	let newName = $state("");
-	let newColor = $state<string | null>(null);
-	let addError = $state("");
+	let tagsOpen = $state(true);
+	let groupsOpen = $state(true);
 
-	// ─── Delete confirmation ──────────────────────────────────────────────────────
-	let deleteConfirmUid = $state<string | null>(null);
-	let deleteConfirmKind = $state<"tag" | "group" | null>(null);
+	const kind = $derived<TagKind>(activeTab === "tags" ? "tag" : "genre");
+	const items = $derived(activeTab === "tags" ? tagStore.tags : tagStore.genres);
+	const visibleGroups = $derived(tagStore.groups.filter((g) => g.kind === kind));
 
-	// ─── Group modal ──────────────────────────────────────────────────────────────
-	let groupModalOpen = $state(false);
-	let groupModalMode = $state<"create" | "edit">("create");
-	let groupModalUid = $state<string | null>(null);
-	let groupModalName = $state("");
-	let groupModalKind = $state<TagKind>("tag");
-	let groupModalColor = $state<string | null>(null);
-	let groupModalMembers = $state<Set<string>>(new Set());
-	let groupModalError = $state("");
-	let groupModalSearch = $state("");
-
-	// ─── Derived ──────────────────────────────────────────────────────────────────
-	const displayTags = $derived(
-		(activeSection === "genres" ? tagStore.genres : tagStore.tags)
-			.filter((t) => !search || t.name.toLowerCase().includes(search.toLowerCase()))
-			.sort((a, b) => a.name.localeCompare(b.name))
-	);
-
-	const allGroups = $derived(tagStore.groups);
-
-	const groupModalTagPool = $derived(
-		(groupModalKind === "tag" ? tagStore.tags : tagStore.genres)
-			.filter(
-				(t) =>
-					!groupModalSearch ||
-					t.name.toLowerCase().includes(groupModalSearch.toLowerCase())
-			)
-			.sort((a, b) => a.name.localeCompare(b.name))
-	);
-
-	onMount(async () => {
-		if (!tagStore.loaded) await tagStore.load();
-	});
-
-	// ─── Color palette ────────────────────────────────────────────────────────────
-	const COLORS = [
-		"#8B7CF8", "#3B82F6", "#10B981", "#F59E0B",
-		"#EF4444", "#EC4899", "#14B8A6", "#F97316",
-		"#6366F1", "#84CC16", "#06B6D4", "#A78BFA",
-	];
-
-	// ─── Helpers ──────────────────────────────────────────────────────────────────
-	function groupsForTag(uid: string): TagGroup[] {
-		return allGroups.filter((g) => g.member_uids.includes(uid));
+	async function addItem() {
+		const name = newName.trim();
+		if (!name) return;
+		if (activeTab === "tags") await tagStore.addTag(name);
+		else await tagStore.addGenre(name);
+		newName = "";
 	}
 
-	function memberNamesFor(group: TagGroup): string[] {
-		return group.member_uids
-			.map((uid) => tagStore.byUid.get(uid)?.name ?? "?")
-			.sort();
-	}
-
-	// ─── Inline edit ──────────────────────────────────────────────────────────────
 	function startEdit(tag: Tag) {
 		editingUid = tag.uid;
 		editingName = tag.name;
-		editingColor = tag.color;
-		editError = "";
+	}
+
+	async function commitEdit() {
+		if (!editingUid || !editingName.trim()) { cancelEdit(); return; }
+		await tagStore.renameTag(editingUid, editingName.trim());
+		cancelEdit();
 	}
 
 	function cancelEdit() {
 		editingUid = null;
-		editError = "";
+		editingName = "";
 	}
 
-	async function commitEdit() {
-		if (!editingUid) return;
-		const trimmed = editingName.trim();
-		if (!trimmed) { editError = "Name cannot be empty"; return; }
-		const conflict = tagStore.byName.get(trimmed.toLowerCase());
-		if (conflict && conflict.uid !== editingUid) { editError = "A tag with that name already exists"; return; }
-		await tagStore.renameTag(editingUid, trimmed);
-		if (editingColor !== tagStore.byUid.get(editingUid)?.color) {
-			await tagStore.updateTagColor(editingUid, editingColor);
+	async function deleteItem(tag: Tag) {
+		const confirmed = await showWarning({
+			title: `Delete "${tag.name}"?`,
+			description: "This will remove the tag from all tracks and cannot be undone.",
+		});
+		if (!confirmed) return;
+		await tagStore.deleteTag(tag.uid);
+	}
+
+	async function deleteGroup(uid: string, name: string) {
+		const confirmed = await showWarning({
+			title: `Delete group "${name}"?`,
+			description: "The tags inside will not be deleted, only the group.",
+		});
+		if (!confirmed) return;
+		await tagStore.deleteGroup(uid);
+	}
+
+	async function deleteAll() {
+		if (items.length === 0) return;
+		const confirmed = await showWarning({
+			title: `Delete all ${activeTab}?`,
+			description: `This will permanently delete all ${items.length} ${activeTab} and cannot be undone.`,
+		});
+		if (!confirmed) return;
+		for (const item of items) {
+			await tagStore.deleteTag(item.uid);
 		}
-		editingUid = null;
 	}
 
-	function handleEditKeydown(e: KeyboardEvent) {
-		if (e.key === "Enter") commitEdit();
-		if (e.key === "Escape") cancelEdit();
+  async function deleteAllGroups() {
+    if (visibleGroups.length === 0) return;
+    const confirmed = await showWarning({
+      title: `Delete all groups?`,
+      description: `This will permanently delete all ${visibleGroups.length} groups. The tags inside will not be deleted.`,
+    });
+    if (!confirmed) return;
+    for (const group of visibleGroups) {
+      await tagStore.deleteGroup(group.uid);
+    }
+  }
+
+	// ─── CSV Import ───────────────────────────────────────────────────────────────
+
+	async function handleCsvImport(event: Event) {
+		const input = event.target as HTMLInputElement;
+		const file = input.files?.[0];
+		if (!file) return;
+		input.value = "";
+		importing = true;
+		importError = "";
+		try {
+			const text = await file.text();
+			await importFromCsv(text, kind);
+		} catch (e: any) {
+			importError = e?.message ?? String(e);
+		} finally {
+			importing = false;
+		}
 	}
 
-	// ─── Add new ──────────────────────────────────────────────────────────────────
-	function startAdd() {
-		addingNew = true;
-		newName = "";
-		newColor = null;
-		addError = "";
-	}
+	async function importFromCsv(csvText: string, kind: TagKind): Promise<void> {
+		const lines = csvText.split(/\r?\n/).filter((l) => l.trim());
+		if (lines.length === 0) return;
 
-	function cancelAdd() {
-		addingNew = false;
-		addError = "";
-	}
+		const parseRow = (line: string): string[] =>
+			line.split(",").map((c) => c.trim().replace(/^"|"$/g, "").trim());
 
-	async function commitAdd() {
-		const trimmed = newName.trim();
-		if (!trimmed) { addError = "Name cannot be empty"; return; }
-		const isGenre = activeSection === "genres";
-		if (isGenre) await tagStore.addGenre(trimmed, newColor ?? undefined);
-		else await tagStore.addTag(trimmed, newColor ?? undefined);
-		addingNew = false;
-		newName = "";
-	}
+		const headerRow = parseRow(lines[0]);
+		const groups: Record<string, string[]> = {};
+		for (const groupName of headerRow) {
+			if (groupName) groups[groupName] = [];
+		}
 
-	function handleAddKeydown(e: KeyboardEvent) {
-		if (e.key === "Enter") commitAdd();
-		if (e.key === "Escape") cancelAdd();
-	}
+		for (let r = 1; r < lines.length; r++) {
+			const cells = parseRow(lines[r]);
+			for (let c = 0; c < headerRow.length; c++) {
+				const groupName = headerRow[c];
+				const value = cells[c];
+				if (groupName && value) groups[groupName].push(value);
+			}
+		}
 
-	// ─── Delete ───────────────────────────────────────────────────────────────────
-	function requestDelete(uid: string, kind: "tag" | "group") {
-		deleteConfirmUid = uid;
-		deleteConfirmKind = kind;
-	}
+		const allTagNames = [...new Set(Object.values(groups).flat())];
+		for (const name of allTagNames) {
+			await tagStore.ensureTag(name, kind);
+		}
 
-	async function confirmDelete() {
-		if (!deleteConfirmUid) return;
-		if (deleteConfirmKind === "tag") await tagStore.deleteTag(deleteConfirmUid);
-		else if (deleteConfirmKind === "group") await tagStore.deleteGroup(deleteConfirmUid);
-		deleteConfirmUid = null;
-		deleteConfirmKind = null;
-	}
+		await tagStore.load();
 
-	// ─── Group modal ──────────────────────────────────────────────────────────────
-	function openCreateGroup() {
-		groupModalMode = "create";
-		groupModalUid = null;
-		groupModalName = "";
-		groupModalKind = activeSection === "genres" ? "genre" : "tag";
-		groupModalColor = null;
-		groupModalMembers = new Set();
-		groupModalSearch = "";
-		groupModalError = "";
-		groupModalOpen = true;
-	}
+		for (const [groupName, memberNames] of Object.entries(groups)) {
+			const memberUids = memberNames
+				.map((n) => tagStore.byName.get(n.toLowerCase())?.uid)
+				.filter((uid): uid is string => !!uid);
 
-	function openEditGroup(group: TagGroup) {
-		groupModalMode = "edit";
-		groupModalUid = group.uid;
-		groupModalName = group.name;
-		groupModalKind = group.kind;
-		groupModalColor = group.color;
-		groupModalMembers = new Set(group.member_uids);
-		groupModalSearch = "";
-		groupModalError = "";
-		groupModalOpen = true;
-	}
-
-	function toggleGroupMember(uid: string) {
-		const next = new Set(groupModalMembers);
-		if (next.has(uid)) next.delete(uid);
-		else next.add(uid);
-		groupModalMembers = next;
-	}
-
-	async function commitGroupModal() {
-		const trimmed = groupModalName.trim();
-		if (!trimmed) { groupModalError = "Name cannot be empty"; return; }
-		if (groupModalMembers.size === 0) { groupModalError = "Select at least one member"; return; }
-		if (groupModalMode === "create") {
-			await tagStore.createGroup(
-				trimmed, groupModalKind, [...groupModalMembers], groupModalColor ?? undefined
+			const existingGroup = tagStore.groups.find(
+				(g) => g.name.toLowerCase() === groupName.toLowerCase() && g.kind === kind
 			);
-		} else if (groupModalUid) {
-			await tagStore.updateGroup(groupModalUid, {
-				name: trimmed,
-				color: groupModalColor,
-				memberUids: [...groupModalMembers],
-			});
+
+			if (existingGroup) {
+				const merged = [...new Set([...existingGroup.member_uids, ...memberUids])];
+				await tagStore.updateGroup(existingGroup.uid, { memberUids: merged });
+			} else if (memberUids.length > 0) {
+				await tagStore.createGroup(groupName, kind, memberUids);
+			}
 		}
-		groupModalOpen = false;
 	}
 </script>
 
-<AlertDialog.Root open={!!deleteConfirmUid} onOpenChange={(v) => { if (!v) { deleteConfirmUid = null; deleteConfirmKind = null; } }}>
-	<AlertDialog.Content>
-		<AlertDialog.Header>
-			<AlertDialog.Title>Delete {deleteConfirmKind === "group" ? "group" : "tag"}?</AlertDialog.Title>
-			<AlertDialog.Description>
-				{#if deleteConfirmKind === "tag"}
-					This tag will be removed from every track, album, and artist that has it.
-				{:else}
-					The group will be deleted. The member tags themselves will not be affected.
-				{/if}
-			</AlertDialog.Description>
-		</AlertDialog.Header>
-		<AlertDialog.Footer>
-			<AlertDialog.Cancel>Cancel</AlertDialog.Cancel>
-			<AlertDialog.Action
-				class={buttonVariants({ variant: "destructive" })}
-				onclick={confirmDelete}
-			>Delete</AlertDialog.Action>
-		</AlertDialog.Footer>
-	</AlertDialog.Content>
-</AlertDialog.Root>
+<div class="flex flex-col gap-3 pt-2">
+	<!-- Tab switcher -->
+	<div class="flex rounded-md border text-xs overflow-hidden w-fit">
+		<button
+			class="px-3 py-1.5 transition-colors"
+			class:bg-primary={activeTab === "tags"}
+			class:text-primary-foreground={activeTab === "tags"}
+			class:text-muted-foreground={activeTab !== "tags"}
+			onclick={() => (activeTab = "tags")}
+		>
+			Tags
+		</button>
+		<button
+			class="px-3 py-1.5 transition-colors"
+			class:bg-primary={activeTab === "genres"}
+			class:text-primary-foreground={activeTab === "genres"}
+			class:text-muted-foreground={activeTab !== "genres"}
+			onclick={() => (activeTab = "genres")}
+		>
+			Genres
+		</button>
+	</div>
 
-<Dialog.Root bind:open={groupModalOpen}>
-	<Dialog.Content class="max-w-lg">
-		<Dialog.Header>
-			<Dialog.Title>{groupModalMode === "create" ? "New group" : "Edit group"}</Dialog.Title>
-		</Dialog.Header>
+	<!-- Add row -->
+	<div class="flex gap-2">
+		<input
+			bind:value={newName}
+			placeholder="New {activeTab === 'tags' ? 'tag' : 'genre'}…"
+			class="flex-1 border rounded px-3 py-1.5 text-sm bg-background"
+			onkeydown={(e) => { if (e.key === "Enter") addItem(); }}
+		/>
+		<Button size="sm" onclick={addItem} disabled={!newName.trim()}>
+			<Plus class="w-4 h-4 mr-1" /> Add
+		</Button>
+	</div>
 
-		<div class="flex flex-col gap-3">
-			<div class="flex flex-col gap-1.5">
-				<Label>Group name</Label>
-				<Input placeholder="e.g. Mood" bind:value={groupModalName} />
-			</div>
-
-			<div class="flex gap-4 items-center">
-				<div class="flex flex-col gap-1.5">
-					<Label>Kind</Label>
-					<select
-						bind:value={groupModalKind}
-						class="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm"
+	<!-- Tags accordion -->
+	<div class="border rounded-md overflow-hidden">
+		<button
+			class="flex items-center justify-between w-full px-3 py-2 text-sm font-medium bg-muted/40 hover:bg-muted/60 transition-colors"
+			onclick={() => (tagsOpen = !tagsOpen)}
+		>
+			<span>
+				{activeTab === "tags" ? "Tags" : "Genres"}
+				<span class="text-muted-foreground font-normal">({items.length})</span>
+			</span>
+			<div class="flex items-center gap-2" role="none" onclick={(e) => e.stopPropagation()}>
+				<label class={buttonVariants({ variant: "outline", size: "sm" }) + " cursor-pointer h-6 text-xs px-2"}>
+					<Upload class="w-3 h-3 mr-1" />
+					{importing ? "Importing…" : "Import CSV"}
+					<input
+						type="file"
+						accept=".csv"
+						class="hidden"
+						disabled={importing}
+						onchange={handleCsvImport}
+					/>
+				</label>
+				{#if items.length > 0}
+					<button
+						class={buttonVariants({ variant: "destructive", size: "sm" }) + " h-6 text-xs px-2"}
+						onclick={deleteAll}
 					>
-						<option value="tag">Tags</option>
-						<option value="genre">Genres</option>
-					</select>
-				</div>
-				<div class="flex flex-col gap-1.5">
-					<Label>Color</Label>
-					<div class="flex gap-1.5 flex-wrap">
-						{#each COLORS.slice(0, 8) as c}
-							<button
-								onclick={() => groupModalColor = c}
-								class="w-5 h-5 rounded-full cursor-pointer p-0 transition-transform hover:scale-110"
-								style="background: {c}; outline: {groupModalColor === c ? '2px solid hsl(var(--foreground))' : '2px solid transparent'}; outline-offset: 2px;"
-								aria-label="Color {c}"
-							></button>
-						{/each}
-						<button
-							onclick={() => groupModalColor = null}
-							class="w-5 h-5 rounded-full cursor-pointer flex items-center justify-center text-[10px] transition-transform hover:scale-110"
-							style="background: hsl(var(--muted)); outline: {groupModalColor === null ? '2px solid hsl(var(--foreground))' : '2px solid transparent'}; outline-offset: 2px;"
-							title="No color"
-						>✕</button>
+						<Trash2 class="w-3 h-3 mr-1" /> Delete All
+					</button>
+				{/if}
+				<ChevronDown
+					class="w-4 h-4 text-muted-foreground transition-transform duration-200"
+					style="transform: rotate({tagsOpen ? '180deg' : '0deg'})"
+				/>
+			</div>
+		</button>
+
+		{#if tagsOpen}
+			<div class="flex flex-col divide-y">
+				{#if importError}
+					<p class="text-xs text-destructive px-3 py-2">{importError}</p>
+				{/if}
+				{#each items as tag (tag.uid)}
+					<div class="flex items-center gap-2 px-3 py-1.5 text-sm hover:bg-muted/20">
+						{#if tag.color}
+							<span class="w-2.5 h-2.5 rounded-full shrink-0" style="background:{tag.color}"></span>
+						{/if}
+						{#if editingUid === tag.uid}
+							<input
+								class="flex-1 bg-transparent outline-none text-sm"
+								bind:value={editingName}
+								onkeydown={(e) => {
+									if (e.key === "Enter") commitEdit();
+									if (e.key === "Escape") cancelEdit();
+								}}
+								autofocus
+							/>
+							<button onclick={commitEdit} class="text-primary hover:opacity-70 p-0.5">
+								<Check class="w-3.5 h-3.5" />
+							</button>
+							<button onclick={cancelEdit} class="text-muted-foreground hover:opacity-70 p-0.5">
+								<X class="w-3.5 h-3.5" />
+							</button>
+						{:else}
+							<span class="flex-1 truncate">{tag.name}</span>
+							<button onclick={() => startEdit(tag)} class="text-muted-foreground hover:text-foreground p-0.5">
+								<Pencil class="w-3.5 h-3.5" />
+							</button>
+							<button onclick={() => deleteItem(tag)} class="text-muted-foreground hover:text-destructive p-0.5">
+								<Trash class="w-3.5 h-3.5" />
+							</button>
+						{/if}
 					</div>
-				</div>
+				{:else}
+					<p class="text-sm text-muted-foreground px-3 py-2">No {activeTab} yet.</p>
+				{/each}
 			</div>
+		{/if}
+	</div>
 
-			<div class="flex flex-col gap-1.5">
-				<Label>Members ({groupModalMembers.size} selected)</Label>
-				<Input type="search" placeholder="Filter…" bind:value={groupModalSearch} />
-				<ScrollArea class="h-40 rounded-md border border-border p-2">
-					{#if groupModalTagPool.length === 0}
-						<p class="text-sm text-muted-foreground text-center py-4">
-							No {groupModalKind === "genre" ? "genres" : "tags"} found. Add some first.
-						</p>
-					{:else}
-						<div class="flex flex-wrap gap-1.5">
-							{#each groupModalTagPool as tag (tag.uid)}
-								<button
-									onclick={() => toggleGroupMember(tag.uid)}
-									class="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full border cursor-pointer transition-colors"
-									class:bg-foreground={groupModalMembers.has(tag.uid)}
-									class:text-background={groupModalMembers.has(tag.uid)}
-									class:border-transparent={groupModalMembers.has(tag.uid)}
-									class:bg-transparent={!groupModalMembers.has(tag.uid)}
-									class:text-muted-foreground={!groupModalMembers.has(tag.uid)}
-									class:border-border={!groupModalMembers.has(tag.uid)}
-								>
-									{#if tag.color}
-										<span class="w-2 h-2 rounded-full flex-shrink-0" style="background: {tag.color}"></span>
-									{/if}
-									{tag.name}
-								</button>
-							{/each}
-						</div>
-					{/if}
-				</ScrollArea>
+	<!-- Groups accordion -->
+	<div class="border rounded-md overflow-hidden">
+		<button
+      class="flex items-center justify-between w-full px-3 py-2 text-sm font-medium bg-muted/40 hover:bg-muted/60 transition-colors"
+      onclick={() => (groupsOpen = !groupsOpen)}
+    >
+      <span>
+        Groups
+        <span class="text-muted-foreground font-normal">({visibleGroups.length})</span>
+      </span>
+      <div class="flex items-center gap-2" role="none" onclick={(e) => e.stopPropagation()}>
+        {#if visibleGroups.length > 0}
+          <button
+            class={buttonVariants({ variant: "destructive", size: "sm" }) + " h-6 text-xs px-2"}
+            onclick={deleteAllGroups}
+          >
+            <Trash2 class="w-3 h-3 mr-1" /> Delete All
+          </button>
+        {/if}
+        <ChevronDown
+          class="w-4 h-4 text-muted-foreground transition-transform duration-200"
+          style="transform: rotate({groupsOpen ? '180deg' : '0deg'})"
+        />
+      </div>
+    </button>
+
+		{#if groupsOpen}
+			<div class="flex flex-col divide-y">
+				{#each visibleGroups as group (group.uid)}
+					<div class="flex items-center gap-2 px-3 py-1.5 text-sm hover:bg-muted/20">
+						{#if group.color}
+							<span class="w-2.5 h-2.5 rounded-full shrink-0" style="background:{group.color}"></span>
+						{/if}
+						<span class="flex-1 truncate">{group.name}</span>
+						<span class="text-xs text-muted-foreground shrink-0">{group.member_uids.length} members</span>
+						<button
+							onclick={() => deleteGroup(group.uid, group.name)}
+							class="text-muted-foreground hover:text-destructive p-0.5"
+						>
+							<Trash class="w-3.5 h-3.5" />
+						</button>
+					</div>
+				{:else}
+					<p class="text-sm text-muted-foreground px-3 py-2">No groups yet.</p>
+				{/each}
 			</div>
-
-			{#if groupModalError}
-				<p class="text-xs text-destructive">{groupModalError}</p>
-			{/if}
-		</div>
-
-		<Dialog.Footer>
-			<Button variant="outline" onclick={() => groupModalOpen = false}>Cancel</Button>
-			<Button onclick={commitGroupModal}>
-				{groupModalMode === "create" ? "Create group" : "Save changes"}
-			</Button>
-		</Dialog.Footer>
-	</Dialog.Content>
-</Dialog.Root>
-
-<Accordion.Root type="single" bind:value={activeSection} onValueChange={(v) => { if (v) { activeSection = v; search = ""; addingNew = false; } }} class="flex flex-col gap-1">
-
-  <!-- ── Tags ── -->
-  <Accordion.Item value="tags" class="border rounded-md px-3">
-    <Accordion.Trigger class="py-3 text-sm font-medium hover:no-underline">
-      <div>
-        <span>Tags</span>
-        <Badge variant="secondary" class="ml-auto mr-2 text-[11px]">{tagStore.tags.length}</Badge>
-      </div>
-    </Accordion.Trigger>
-    <Accordion.Content>
-      <div class="flex flex-col gap-2 pb-3">
-        <div class="flex gap-2 justify-between items-center">
-          <span class="text-sm text-muted-foreground">
-            {displayTags.length} {displayTags.length === 1 ? "tag" : "tags"}
-          </span>
-          <div class="flex gap-2 items-center">
-            <Button variant="outline" size="sm" onclick={startAdd}>
-              <Plus class="w-4 h-4 mr-1" /> Add tag
-            </Button>
-            <SearchBar bind:search searchCount={displayTags.length} />
-          </div>
-        </div>
-
-        {#if addingNew && activeSection === "tags"}
-          <div class="rounded-md border border-border bg-muted/40 p-3 flex flex-col gap-2">
-            <div class="flex gap-2 items-center">
-              <span
-                class="w-5 h-5 rounded-full flex-shrink-0 border border-border"
-                style="background: {newColor ?? 'hsl(var(--muted-foreground))'}"
-              ></span>
-              <Input
-                placeholder="Tag name…"
-                bind:value={newName}
-                onkeydown={handleAddKeydown}
-                autofocus
-                class="h-8 text-sm"
-              />
-              <Button size="sm" onclick={commitAdd}><Check class="w-4 h-4" /></Button>
-              <Button size="sm" variant="ghost" onclick={cancelAdd}><X class="w-4 h-4" /></Button>
-            </div>
-            <div class="flex gap-1.5 flex-wrap">
-              {#each COLORS as c}
-                <button
-                  onclick={() => newColor = c}
-                  class="w-5 h-5 rounded-full cursor-pointer p-0 transition-transform hover:scale-110"
-                  style="background: {c}; outline: {newColor === c ? '2px solid hsl(var(--foreground))' : '2px solid transparent'}; outline-offset: 2px;"
-                  aria-label="Color {c}"
-                ></button>
-              {/each}
-              <button
-                onclick={() => newColor = null}
-                class="w-5 h-5 rounded-full cursor-pointer flex items-center justify-center text-[10px] transition-transform hover:scale-110"
-                style="background: hsl(var(--muted)); outline: {newColor === null ? '2px solid hsl(var(--foreground))' : '2px solid transparent'}; outline-offset: 2px;"
-                title="No color"
-              >✕</button>
-            </div>
-            {#if addError}<p class="text-xs text-destructive">{addError}</p>{/if}
-          </div>
-        {/if}
-
-        {#if displayTags.length === 0 && !addingNew}
-          <p class="text-sm text-muted-foreground text-center py-6">No tags yet.</p>
-        {/if}
-
-        <div class="flex flex-col gap-1">
-          {#each displayTags as tag (tag.uid)}
-            {@const groups = groupsForTag(tag.uid)}
-            {#if editingUid === tag.uid}
-              <div class="rounded-md border border-border bg-muted/40 p-2 flex flex-col gap-2">
-                <div class="flex gap-2 items-center">
-                  <span
-                    class="w-5 h-5 rounded-full flex-shrink-0 border border-border"
-                    style="background: {editingColor ?? 'hsl(var(--muted-foreground))'}"
-                  ></span>
-                  <Input bind:value={editingName} onkeydown={handleEditKeydown} autofocus class="h-8 text-sm" />
-                  <Button size="sm" onclick={commitEdit}><Check class="w-4 h-4" /></Button>
-                  <Button size="sm" variant="ghost" onclick={cancelEdit}><X class="w-4 h-4" /></Button>
-                </div>
-                <div class="flex gap-1.5 flex-wrap">
-                  {#each COLORS as c}
-                    <button
-                      onclick={() => editingColor = c}
-                      class="w-5 h-5 rounded-full cursor-pointer p-0 transition-transform hover:scale-110"
-                      style="background: {c}; outline: {editingColor === c ? '2px solid hsl(var(--foreground))' : '2px solid transparent'}; outline-offset: 2px;"
-                      aria-label="Color {c}"
-                    ></button>
-                  {/each}
-                  <button
-                    onclick={() => editingColor = null}
-                    class="w-5 h-5 rounded-full cursor-pointer flex items-center justify-center text-[10px] transition-transform hover:scale-110"
-                    style="background: hsl(var(--muted)); outline: {editingColor === null ? '2px solid hsl(var(--foreground))' : '2px solid transparent'}; outline-offset: 2px;"
-                    title="No color"
-                  >✕</button>
-                </div>
-                {#if editError}<p class="text-xs text-destructive">{editError}</p>{/if}
-              </div>
-            {:else}
-              <div class="tag-row group flex items-center gap-2 px-2 py-1.5 rounded-md border border-transparent hover:border-border hover:bg-muted/40 transition-colors">
-                <span
-                  class="w-2.5 h-2.5 rounded-full flex-shrink-0 border border-border"
-                  style="background: {tag.color ?? 'hsl(var(--muted-foreground))'}"
-                ></span>
-                <span class="text-sm flex-1 min-w-0 truncate">{tag.name}</span>
-                {#if groups.length > 0}
-                  <div class="flex gap-1 flex-shrink-0">
-                    {#each groups.slice(0, 2) as g}
-                      <Badge variant="secondary" class="text-[11px] px-2 py-0">{g.name}</Badge>
-                    {/each}
-                    {#if groups.length > 2}
-                      <span class="text-xs text-muted-foreground">+{groups.length - 2}</span>
-                    {/if}
-                  </div>
-                {/if}
-                <div class="flex gap-1 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <Tooltip.Root>
-                    <Tooltip.Trigger class={buttonVariants({ variant: "ghost", size: "sm" })} onclick={() => startEdit(tag)}>
-                      <Pencil class="w-3.5 h-3.5" />
-                    </Tooltip.Trigger>
-                    <Tooltip.Content><p>Rename</p></Tooltip.Content>
-                  </Tooltip.Root>
-                  <Tooltip.Root>
-                    <Tooltip.Trigger class={buttonVariants({ variant: "ghost", size: "sm" })} onclick={() => requestDelete(tag.uid, "tag")}>
-                      <Trash class="w-3.5 h-3.5 text-destructive" />
-                    </Tooltip.Trigger>
-                    <Tooltip.Content><p>Delete tag</p></Tooltip.Content>
-                  </Tooltip.Root>
-                </div>
-              </div>
-            {/if}
-          {/each}
-        </div>
-      </div>
-    </Accordion.Content>
-  </Accordion.Item>
-
-  <!-- ── Genres ── -->
-  <Accordion.Item value="genres" class="border rounded-md px-3">
-    <Accordion.Trigger class="py-3 text-sm font-medium hover:no-underline">
-      
-      <div>
-        <span>Genres</span>
-        <Badge variant="secondary" class="ml-auto mr-2 text-[11px]">{tagStore.genres.length}</Badge>
-      </div>
-    </Accordion.Trigger>
-    <Accordion.Content>
-      <div class="flex flex-col gap-2 pb-3">
-        <div class="flex gap-2 justify-between items-center">
-          <span class="text-sm text-muted-foreground">
-            {displayTags.length} {displayTags.length === 1 ? "genre" : "genres"}
-          </span>
-          <div class="flex gap-2 items-center">
-            <Button variant="outline" size="sm" onclick={startAdd}>
-              <Plus class="w-4 h-4 mr-1" /> Add genre
-            </Button>
-            <SearchBar bind:search searchCount={displayTags.length} />
-          </div>
-        </div>
-
-        {#if addingNew && activeSection === "genres"}
-          <div class="rounded-md border border-border bg-muted/40 p-3 flex flex-col gap-2">
-            <div class="flex gap-2 items-center">
-              <span
-                class="w-5 h-5 rounded-full flex-shrink-0 border border-border"
-                style="background: {newColor ?? 'hsl(var(--muted-foreground))'}"
-              ></span>
-              <Input
-                placeholder="Genre name…"
-                bind:value={newName}
-                onkeydown={handleAddKeydown}
-                autofocus
-                class="h-8 text-sm"
-              />
-              <Button size="sm" onclick={commitAdd}><Check class="w-4 h-4" /></Button>
-              <Button size="sm" variant="ghost" onclick={cancelAdd}><X class="w-4 h-4" /></Button>
-            </div>
-            <div class="flex gap-1.5 flex-wrap">
-              {#each COLORS as c}
-                <button
-                  onclick={() => newColor = c}
-                  class="w-5 h-5 rounded-full cursor-pointer p-0 transition-transform hover:scale-110"
-                  style="background: {c}; outline: {newColor === c ? '2px solid hsl(var(--foreground))' : '2px solid transparent'}; outline-offset: 2px;"
-                  aria-label="Color {c}"
-                ></button>
-              {/each}
-              <button
-                onclick={() => newColor = null}
-                class="w-5 h-5 rounded-full cursor-pointer flex items-center justify-center text-[10px] transition-transform hover:scale-110"
-                style="background: hsl(var(--muted)); outline: {newColor === null ? '2px solid hsl(var(--foreground))' : '2px solid transparent'}; outline-offset: 2px;"
-                title="No color"
-              >✕</button>
-            </div>
-            {#if addError}<p class="text-xs text-destructive">{addError}</p>{/if}
-          </div>
-        {/if}
-
-        {#if displayTags.length === 0 && !addingNew}
-          <p class="text-sm text-muted-foreground text-center py-6">No genres yet.</p>
-        {/if}
-
-        <div class="flex flex-col gap-1">
-          {#each displayTags as tag (tag.uid)}
-            {@const groups = groupsForTag(tag.uid)}
-            {#if editingUid === tag.uid}
-              <div class="rounded-md border border-border bg-muted/40 p-2 flex flex-col gap-2">
-                <div class="flex gap-2 items-center">
-                  <span
-                    class="w-5 h-5 rounded-full flex-shrink-0 border border-border"
-                    style="background: {editingColor ?? 'hsl(var(--muted-foreground))'}"
-                  ></span>
-                  <Input bind:value={editingName} onkeydown={handleEditKeydown} autofocus class="h-8 text-sm" />
-                  <Button size="sm" onclick={commitEdit}><Check class="w-4 h-4" /></Button>
-                  <Button size="sm" variant="ghost" onclick={cancelEdit}><X class="w-4 h-4" /></Button>
-                </div>
-                <div class="flex gap-1.5 flex-wrap">
-                  {#each COLORS as c}
-                    <button
-                      onclick={() => editingColor = c}
-                      class="w-5 h-5 rounded-full cursor-pointer p-0 transition-transform hover:scale-110"
-                      style="background: {c}; outline: {editingColor === c ? '2px solid hsl(var(--foreground))' : '2px solid transparent'}; outline-offset: 2px;"
-                      aria-label="Color {c}"
-                    ></button>
-                  {/each}
-                  <button
-                    onclick={() => editingColor = null}
-                    class="w-5 h-5 rounded-full cursor-pointer flex items-center justify-center text-[10px] transition-transform hover:scale-110"
-                    style="background: hsl(var(--muted)); outline: {editingColor === null ? '2px solid hsl(var(--foreground))' : '2px solid transparent'}; outline-offset: 2px;"
-                    title="No color"
-                  >✕</button>
-                </div>
-                {#if editError}<p class="text-xs text-destructive">{editError}</p>{/if}
-              </div>
-            {:else}
-              <div class="tag-row group flex items-center gap-2 px-2 py-1.5 rounded-md border border-transparent hover:border-border hover:bg-muted/40 transition-colors">
-                <span
-                  class="w-2.5 h-2.5 rounded-full flex-shrink-0 border border-border"
-                  style="background: {tag.color ?? 'hsl(var(--muted-foreground))'}"
-                ></span>
-                <span class="text-sm flex-1 min-w-0 truncate">{tag.name}</span>
-                {#if groups.length > 0}
-                  <div class="flex gap-1 flex-shrink-0">
-                    {#each groups.slice(0, 2) as g}
-                      <Badge variant="secondary" class="text-[11px] px-2 py-0">{g.name}</Badge>
-                    {/each}
-                    {#if groups.length > 2}
-                      <span class="text-xs text-muted-foreground">+{groups.length - 2}</span>
-                    {/if}
-                  </div>
-                {/if}
-                <div class="flex gap-1 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <Tooltip.Root>
-                    <Tooltip.Trigger class={buttonVariants({ variant: "ghost", size: "sm" })} onclick={() => startEdit(tag)}>
-                      <Pencil class="w-3.5 h-3.5" />
-                    </Tooltip.Trigger>
-                    <Tooltip.Content><p>Rename</p></Tooltip.Content>
-                  </Tooltip.Root>
-                  <Tooltip.Root>
-                    <Tooltip.Trigger class={buttonVariants({ variant: "ghost", size: "sm" })} onclick={() => requestDelete(tag.uid, "tag")}>
-                      <Trash class="w-3.5 h-3.5 text-destructive" />
-                    </Tooltip.Trigger>
-                    <Tooltip.Content><p>Delete genre</p></Tooltip.Content>
-                  </Tooltip.Root>
-                </div>
-              </div>
-            {/if}
-          {/each}
-        </div>
-      </div>
-    </Accordion.Content>
-  </Accordion.Item>
-
-  <!-- ── Groups ── -->
-  <Accordion.Item value="groups" class="border rounded-md px-3">
-    <Accordion.Trigger class="py-3 text-sm font-medium hover:no-underline">
-      
-      <div>
-        <span>Groups</span>
-        <Badge variant="secondary" class="ml-auto mr-2 text-[11px]">{allGroups.length}</Badge>
-      </div>
-    </Accordion.Trigger>
-    <Accordion.Content>
-      <div class="flex flex-col gap-2 pb-3">
-        <div class="flex justify-between items-center">
-          <span class="text-sm text-muted-foreground">
-            {allGroups.length} {allGroups.length === 1 ? "group" : "groups"}
-          </span>
-          <Button variant="outline" size="sm" onclick={openCreateGroup}>
-            <Plus class="w-4 h-4 mr-1" /> New group
-          </Button>
-        </div>
-
-        {#if allGroups.length === 0}
-          <p class="text-sm text-muted-foreground text-center py-6">
-            No groups yet. Groups let you cluster tags — e.g. "Mood" containing happy, sad, angry.
-          </p>
-        {:else}
-          <div class="flex flex-col gap-2">
-            {#each allGroups as group (group.uid)}
-              <div class="rounded-md border border-border p-3 flex flex-col gap-2">
-                <div class="flex items-center justify-between gap-2">
-                  <div class="flex items-center gap-2 min-w-0">
-                    {#if group.color}
-                      <span class="w-2.5 h-2.5 rounded-full flex-shrink-0" style="background: {group.color}"></span>
-                    {/if}
-                    <span class="text-sm font-medium truncate">{group.name}</span>
-                    <Badge variant="secondary" class="text-[11px] px-2 py-0">{group.kind}</Badge>
-                  </div>
-                  <div class="flex gap-1 flex-shrink-0">
-                    <Tooltip.Root>
-                      <Tooltip.Trigger class={buttonVariants({ variant: "ghost", size: "sm" })} onclick={() => openEditGroup(group)}>
-                        <Pencil class="w-3.5 h-3.5" />
-                      </Tooltip.Trigger>
-                      <Tooltip.Content><p>Edit group</p></Tooltip.Content>
-                    </Tooltip.Root>
-                    <Tooltip.Root>
-                      <Tooltip.Trigger class={buttonVariants({ variant: "ghost", size: "sm" })} onclick={() => requestDelete(group.uid, "group")}>
-                        <Trash class="w-3.5 h-3.5 text-destructive" />
-                      </Tooltip.Trigger>
-                      <Tooltip.Content><p>Delete group</p></Tooltip.Content>
-                    </Tooltip.Root>
-                  </div>
-                </div>
-                <div class="flex flex-wrap gap-1">
-                  {#each memberNamesFor(group) as name}
-                    <Badge variant="outline" class="text-[11px] px-2 py-0 text-muted-foreground">{name}</Badge>
-                  {/each}
-                </div>
-              </div>
-            {/each}
-          </div>
-        {/if}
-      </div>
-    </Accordion.Content>
-  </Accordion.Item>
-
-</Accordion.Root>
+		{/if}
+	</div>
+</div>

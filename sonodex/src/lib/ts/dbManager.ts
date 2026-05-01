@@ -413,3 +413,22 @@ export async function createStubTrack(
 
 	return uid;
 }
+
+/**
+ * Remove an album uid from the `albums` JSON field on every track that
+ * references it. Call this before or after deleting the album record itself.
+ */
+export async function removeAlbumFromLinkedTracks(albumUid: string): Promise<void> {
+	const allTracks = await invoke<any[]>("get_tracks");
+
+	for (const track of allTracks) {
+		const albumEntries: any[] = parseJsonArray(track.albums);
+		const filtered = albumEntries.filter((e: any) => e.uid !== albumUid);
+		if (filtered.length === albumEntries.length) continue;
+
+		await invoke("update_track_metadata", {
+			uid: track.uid,
+			update: { albums: JSON.stringify(filtered) },
+		});
+	}
+}
