@@ -25,7 +25,6 @@
 	import { openEditModal } from "$lib/ts/app/editModal.svelte";
 	import { getArtworkColor, parseTags, totalDuration } from "$lib/ts/util/helpers"
 	import { createPersistedViewState } from "$lib/ts/app-states/state_session.svelte";
-	import { buildDiscBreaks, type DiscBreakEntry } from "$lib/ts/util/discHelpers";
 	
 	import type { Album, Track } from "$lib/ts/util/types";
 
@@ -45,11 +44,6 @@
 	let tracks: Track[] = $derived.by(() => {
 		if (!album) return [];
 		return getAlbumTracks(album.uid, view.sort);
-	});
-
-	let discBreaks = $derived.by(() => {
-		if (!album) return new Map<string, DiscBreakEntry>();
-		return buildDiscBreaks(tracks, album.uid, album.emulate_type);
 	});
 
 	let artistAlbums: Album[] = $derived.by(() => {
@@ -131,7 +125,7 @@
 			</div>
 		</div>
 
-		<TrackTable tracks={tracks} columns={view.cols} sort={view.sort} compact={view.compact} discBreaks={discBreaks} />
+		<TrackTable tracks={tracks} columns={view.cols} sort={view.sort} compact={view.compact} albumUid={album.uid} emulateType={album.emulate_type} />
 
 		{#if album.label}
 			<span class="text-muted-foreground text-sm">{album.label}</span>

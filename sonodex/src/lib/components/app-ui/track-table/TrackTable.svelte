@@ -1,29 +1,34 @@
 <script lang="ts">
-
 	// COMPONENTS
 	import { Clock2, Star, ChevronUp, ChevronDown, ChevronsUpDown } from "lucide-svelte"
-   import * as ContextMenu from "$lib/components/ui/context-menu/index.js";
+	import * as ContextMenu from "$lib/components/ui/context-menu/index.js";
 
 	// CUSTOM COMPONENTS
 	import TrackRow from "$lib/components/app-ui/track-table/TrackRow.svelte"
-   import TrackContext from "$lib/components/app-ui/context-menus/TrackContext.svelte";
+	import TrackContext from "$lib/components/app-ui/context-menus/TrackContext.svelte";
 
 	// SCRIPTS
 	import { parseAlbum, parseTrackNumber } from "$lib/ts/util/helpers"
 	import { dragState, endDrag } from "$lib/ts/app-states/state_drag.svelte"
 	import { generateViewId, trackSelection, setTrackSelectionContext, clearTrackSelection, copySelectedToClipboard } from "$lib/ts/app/trackSelection.svelte"
 	import { removeTracksFromPlaylist, reorderPlaylistTracks, addTracksToPlaylist, parseTracks } from "$lib/ts/audio/playlistManager.svelte"
-	import type { DiscBreakEntry } from "$lib/ts/util/discHelpers";
+	import { parseDiscNumber, buildDiscBreaks, type DiscBreakEntry } from "$lib/ts/util/discHelpers";
 
 	// TYPES
 	import type { ColumnState } from "$lib/ts/app/columnConfig.svelte"
 	import type { SortState } from "$lib/ts/app/sortConfig.svelte"
 	import type { Track } from "$lib/ts/util/types"
-   import { library } from "$lib/ts/library.svelte";
+	import { library } from "$lib/ts/library.svelte";
 
 	// PROPS
-	let { tracks, columns, sort, compact = false, playlistUid = null, discBreaks = new Map<string, DiscBreakEntry>() } = $props<{
-		tracks: Track[]; columns: ColumnState; sort: SortState; compact?: boolean; playlistUid?: string | null; discBreaks?: Map<string, DiscBreakEntry>;
+	let { tracks, columns, sort, compact = false, playlistUid = null, albumUid = null, emulateType = null } = $props<{
+		tracks: Track[];
+		columns: ColumnState;
+		sort: SortState;
+		compact?: boolean;
+		playlistUid?: string | null;
+		albumUid?: string | null;
+		emulateType?: string | null;
 	}>();
 
 	// VARIABLES
@@ -31,21 +36,52 @@
 	const v = $derived(columns.visible)
 
 	const sortedTracks = $derived.by(() => {
-		if (!sort.field || !sort.direction) return tracks
 		const dir = sort.direction === "asc" ? 1 : -1
-		return [...tracks].sort((a, b) => {
-			switch (sort.field) {
-				case "title":    return dir * (a.title ?? "").localeCompare(b.title ?? "")
-				case "album":    return dir * (parseAlbum(a.albums) ?? "").localeCompare(parseAlbum(b.albums) ?? "")
-				case "year":     return dir * ((a.year ?? "").localeCompare(b.year ?? ""))
-				case "rating":   return dir * ((a.rating ?? -1) - (b.rating ?? -1))
-				case "duration": return dir * ((a.duration_ms ?? 0) - (b.duration_ms ?? 0))
-				case "label":    return dir * (a.label ?? "").localeCompare(b.label ?? "")
-				case "artist":   return dir * (a.album_artist ?? "").localeCompare(b.album_artist ?? "")
-				case "number":   return dir * (sortByNumber(a, b))
-				default:         return 0
+		const hasSort = !!(sort.field && sort.direction)
+
+		function sortGroup(group: Track[]): Track[] {
+			if (!hasSort) return group
+			return [...group].sort((a, b) => {
+				switch (sort.field) {
+					case "title":    return dir * (a.title ?? "").localeCompare(b.title ?? "")
+					case "album":    return dir * (parseAlbum(a.albums) ?? "").localeCompare(parseAlbum(b.albums) ?? "")
+					case "year":     return dir * ((a.year ?? "").localeCompare(b.year ?? ""))
+					case "rating":   return dir * ((a.rating ?? -1) - (b.rating ?? -1))
+					case "duration": return dir * ((a.duration_ms ?? 0) - (b.duration_ms ?? 0))
+					case "label":    return dir * (a.label ?? "").localeCompare(b.label ?? "")
+					case "artist":   return dir * (a.album_artist ?? "").localeCompare(b.album_artist ?? "")
+					case "number":   return dir * sortByNumber(a, b)
+					default:         return 0
+				}
+			})
+		}
+
+		if (!albumUid) return sortGroup(tracks)
+
+		const noDisc: Track[] = []
+		const discMap = new Map<number, Track[]>()
+
+		for (const track of tracks) {
+			const disc = parseDiscNumber(track.albums, albumUid)
+			if (disc == null) {
+				noDisc.push(track)
+			} else {
+				if (!discMap.has(disc)) discMap.set(disc, [])
+				discMap.get(disc)!.push(track)
 			}
-		})
+		}
+
+		const sortedDiscKeys = [...discMap.keys()].sort((a, b) => a - b)
+
+		return [
+			...sortGroup(noDisc),
+			...sortedDiscKeys.flatMap(d => sortGroup(discMap.get(d)!))
+		]
+	})
+
+	const discBreaks = $derived.by(() => {
+		if (!albumUid) return new Map<string, DiscBreakEntry>()
+		return buildDiscBreaks(sortedTracks, albumUid, emulateType)
 	})
 
 	const gridTemplate = $derived.by(() => {
@@ -53,18 +89,18 @@
 		if (v.number)            	parts.push("40px")
 		if (v.artwork && !compact) parts.push("40px")
 		if (v.title)             	parts.push("1fr")
-		if (v.artist)				 parts.push("1fr")
-		if (v.album)             parts.push("1fr")
-		if (v.year)              parts.push("60px")
-		if (v.rating)            parts.push("60px")
-		if (v.duration)          parts.push("50px")
-		if (v.label)             parts.push("100px")
-		if (v.options)           parts.push("30px")
+		if (v.artist)				parts.push("1fr")
+		if (v.album)             	parts.push("1fr")
+		if (v.year)              	parts.push("60px")
+		if (v.rating)            	parts.push("60px")
+		if (v.duration)          	parts.push("50px")
+		if (v.label)             	parts.push("100px")
+		if (v.options)           	parts.push("30px")
 		return parts.join(" ")
 	})
 
 	const orderedUids = $derived(sortedTracks.map((t) => t.uid))
-	
+
 	let dragOverIndex = $state<number | null>(null)
 	let dragOverPosition = $state<"above" | "below">("below")
 
@@ -76,7 +112,6 @@
 	// FUNCTIONS
 	function sortByNumber(a, b) {
 		if (playlistUid) return 0
-		
 		return (parseTrackNumber(a.albums) ?? 0) - (parseTrackNumber(b.albums) ?? 0)
 	}
 
@@ -90,11 +125,11 @@
 			return
 		}
 		if ((e.ctrlKey || e.metaKey) && e.key === "c") {
-		if (trackSelection.count === 0) return;
-		e.preventDefault();
-		copySelectedToClipboard(orderedUids);
-		return;
-	}
+			if (trackSelection.count === 0) return;
+			e.preventDefault();
+			copySelectedToClipboard(orderedUids);
+			return;
+		}
 		if (e.key === "Delete" && playlistUid && trackSelection.count > 0) {
 			e.preventDefault()
 			removeTracksFromPlaylist(playlistUid, [...trackSelection.selected])
