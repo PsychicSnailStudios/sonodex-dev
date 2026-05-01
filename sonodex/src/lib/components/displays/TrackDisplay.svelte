@@ -131,6 +131,7 @@
 					<Tabs.Trigger value="tags">Tags</Tabs.Trigger>
 					<Tabs.Trigger value="credits">Credits</Tabs.Trigger>
 					<Tabs.Trigger value="explore">Featured On</Tabs.Trigger>
+					<Tabs.Trigger value="linked">Other Versions</Tabs.Trigger>
 					<Tabs.Trigger value="paths">File Paths</Tabs.Trigger>
 				</Tabs.List>
 
@@ -193,6 +194,26 @@
 				</Tabs.Content>
 
 				<Tabs.Content value="explore" class="flex-1 overflow-y-auto mt-2">
+					{#if featuredOnAlbums.length > 0}
+						<div class="flex flex-col gap-2 mt-2">
+							{#each featuredOnAlbums as album}
+								<button
+									onclick={() => setSelection(album.uid, "album")}
+									class="flex items-center gap-3 cursor-pointer p-2 rounded-md bg-muted/50 hover:bg-muted text-left">
+									<ArtworkDisplay uid={album.uid} type="album" size={48} />
+									<div class="flex flex-col">
+										<span class="text-sm font-medium">{album.title}</span>
+										<span class="text-xs text-muted-foreground">{album.album_artist}</span>
+									</div>
+								</button>
+							{/each}
+						</div>
+					{:else}
+						<p class="text-muted-foreground text-sm">No albums found.</p>
+					{/if}
+				</Tabs.Content>
+
+				<Tabs.Content value="linked" class="flex-1 overflow-y-auto mt-2">
 					{#if featuredOnAlbums.length > 0}
 						<div class="flex flex-col gap-2 mt-2">
 							{#each featuredOnAlbums as album}

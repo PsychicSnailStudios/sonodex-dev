@@ -10,7 +10,7 @@
 	import { Slider } from "$lib/components/ui/slider/index.js";
 
 	// SCRIPTS
-	import { player, togglePlay, seek, skipBack, skipNext, toggleLoop, toggleShuffle, setVolume, toggleMute } from "$lib/ts/audio/audioManager.svelte";
+	import { player, getQueueIndex, getQueuedTracks, togglePlay, seek, skipBack, skipNext, toggleLoop, toggleShuffle, setVolume, toggleMute } from "$lib/ts/audio/audioManager.svelte";
 	import { formatDuration } from "$lib/ts/util/helpers";
 
 	// VARIABLES
@@ -42,6 +42,16 @@
 		const s = Math.floor(seconds % 60);
 		return `${m}:${s.toString().padStart(2, "0")}`;
 	}
+
+	let canSkipForward = $derived.by(() => {
+		let queueIndex = getQueueIndex();
+		let queueCount = getQueuedTracks().length;
+
+		let hasNextTrack = queueIndex < queueCount - 1;
+    	let isPlayerActive = player.loopType !== 0 && player.track !== null;
+
+    return hasNextTrack || isPlayerActive;
+	})
 
 </script>
 
@@ -75,7 +85,7 @@
 					<Play size={20} fill="var(--muted)" color="var(--muted)" />
 				{/if}
 			</button>
-			<Button variant="ghost" size="icon" onclick={skipNext}>
+			<Button variant="ghost" size="icon" disabled={!canSkipForward} onclick={skipNext}>
 				<SkipForward />
 			</Button>
 			<Button variant="ghost" size="icon" onclick={toggleLoop}>
@@ -93,12 +103,12 @@
 			<Button variant="ghost" size="icon" onclick={toggleMute}>
 				{#if player.volume === 0 || player.muted}
 					<VolumeOff class="text-muted-foreground" />
-				{:else if player.volume < 0.5}
-					<Volume1 />
+				{:else if player.volume < 0.25}
+				<Volume />
 				{:else if player.volume < 0.75}
-					<Volume2 />
+				<Volume1 />
 				{:else}
-					<Volume />
+				<Volume2 />
 				{/if}
 			</Button>
 			<Slider

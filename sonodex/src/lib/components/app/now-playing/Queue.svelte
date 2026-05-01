@@ -143,6 +143,7 @@
 		{/if}
 	</div>
 
+	{#if upcomingTracks.length > 0}
 	<p class="text-sm text-foreground">Next up:</p>
 
 	<div class="flex justify-between">
@@ -188,4 +189,5 @@
 			{/if}
 		</div>
 	</ScrollArea>
+	{/if}
 </Tabs.Content>
