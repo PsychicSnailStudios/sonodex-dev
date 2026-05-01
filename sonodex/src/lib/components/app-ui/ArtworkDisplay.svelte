@@ -156,7 +156,7 @@
 		<img
 			src={artworkUrl}
 			alt=""
-			class="absolute inset-0 w-full h-full object-cover transition-opacity duration-300 aspect-square"
+			class="absolute inset-0 w-full h-full object-cover transition-opacity duration-500 aspect-square"
 			class:opacity-0={!loaded}
 			onload={() => loaded = true}
 		/>
