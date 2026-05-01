@@ -24,6 +24,10 @@ use profiles::{
     create_profile as new_profile, get_lib_db_path, get_settings_db_path, read_registry,
     write_registry, Profile,
 };
+use argon2::{
+	password_hash::{rand_core::OsRng, PasswordHash, PasswordHasher, PasswordVerifier, SaltString},
+	Argon2,
+};
 use rusqlite::Connection;
 use state::AppState;
 use tauri::{AppHandle, Emitter, Manager, State};
@@ -180,6 +184,112 @@ fn switch_profile(uid: String, state: State<AppState>) -> Result<(), String> {
     write_registry(&registry);
     state.set_uid(uid);
     Ok(())
+}
+
+#[tauri::command]
+fn set_profile_password(uid: String, password: String) -> Result<String, String> {
+	let argon2 = Argon2::default();
+
+	let pw_salt = SaltString::generate(&mut OsRng);
+	let pw_hash = argon2
+		.hash_password(password.as_bytes(), &pw_salt)
+		.map_err(|e| e.to_string())?
+		.to_string();
+
+	let recovery_key: String = {
+		use rand::Rng;
+		let mut rng = rand::thread_rng();
+		let segments: Vec<String> = (0..6)
+			.map(|_| {
+				(0..4)
+					.map(|_| rng.sample(rand::distributions::Alphanumeric) as char)
+					.collect::<String>()
+					.to_uppercase()
+			})
+			.collect();
+		segments.join("-")
+	};
+
+	let rk_salt = SaltString::generate(&mut OsRng);
+	let rk_hash = argon2
+		.hash_password(recovery_key.as_bytes(), &rk_salt)
+		.map_err(|e| e.to_string())?
+		.to_string();
+
+	let mut registry = read_registry();
+	if let Some(profile) = registry.profiles.iter_mut().find(|p| p.uid == uid) {
+		profile.password_hash = Some(pw_hash);
+		profile.recovery_key_hash = Some(rk_hash);
+	} else {
+		return Err("Profile not found".to_string());
+	}
+	write_registry(&registry);
+
+	Ok(recovery_key)
+}
+
+#[tauri::command]
+fn remove_profile_password(uid: String) -> Result<(), String> {
+	let mut registry = read_registry();
+	if let Some(profile) = registry.profiles.iter_mut().find(|p| p.uid == uid) {
+		profile.password_hash = None;
+		profile.recovery_key_hash = None;
+	} else {
+		return Err("Profile not found".to_string());
+	}
+	write_registry(&registry);
+	Ok(())
+}
+
+#[tauri::command]
+fn verify_profile_password(uid: String, password: String) -> Result<bool, String> {
+	let registry = read_registry();
+	let profile = registry
+		.profiles
+		.iter()
+		.find(|p| p.uid == uid)
+		.ok_or("Profile not found")?;
+
+	let hash_str = match &profile.password_hash {
+		Some(h) => h,
+		None => return Ok(true),
+	};
+
+	let parsed = PasswordHash::new(hash_str).map_err(|e| e.to_string())?;
+	Ok(Argon2::default()
+		.verify_password(password.as_bytes(), &parsed)
+		.is_ok())
+}
+
+#[tauri::command]
+fn verify_recovery_key(uid: String, key: String) -> Result<bool, String> {
+	let registry = read_registry();
+	let profile = registry
+		.profiles
+		.iter()
+		.find(|p| p.uid == uid)
+		.ok_or("Profile not found")?;
+
+	let hash_str = match &profile.recovery_key_hash {
+		Some(h) => h,
+		None => return Ok(false),
+	};
+
+	let parsed = PasswordHash::new(hash_str).map_err(|e| e.to_string())?;
+	Ok(Argon2::default()
+		.verify_password(key.as_bytes(), &parsed)
+		.is_ok())
+}
+
+#[tauri::command]
+fn profile_has_password(uid: String) -> Result<bool, String> {
+	let registry = read_registry();
+	let profile = registry
+		.profiles
+		.iter()
+		.find(|p| p.uid == uid)
+		.ok_or("Profile not found")?;
+	Ok(profile.password_hash.is_some())
 }
 
 // ─────────────────────────────────────────────
@@ -2542,6 +2652,11 @@ pub fn run() {
             update_profile_cmd,
             delete_profile_cmd,
             switch_profile,
+            set_profile_password,
+            remove_profile_password,
+            verify_profile_password,
+            verify_recovery_key,
+            profile_has_password,
             add_path,
             remove_path,
             get_paths,

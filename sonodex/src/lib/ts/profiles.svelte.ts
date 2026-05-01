@@ -58,3 +58,23 @@ export async function deleteProfile(uid: string) {
 export async function getProfileAvatar(uid: string): Promise<number[] | null> {
 	return invoke<number[] | null>("get_profile_avatar", { uid });
 }
+
+export async function profileHasPassword(uid: string): Promise<boolean> {
+	return invoke<boolean>("profile_has_password", { uid });
+}
+
+export async function setProfilePassword(uid: string, password: string): Promise<string> {
+	return invoke<string>("set_profile_password", { uid, password });
+}
+
+export async function removeProfilePassword(uid: string): Promise<void> {
+	return invoke<void>("remove_profile_password", { uid });
+}
+
+export async function verifyProfilePassword(uid: string, password: string): Promise<boolean> {
+	return invoke<boolean>("verify_profile_password", { uid, password });
+}
+
+export async function verifyRecoveryKey(uid: string, key: string): Promise<boolean> {
+	return invoke<boolean>("verify_recovery_key", { uid, key });
+}

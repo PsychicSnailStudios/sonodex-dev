@@ -4,15 +4,24 @@
 	import { onMount } from "svelte";
 	
 	// COMPONENTS
-	import { User } from "lucide-svelte";
+	import { User, Eye, EyeOff, Copy, Check } from "lucide-svelte";
 
 	import * as Dialog from "$lib/components/ui/dialog/index.js";
 	import { Button } from "$lib/components/ui/button/index.js";
 	import { Input } from "$lib/components/ui/input/index.js";
 	import { Label } from "$lib/components/ui/label/index.js";
+	import { Separator } from "$lib/components/ui/separator/index.js";
 	
 	// SCRIPTS
-	import { profileState, loadProfiles, updateProfile, getProfileAvatar, } from "$lib/ts/profiles.svelte";
+	import {
+		profileState,
+		loadProfiles,
+		updateProfile,
+		getProfileAvatar,
+		profileHasPassword,
+		setProfilePassword,
+		removeProfilePassword,
+	} from "$lib/ts/profiles.svelte";
 
 	// VARIABLES
 	let { open = $bindable(true) } = $props<{ open: boolean }>();
@@ -21,18 +30,32 @@
 	let editName = $state("");
 	let editAvatarBytes = $state<number[] | null>(null);
 	let editAvatarPreview = $state<string | null>(null);
-
 	let avatarUrls = $state<Record<string, string>>({});
+
+	// PASSWORD
+	let hasPassword = $state(false);
+	let showPasswordSection = $state(false);
+	let newPassword = $state("");
+	let confirmPassword = $state("");
+	let showNewPw = $state(false);
+	let showConfirmPw = $state(false);
+	let passwordError = $state("");
+	let savingPassword = $state(false);
+
+	// RECOVERY KEY
+	let recoveryKey = $state<string | null>(null);
+	let copiedKey = $state(false);
 
 	// APP FUNCTIONS
 	onMount(async () => {
-		
 		await loadProfiles();
 		loadAvatars();
-
 		editName = profileState.active?.name ?? "";
 		editAvatarBytes = null;
 		editAvatarPreview = avatarUrls[profileState.active?.uid ?? ""] ?? null;
+		if (profileState.active) {
+			hasPassword = await profileHasPassword(profileState.active.uid);
+		}
 	});
 
 	// FUNCTIONS
@@ -50,9 +73,7 @@
 		const input = e.currentTarget as HTMLInputElement;
 		const file = input.files?.[0];
 		if (!file) return;
-
 		editAvatarPreview = URL.createObjectURL(file);
-
 		const reader = new FileReader();
 		reader.onload = () => {
 			const arrayBuffer = reader.result as ArrayBuffer;
@@ -72,6 +93,54 @@
 		} finally {
 			saving = false;
 		}
+	}
+
+	async function handleSetPassword() {
+		if (!profileState.active) return;
+		passwordError = "";
+		if (newPassword.length < 4) {
+			passwordError = "Password must be at least 4 characters.";
+			return;
+		}
+		if (newPassword !== confirmPassword) {
+			passwordError = "Passwords do not match.";
+			return;
+		}
+		savingPassword = true;
+		try {
+			const key = await setProfilePassword(profileState.active.uid, newPassword);
+			hasPassword = true;
+			recoveryKey = key;
+			newPassword = "";
+			confirmPassword = "";
+			showPasswordSection = false;
+		} catch (e) {
+			passwordError = String(e);
+		} finally {
+			savingPassword = false;
+		}
+	}
+
+	async function handleRemovePassword() {
+		if (!profileState.active) return;
+		await removeProfilePassword(profileState.active.uid);
+		hasPassword = false;
+		recoveryKey = null;
+		showPasswordSection = false;
+	}
+
+	async function copyRecoveryKey() {
+		if (!recoveryKey) return;
+		await navigator.clipboard.writeText(recoveryKey);
+		copiedKey = true;
+		setTimeout(() => (copiedKey = false), 2000);
+	}
+
+	function openPasswordSection() {
+		showPasswordSection = true;
+		newPassword = "";
+		confirmPassword = "";
+		passwordError = "";
 	}
 </script>
 
@@ -113,6 +182,106 @@
 					placeholder="Enter a name"
 					onkeydown={(e) => { if (e.key === "Enter") handleSaveEdit(); }}
 				/>
+			</div>
+
+			<Separator />
+
+			<!-- PASSWORD SECTION -->
+			<div class="space-y-2">
+				<p class="text-sm font-medium">Password</p>
+
+				{#if recoveryKey}
+					<div class="rounded-md border border-yellow-500 bg-yellow-500/10 p-3 space-y-2">
+						<p class="text-xs text-yellow-600 dark:text-yellow-400 font-medium">Save your recovery key — it won't be shown again.</p>
+						<div class="flex items-center gap-2">
+							<code class="flex-1 text-xs font-mono tracking-widest select-all">{recoveryKey}</code>
+							<Button variant="ghost" size="icon" class="h-7 w-7 flex-shrink-0" onclick={copyRecoveryKey}>
+								{#if copiedKey}
+									<Check class="w-3.5 h-3.5 text-green-500" />
+								{:else}
+									<Copy class="w-3.5 h-3.5" />
+								{/if}
+							</Button>
+						</div>
+					</div>
+				{/if}
+
+				{#if !showPasswordSection}
+					<div class="flex gap-2">
+						<Button variant="outline" size="sm" onclick={openPasswordSection}>
+							{hasPassword ? "Change password" : "Set password"}
+						</Button>
+						{#if hasPassword}
+							<Button variant="ghost" size="sm" class="text-destructive hover:text-destructive" onclick={handleRemovePassword}>
+								Remove
+							</Button>
+						{/if}
+					</div>
+				{:else}
+					<div class="space-y-2">
+						<div class="space-y-1">
+							<Label for="new-pw">New password</Label>
+							<div class="relative">
+								<Input
+									id="new-pw"
+									type={showNewPw ? "text" : "password"}
+									bind:value={newPassword}
+									placeholder="Enter password"
+									class="pr-9"
+								/>
+								<button
+									type="button"
+									class="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+									onclick={() => (showNewPw = !showNewPw)}
+								>
+									{#if showNewPw}
+										<EyeOff class="w-4 h-4" />
+									{:else}
+										<Eye class="w-4 h-4" />
+									{/if}
+								</button>
+							</div>
+						</div>
+
+						<div class="space-y-1">
+							<Label for="confirm-pw">Confirm password</Label>
+							<div class="relative">
+								<Input
+									id="confirm-pw"
+									type={showConfirmPw ? "text" : "password"}
+									bind:value={confirmPassword}
+									placeholder="Confirm password"
+									class="pr-9"
+									onkeydown={(e) => { if (e.key === "Enter") handleSetPassword(); }}
+								/>
+								<button
+									type="button"
+									class="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+									onclick={() => (showConfirmPw = !showConfirmPw)}
+								>
+									{#if showConfirmPw}
+										<EyeOff class="w-4 h-4" />
+									{:else}
+										<Eye class="w-4 h-4" />
+									{/if}
+								</button>
+							</div>
+						</div>
+
+						{#if passwordError}
+							<p class="text-xs text-destructive">{passwordError}</p>
+						{/if}
+
+						<div class="flex gap-2">
+							<Button size="sm" onclick={handleSetPassword} disabled={savingPassword}>
+								{savingPassword ? "Saving…" : "Save password"}
+							</Button>
+							<Button variant="ghost" size="sm" onclick={() => (showPasswordSection = false)}>
+								Cancel
+							</Button>
+						</div>
+					</div>
+				{/if}
 			</div>
 		</div>
 

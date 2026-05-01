@@ -4,9 +4,13 @@ use std::path::PathBuf;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Profile {
-    pub uid: String,
-    pub name: String,
-    pub avatar_blob: Option<Vec<u8>>,
+	pub uid: String,
+	pub name: String,
+	pub avatar_blob: Option<Vec<u8>>,
+	#[serde(default)]
+	pub password_hash: Option<String>,
+	#[serde(default)]
+	pub recovery_key_hash: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -63,13 +67,15 @@ pub fn write_registry(registry: &ProfileRegistry) {
 }
 
 pub fn create_profile(name: &str, avatar_blob: Option<Vec<u8>>) -> Profile {
-    let uid = uuid::Uuid::new_v4().to_string();
-    get_profile_dir(&uid);
-    Profile {
-        uid,
-        name: name.to_string(),
-        avatar_blob,
-    }
+	let uid = uuid::Uuid::new_v4().to_string();
+	get_profile_dir(&uid);
+	Profile {
+		uid,
+		name: name.to_string(),
+		avatar_blob,
+		password_hash: None,
+		recovery_key_hash: None,
+	}
 }
 
 pub fn get_active_profile_uid() -> Option<String> {
