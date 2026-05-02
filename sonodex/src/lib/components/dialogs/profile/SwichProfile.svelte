@@ -42,6 +42,11 @@
 	let showRecovery = $state(false);
 	let recoveryInput = $state("");
 	let recoveryError = $state("");
+	let pendingDeleteUid = $state<string | null>(null);
+	let deletePassword = $state("");
+	let deleteShowPw = $state(false);
+	let deleteError = $state("");
+	let deleteVerifying = $state(false);
 
 	// APP FUNCTIONS
 	onMount(async () => {
@@ -134,9 +139,40 @@
 	}
 
 	async function handleDelete(uid: string) {
+		if (passwordProtected[uid]) {
+			pendingDeleteUid = uid;
+			deletePassword = "";
+			deleteError = "";
+			deleteShowPw = false;
+			return;
+		}
+		await doDelete(uid);
+	}
+
+	async function doDelete(uid: string) {
 		await deleteProfile(uid);
 		await loadAvatars();
 		await loadPasswordFlags();
+	}
+
+	async function handleDeletePasswordSubmit() {
+		if (!pendingDeleteUid) return;
+		deleteVerifying = true;
+		deleteError = "";
+		try {
+			const ok = await verifyProfilePassword(pendingDeleteUid, deletePassword);
+			if (ok) {
+				const uid = pendingDeleteUid;
+				pendingDeleteUid = null;
+				await doDelete(uid);
+			} else {
+				deleteError = "Incorrect password.";
+			}
+		} catch {
+			deleteError = "Verification failed.";
+		} finally {
+			deleteVerifying = false;
+		}
 	}
 
 	function cancelPrompt() {
@@ -188,24 +224,24 @@
 										Switch
 									</Button>
 									<AlertDialog.Root>
-										<AlertDialog.Trigger>
-											<Button variant="ghost" size="sm" class="text-destructive hover:text-destructive">
-												Delete
-											</Button>
-										</AlertDialog.Trigger>
-										<AlertDialog.Content>
-											<AlertDialog.Header>
-												<AlertDialog.Title>Delete profile?</AlertDialog.Title>
-												<AlertDialog.Description>
-													This will permanently delete {profile.name}'s profile and all their library data.
-												</AlertDialog.Description>
-											</AlertDialog.Header>
-											<AlertDialog.Footer>
-												<AlertDialog.Cancel>Cancel</AlertDialog.Cancel>
-												<AlertDialog.Action onclick={() => handleDelete(profile.uid)}>Delete</AlertDialog.Action>
-											</AlertDialog.Footer>
-										</AlertDialog.Content>
-									</AlertDialog.Root>
+									<AlertDialog.Trigger>
+										<Button variant="destructive" size="sm">
+											Delete
+										</Button>
+									</AlertDialog.Trigger>
+									<AlertDialog.Content>
+										<AlertDialog.Header>
+											<AlertDialog.Title>Delete profile?</AlertDialog.Title>
+											<AlertDialog.Description>
+												This will permanently delete {profile.name}'s profile and all their library data.
+											</AlertDialog.Description>
+										</AlertDialog.Header>
+										<AlertDialog.Footer>
+											<AlertDialog.Cancel>Cancel</AlertDialog.Cancel>
+											<AlertDialog.Action onclick={() => handleDelete(profile.uid)}>Delete</AlertDialog.Action>
+										</AlertDialog.Footer>
+									</AlertDialog.Content>
+								</AlertDialog.Root>
 								{/if}
 							</div>
 
@@ -307,6 +343,55 @@
 					{promptVerifying ? "Checking…" : "Unlock"}
 				</Button>
 			{/if}
+		</Dialog.Footer>
+	</Dialog.Content>
+</Dialog.Root>
+
+<!-- DELETE PASSWORD PROMPT -->
+<Dialog.Root open={pendingDeleteUid !== null} onOpenChange={(v) => { if (!v) { pendingDeleteUid = null; deletePassword = ""; deleteError = ""; } }}>
+	<Dialog.Content class="max-w-xs w-full">
+		<Dialog.Header>
+			<Dialog.Title>Confirm Delete</Dialog.Title>
+			<Dialog.Description>
+				Enter the profile password to delete it.
+			</Dialog.Description>
+		</Dialog.Header>
+
+		<div class="space-y-3 py-1">
+			<div class="space-y-1">
+				<Label for="delete-pw">Password</Label>
+				<div class="relative">
+					<Input
+						id="delete-pw"
+						type={deleteShowPw ? "text" : "password"}
+						bind:value={deletePassword}
+						placeholder="Enter password"
+						class="pr-9"
+						onkeydown={(e) => { if (e.key === "Enter") handleDeletePasswordSubmit(); }}
+					/>
+					<button
+						type="button"
+						class="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+						onclick={() => (deleteShowPw = !deleteShowPw)}
+					>
+						{#if deleteShowPw}
+							<EyeOff class="w-4 h-4" />
+						{:else}
+							<Eye class="w-4 h-4" />
+						{/if}
+					</button>
+				</div>
+				{#if deleteError}
+					<p class="text-xs text-destructive">{deleteError}</p>
+				{/if}
+			</div>
+		</div>
+
+		<Dialog.Footer>
+			<Button variant="outline" onclick={() => { pendingDeleteUid = null; deletePassword = ""; deleteError = ""; }}>Cancel</Button>
+			<Button variant="destructive" onclick={handleDeletePasswordSubmit} disabled={deleteVerifying || !deletePassword}>
+				{deleteVerifying ? "Checking…" : "Delete"}
+			</Button>
 		</Dialog.Footer>
 	</Dialog.Content>
 </Dialog.Root>
