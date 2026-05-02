@@ -114,6 +114,21 @@
 			line.split(",").map((c) => c.trim().replace(/^"|"$/g, "").trim());
 
 		const headerRow = parseRow(lines[0]);
+		const firstColumnEmpty = !headerRow[0];
+
+		if (firstColumnEmpty) {
+			const allNames = new Set<string>();
+			for (let r = 1; r < lines.length; r++) {
+				for (const cell of parseRow(lines[r])) {
+					if (cell) allNames.add(cell);
+				}
+			}
+			for (const name of allNames) {
+				await tagStore.ensureTag(name, kind);
+			}
+			return;
+		}
+
 		const groups: Record<string, string[]> = {};
 		for (const groupName of headerRow) {
 			if (groupName) groups[groupName] = [];
