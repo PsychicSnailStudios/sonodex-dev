@@ -18,7 +18,7 @@
 
 	// CUSTOM COMPONENTS
 	import ArtworkEditor from "$lib/components/dialogs/edit-metadata/ArtworkEditor.svelte";
-	import TagSelector from "$lib/components/app-ui/TagSelector.svelte";
+	import TagSelector from "$lib/components/app-ui/tags/TagSelector.svelte";
 
 	// SCRIPTS
 	import { closeEditModal } from "$lib/ts/app/editModal.svelte";

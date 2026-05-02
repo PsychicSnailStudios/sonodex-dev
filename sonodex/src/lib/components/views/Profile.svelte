@@ -11,7 +11,7 @@
 	import { Button } from "$lib/components/ui/button/index.js";
 	
 	// CUSTOM COMPONENTS
-	import TopTracks from "$lib/components/app-ui/TopTracks.svelte";
+	import TopTracks from "$lib/components/app-ui/Analytics.svelte";
 	import AddProfile from "$lib/components/dialogs/profile/AddProfile.svelte";
 	import EditProfile from "$lib/components/dialogs/profile/EditProfile.svelte";
 	import SwichProfile from "$lib/components/dialogs/profile/SwichProfile.svelte";

@@ -15,7 +15,7 @@
 	import TrackTable from "$lib/components/app-ui/track-table/TrackTable.svelte";
 	import AudioCard from "$lib/components/app-ui/AudioCard.svelte";
 	import NavButtons from "$lib/components/app-ui/NavButtons.svelte";
-	import TagList from "$lib/components/app-ui/TagList.svelte";
+	import TagList from "$lib/components/app-ui/tags/TagList.svelte";
 	import DownloadButton from "$lib/components/app-ui/DownloadButton.svelte";
 
 	// SCRIPTS

@@ -19,18 +19,24 @@
 	// SCRIPTS
 	import { loadLibrary, reloadLibrary } from "$lib/ts/library.svelte";
 	import { scanState } from "$lib/ts/app-states/state_session.svelte";
-	import { eq, EQ_BANDS, EQ_PRESETS, loadEqSettings, setEqEnabled, setEqBandGain, applyEqPreset,	} from "$lib/ts/app/eqStore.svelte";
+	import { eq, EQ_BANDS, EQ_PRESETS, loadEqSettings, setEqEnabled, setEqBandGain, applyEqPreset } from "$lib/ts/app/eqStore.svelte";
 	import { applyEqToGraph } from "$lib/ts/audio/audioManager.svelte";
-	import { connectLastfm, disconnectLastfm, lastfmIsConnected, onLastfmConnected, } from "$lib/ts/connections/lastfm";
-	import { connectSpotify, disconnectSpotify, spotifyIsConnected, getSpotifyPlaylists, importSpotifyPlaylist, onSpotifyConnected, type SpotifyPlaylistSummary, } from "$lib/ts/connections/spotify";
+	import { connectLastfm, disconnectLastfm, lastfmIsConnected, onLastfmConnected } from "$lib/ts/connections/lastfm";
+	import { connectSpotify, disconnectSpotify, spotifyIsConnected, getSpotifyPlaylists, importSpotifyPlaylist, onSpotifyConnected, type SpotifyPlaylistSummary } from "$lib/ts/connections/spotify";
+	import { listenbrainzIsConnected, listenbrainzConnect, listenbrainzDisconnect, listenbrainzValidateToken, importSpotifyHistory } from "$lib/ts/connections/listenbrainz";
 	import { toast } from "svelte-sonner";
-	
+
 	// VARIABLES
 	let settings = $state<Record<string, string>>({});
 
 	let lastfmConnected = $state(false);
 	let spotifyConnected = $state(false);
+	let lbConnected = $state(false);
 	let spotifyImportOpen = $state(false);
+
+	let lbTokenInput = $state("");
+	let lbValidating = $state(false);
+	let importingHistory = $state(false);
 
 	let themeOptions = [
 		{ value: "system", label: "System" },
@@ -58,7 +64,7 @@
 		{ value: "{year}/{artist}/{album}", label: "Year / Artist / Album" },
 		{ value: "{artist}", label: "Artist only" },
 	];
- 
+
 	const FILENAME_STYLE_OPTIONS = [
 		{ value: "{track_number} - {title}", label: "01 - Title" },
 		{ value: "{title}", label: "Title" },
@@ -90,6 +96,7 @@
 
 			lastfmConnected = await lastfmIsConnected();
 			spotifyConnected = await spotifyIsConnected();
+			lbConnected = await listenbrainzIsConnected();
 
 			cleanupLastfm = await onLastfmConnected(async () => {
 				lastfmConnected = true;
@@ -154,6 +161,55 @@
 	async function handleSpotifyDisconnect() {
 		await disconnectSpotify();
 		spotifyConnected = false;
+	}
+
+	async function handleLbConnect() {
+		if (!lbTokenInput.trim()) {
+			toast.error("Please enter your ListenBrainz token.");
+			return;
+		}
+		lbValidating = true;
+		try {
+			const valid = await listenbrainzValidateToken(lbTokenInput.trim());
+			if (!valid) {
+				toast.error("Invalid ListenBrainz token.");
+				return;
+			}
+			await listenbrainzConnect(lbTokenInput.trim());
+			lbConnected = true;
+			lbTokenInput = "";
+			toast.success("ListenBrainz connected.");
+		} catch (e) {
+			toast.error("Failed to connect to ListenBrainz.");
+		} finally {
+			lbValidating = false;
+		}
+	}
+
+	async function handleLbDisconnect() {
+		await listenbrainzDisconnect();
+		lbConnected = false;
+	}
+
+	async function handleImportSpotifyHistory() {
+		const selected = await open({
+			multiple: false,
+			filters: [{ name: "Spotify Data ZIP", extensions: ["zip"] }],
+		});
+		if (!selected) return;
+
+		importingHistory = true;
+		const t = toast.loading("Importing Spotify streaming history…");
+		try {
+			const result = await importSpotifyHistory(selected as string);
+			toast.dismiss(t);
+			toast.success(`Imported ${result.imported} listens. ${result.skipped} skipped.`);
+		} catch (e) {
+			toast.dismiss(t);
+			toast.error("Failed to import Spotify history.");
+		} finally {
+			importingHistory = false;
+		}
 	}
 
 </script>
@@ -353,12 +409,18 @@
 								{/if}
 							</p>
 					</div>
+				</div>
+				
+				<div class="flex items-center gap-2">
 					{#if spotifyConnected}
 						<Button variant="outline" onclick={handleSpotifyDisconnect}>Disconnect</Button>
 						<Button variant="outline" onclick={() => spotifyImportOpen = true}>Import Playlists</Button>
 					{:else}
 							<Button onclick={handleSpotifyConnect}>Connect</Button>
 					{/if}
+					<Button variant="outline" onclick={handleImportSpotifyHistory} disabled={importingHistory}>
+						{importingHistory ? "Importing…" : "Import Listening History"}
+					</Button>
 				</div>
 	
 				{#if !spotifyConnected}
@@ -376,7 +438,47 @@
 							onchange={(e) => saveSetting("spotify_client_id", (e.target as HTMLInputElement).value)}
 					/>
 				</div>
-				{/if}	
+				{/if}
+
+				<div class="border-t border-border" />
+	
+				<!-- ListenBrainz -->
+				<div class="flex items-center justify-between gap-4">
+					<div class="flex flex-col gap-0.5">
+						<p class="text-sm font-semibold">ListenBrainz</p>
+						<p class="text-xs text-muted-foreground">
+							{#if lbConnected}
+								Connected — listens will be submitted automatically.
+							{:else}
+								Connect with your user token to submit listens to ListenBrainz.
+							{/if}
+						</p>
+					</div>
+					{#if lbConnected}
+						<Button variant="outline" onclick={handleLbDisconnect}>Disconnect</Button>
+					{/if}
+				</div>
+	
+				{#if !lbConnected}
+				<div class="space-y-1">
+					<label class="text-sm font-medium">ListenBrainz User Token</label>
+					<p class="text-xs text-muted-foreground">
+						Find your token at
+						<a href="https://listenbrainz.org/profile/" target="_blank" class="underline underline-offset-2">listenbrainz.org/profile</a>.
+					</p>
+					<div class="flex gap-2">
+						<input
+							class="flex-1 border rounded px-3 py-2 text-sm bg-background"
+							placeholder="Your ListenBrainz user token"
+							type="password"
+							bind:value={lbTokenInput}
+						/>
+						<Button onclick={handleLbConnect} disabled={lbValidating}>
+							{lbValidating ? "Validating…" : "Connect"}
+						</Button>
+					</div>
+				</div>
+				{/if}
 			</div>
 	
 			<h3 class="font-semibold">Metadata API's</h3>

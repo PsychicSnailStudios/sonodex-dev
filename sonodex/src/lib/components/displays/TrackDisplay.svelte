@@ -15,7 +15,7 @@
    import NavButtons from "$lib/components/app-ui/NavButtons.svelte";
    import TrackPlaylistEditButton from "$lib/components/app-ui/TrackPlaylistEditButton.svelte";
    import TrackRating from "$lib/components/app-ui/TrackRating.svelte";
-	import TagList from "$lib/components/app-ui/TagList.svelte";
+	import TagList from "$lib/components/app-ui/tags/TagList.svelte";
    import ArtistsList from "$lib/components/app-ui/ArtistsList.svelte";
    import LyricsViewer from "$lib/components/app-ui/LyricsViewer.svelte";
 	import DownloadButton from "$lib/components/app-ui/DownloadButton.svelte";

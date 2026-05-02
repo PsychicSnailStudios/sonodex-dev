@@ -49,7 +49,7 @@ function isRemotePath(path: string): boolean {
 		path.startsWith("http://") ||
 		path.startsWith("https://") ||
 		path.startsWith("\\\\") ||
-      path.startsWith("//")
+		path.startsWith("//")
 	);
 }
 
@@ -253,7 +253,7 @@ export function loadPlayerState() {
 }
 
 export function savePlayerState() {
-	if (audio) scrobbleEnd(audio.currentTime);
+	if (audio) scrobbleEnd(audio.currentTime, "appclose", false);
 
 	try {
 		localStorage.setItem(playerKey(), JSON.stringify({
@@ -389,7 +389,7 @@ async function playTrack(track: Track) {
 
 	if (isGhostTrack(track)) {
 		toast.warning("Cannot play track — no file available.");
-		scrobbleStart(track);
+		scrobbleStart(track, "trackdone", false);
 		onTrackEnd(true);
 		return;
 	}
@@ -400,17 +400,15 @@ async function playTrack(track: Track) {
 	const localBr = localBitrate(track);
 	const remoteBr = remoteBitrate(track);
 
-	// Prefer local if it exists and is higher or equal quality (or remote bitrate unknown)
 	const preferLocal = hasLocal && (!hasRemote || localBr >= remoteBr);
 
 	if (preferLocal) {
 		const ok = await tryPlayWithSrc(track, pathToSrc(track.path));
 		if (ok) {
-			scrobbleStart(track);
+			scrobbleStart(track, "trackdone", true);
 			return;
 		}
 
-		// Local failed — mark ghost, try remote
 		await markGhost(track.uid);
 
 		if (!hasRemote) {
@@ -420,15 +418,13 @@ async function playTrack(track: Track) {
 		}
 	}
 
-	// Try remote (either preferred or fallback)
 	if (hasRemote) {
 		if (offlineMode.offline) {
-			// In offline mode: attempt anyway — if it works, exit offline mode
 			const ok = await tryPlayWithSrc(track, pathToSrc(track.remote_path!));
 			if (ok) {
 				offlineMode.offline = false;
 				offlineModeToastShown = false;
-				scrobbleStart(track);
+				scrobbleStart(track, "trackdone", false);
 				return;
 			} else {
 				onTrackEnd(true);
@@ -438,29 +434,21 @@ async function playTrack(track: Track) {
 
 		const ok = await tryPlayWithSrc(track, pathToSrc(track.remote_path!));
 		if (ok) {
-			scrobbleStart(track);
+			scrobbleStart(track, "trackdone", false);
 			return;
 		}
 
-		// Remote failed — check connectivity
 		const online = await checkOnline();
 		if (!online) {
-			const autoOffline = await getAutoOfflineSetting();
-			if (autoOffline) {
-				triggerOfflineMode();
-			} else {
-				triggerOfflineMode();
-			}
-			// Fallback to local if available
+			triggerOfflineMode();
 			if (hasLocal) {
 				const localOk = await tryPlayWithSrc(track, pathToSrc(track.path));
 				if (localOk) {
-					scrobbleStart(track);
+					scrobbleStart(track, "trackdone", true);
 					return;
 				}
 			}
 		} else {
-			// Online but couldn't play — ghost it
 			await markGhost(track.uid);
 			toast.warning("Cannot play track — stream unavailable.");
 		}
@@ -469,7 +457,6 @@ async function playTrack(track: Track) {
 		return;
 	}
 
-	// No remote, no working local
 	toast.warning("Cannot play track — no file available.");
 	onTrackEnd(true);
 }
@@ -680,7 +667,7 @@ export function toggleMute() {
 }
 
 export function skipBack() {
-	scrobbleEnd(audio!.currentTime);
+	scrobbleEnd(audio!.currentTime, "backbtn", true);
 	const el = audio;
 	if (!el) return;
 
@@ -696,7 +683,7 @@ export function skipBack() {
 }
 
 export function skipNext() {
-	scrobbleEnd(audio!.currentTime);
+	scrobbleEnd(audio!.currentTime, "fwdbtn", true);
 	let nextIndex = queueIndex + 1;
 	if (nextIndex >= queuedTracks.length) {
 		if (player.loopType === 2) {
@@ -732,11 +719,11 @@ export function togglePlay() {
 }
 
 function onTrackEnd(skipGhost = false) {
-	if (!skipGhost) scrobbleEnd(audio!.currentTime);
+	if (!skipGhost) scrobbleEnd(audio!.currentTime, "trackdone", false);
 
 	if (player.loopType === 1) {
 		if (audio) {
-			scrobbleStart(player.track!);
+			scrobbleStart(player.track!, "trackdone", !!(player.track && isLocalPath(player.track.path)));
 			audio.currentTime = 0;
 			audio.play();
 		}
@@ -775,7 +762,7 @@ function onTrackEnd(skipGhost = false) {
 	player.currentTime = 0;
 }
 
-// ─── Shuffle algorithms (unchanged) ──────────────────────────────────────────
+// ─── Shuffle algorithms ───────────────────────────────────────────────────────
 
 function spacedShuffle(tracks: Track[]): Track[] {
 	const shuffled = [...tracks];

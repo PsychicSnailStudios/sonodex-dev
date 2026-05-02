@@ -33,7 +33,7 @@
 		warnEmptyFields,
 	} from "$lib/ts/dbManager";
 	import { enrichTrack, fetchLyrics } from "$lib/ts/app/enrichment";
-	import TagSelector from "$lib/components/app-ui/TagSelector.svelte";
+	import TagSelector from "$lib/components/app-ui/tags/TagSelector.svelte";
 
 	import type { TrackAlbumEntry } from "$lib/ts/util/types";
 

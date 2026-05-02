@@ -1653,49 +1653,6 @@ async fn enrich_all_artists(app: AppHandle, state: State<'_, AppState>) -> Resul
 // ─────────────────────────────────────────────
 
 #[tauri::command]
-fn log_scrobble(
-    state: State<AppState>,
-    track_uid: String,
-    artist_uid: String,
-) -> Result<String, String> {
-    let uid = state.get_uid();
-    let conn = open_analytics_conn(&uid).map_err(|e| e.to_string())?;
-    let scrobble_uid = db::analytics_manager::new_scrobble_uid();
-    let scrobble = db::analytics_manager::Scrobble {
-        uid: scrobble_uid.clone(),
-        timestamp: std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_secs() as i64,
-        track_uid,
-        artist_uid,
-        duration_played: 0,
-        did_seek: false,
-        did_pause: false,
-    };
-    db::analytics_manager::log_scrobble(&conn, &scrobble).map_err(|e| e.to_string())?;
-    Ok(scrobble_uid)
-}
-
-#[tauri::command]
-fn update_scrobble(
-    state: State<AppState>,
-    uid: String,
-    duration_played: i64,
-    did_seek: bool,
-    did_pause: bool,
-) -> Result<(), String> {
-    let profile_uid = state.get_uid();
-    let conn = open_analytics_conn(&profile_uid).map_err(|e| e.to_string())?;
-    let update = db::analytics_manager::ScrobbleUpdate {
-        duration_played,
-        did_seek,
-        did_pause,
-    };
-    db::analytics_manager::update_scrobble(&conn, &uid, &update).map_err(|e| e.to_string())
-}
-
-#[tauri::command]
 fn get_scrobbles(state: State<AppState>) -> Result<Vec<db::analytics_manager::Scrobble>, String> {
     let uid = state.get_uid();
     let conn = open_analytics_conn(&uid).map_err(|e| e.to_string())?;
@@ -1717,6 +1674,227 @@ fn delete_scrobble(state: State<AppState>, uid: String) -> Result<(), String> {
     let profile_uid = state.get_uid();
     let conn = open_analytics_conn(&profile_uid).map_err(|e| e.to_string())?;
     db::analytics_manager::delete_scrobble(&conn, &uid).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn log_scrobble(
+	state: State<AppState>,
+	track_uid: String,
+	artist_uid: String,
+	reason_start: Option<String>,
+	shuffle: Option<bool>,
+	offline: Option<bool>,
+	playing_local: Option<bool>,
+	track_name: Option<String>,
+	track_artist: Option<String>,
+	track_album: Option<String>,
+) -> Result<String, String> {
+	let uid = state.get_uid();
+	let conn = open_analytics_conn(&uid).map_err(|e| e.to_string())?;
+	let scrobble_uid = db::analytics_manager::new_scrobble_uid();
+	let scrobble = db::analytics_manager::Scrobble {
+		uid: scrobble_uid.clone(),
+		timestamp: std::time::SystemTime::now()
+			.duration_since(std::time::UNIX_EPOCH)
+			.unwrap_or_default()
+			.as_secs() as i64,
+		track_uid,
+		artist_uid,
+		duration_played: 0,
+		did_seek: false,
+		did_pause: false,
+		reason_start,
+		reason_end: None,
+		shuffle,
+		skipped: None,
+		offline,
+		playing_local,
+		track_name,
+		track_artist,
+		track_album,
+	};
+	db::analytics_manager::log_scrobble(&conn, &scrobble).map_err(|e| e.to_string())?;
+	Ok(scrobble_uid)
+}
+
+#[tauri::command]
+fn update_scrobble(
+	state: State<AppState>,
+	uid: String,
+	duration_played: i64,
+	did_seek: bool,
+	did_pause: bool,
+	reason_end: Option<String>,
+	skipped: Option<bool>,
+) -> Result<(), String> {
+	let profile_uid = state.get_uid();
+	let conn = open_analytics_conn(&profile_uid).map_err(|e| e.to_string())?;
+	let update = db::analytics_manager::ScrobbleUpdate {
+		duration_played,
+		did_seek,
+		did_pause,
+		reason_end,
+		skipped,
+	};
+	db::analytics_manager::update_scrobble(&conn, &uid, &update).map_err(|e| e.to_string())
+}
+
+// ─────────────────────────────────────────────
+// LISTENBRAINZ
+// ─────────────────────────────────────────────
+
+#[tauri::command]
+fn listenbrainz_connection_status(state: State<AppState>) -> Result<bool, String> {
+	let uid = state.get_uid();
+	let conn = open_settings_conn(&uid);
+	Ok(crate::connections::listenbrainz::listenbrainz_is_connected(&conn))
+}
+
+#[tauri::command]
+async fn listenbrainz_validate_token_cmd(token: String) -> Result<bool, String> {
+	crate::connections::listenbrainz::listenbrainz_validate_token(&token).await
+}
+
+#[tauri::command]
+fn listenbrainz_connect_cmd(state: State<AppState>, token: String) -> Result<(), String> {
+	let uid = state.get_uid();
+	crate::connections::listenbrainz::listenbrainz_connect(&uid, token)
+}
+
+#[tauri::command]
+fn listenbrainz_disconnect_cmd(state: State<AppState>) -> Result<(), String> {
+	let uid = state.get_uid();
+	crate::connections::listenbrainz::listenbrainz_disconnect(&uid)
+}
+
+// ─────────────────────────────────────────────
+// SPOTIFY HISTORY IMPORT
+// ─────────────────────────────────────────────
+
+#[derive(serde::Deserialize)]
+struct SpotifyStreamEntry {
+	ts: Option<String>,
+	ms_played: Option<i64>,
+	master_metadata_track_name: Option<String>,
+	master_metadata_album_artist_name: Option<String>,
+	master_metadata_album_album_name: Option<String>,
+	reason_start: Option<String>,
+	reason_end: Option<String>,
+	shuffle: Option<bool>,
+	skipped: Option<bool>,
+	offline: Option<bool>,
+}
+
+#[derive(serde::Serialize)]
+struct ImportResult {
+	imported: usize,
+	skipped: usize,
+}
+
+#[tauri::command]
+fn import_spotify_history_cmd(state: State<AppState>, zip_path: String) -> Result<ImportResult, String> {
+	use std::io::Read;
+
+	let uid = state.get_uid();
+	let file = std::fs::File::open(&zip_path).map_err(|e| format!("open zip: {}", e))?;
+	let mut archive = zip::ZipArchive::new(file).map_err(|e| format!("read zip: {}", e))?;
+
+	let lib_conn = open_lib_conn(&uid);
+	let analytics_conn = open_analytics_conn(&uid).map_err(|e| e.to_string())?;
+
+	let all_tracks = db::get_all_tracks(&lib_conn).unwrap_or_default();
+	let all_artists = db::get_all_artists(&lib_conn).unwrap_or_default();
+
+	let mut imported = 0usize;
+	let mut skipped = 0usize;
+
+	for i in 0..archive.len() {
+		let mut entry = archive.by_index(i).map_err(|e| format!("zip entry: {}", e))?;
+
+		if entry.is_dir() {
+			continue;
+		}
+
+		let name = entry.name().to_string();
+		if !name.contains("Streaming_History_Audio") || !name.ends_with(".json") {
+			continue;
+		}
+
+		let mut content = String::new();
+		if entry.read_to_string(&mut content).is_err() {
+			continue;
+		}
+
+		let entries: Vec<SpotifyStreamEntry> = match serde_json::from_str(&content) {
+			Ok(v) => v,
+			Err(_) => continue,
+		};
+
+		for item in entries {
+			let ms_played = item.ms_played.unwrap_or(0);
+			if ms_played < 5000 {
+				skipped += 1;
+				continue;
+			}
+
+			let timestamp = item.ts.as_deref().and_then(|ts| {
+				chrono::DateTime::parse_from_rfc3339(ts)
+					.ok()
+					.map(|dt| dt.timestamp())
+			}).unwrap_or(0);
+
+			let track_name = item.master_metadata_track_name.clone();
+			let artist_name = item.master_metadata_album_artist_name.clone();
+			let album_name = item.master_metadata_album_album_name.clone();
+
+			let track_uid = track_name.as_deref().and_then(|tn| {
+				let tn_lower = tn.to_lowercase();
+				all_tracks.iter().find(|t| {
+					t.title.as_deref().map(|s| s.to_lowercase()) == Some(tn_lower.clone())
+					&& artist_name.as_deref().map_or(true, |an| {
+						let an_lower = an.to_lowercase();
+						t.album_artist.as_deref().map(|s| s.to_lowercase()) == Some(an_lower.clone())
+						|| t.artists.as_deref()
+							.and_then(|a| serde_json::from_str::<Vec<String>>(a).ok())
+							.map_or(false, |v| v.iter().any(|s| s.to_lowercase() == an_lower))
+					})
+				}).map(|t| t.uid.clone())
+			}).unwrap_or_default();
+
+			let artist_uid = artist_name.as_deref().and_then(|an| {
+				let an_lower = an.to_lowercase();
+				all_artists.iter().find(|a| a.name.to_lowercase() == an_lower)
+					.map(|a| a.uid.clone())
+			}).unwrap_or_default();
+
+			let scrobble_uid = db::analytics_manager::new_scrobble_uid();
+			let scrobble = db::analytics_manager::Scrobble {
+				uid: scrobble_uid,
+				timestamp,
+				track_uid,
+				artist_uid,
+				duration_played: ms_played,
+				did_seek: false,
+				did_pause: false,
+				reason_start: item.reason_start,
+				reason_end: item.reason_end,
+				shuffle: item.shuffle,
+				skipped: item.skipped,
+				offline: item.offline,
+				playing_local: Some(false),
+				track_name,
+				track_artist: artist_name,
+				track_album: album_name,
+			};
+
+			match db::analytics_manager::log_scrobble(&analytics_conn, &scrobble) {
+				Ok(_) => imported += 1,
+				Err(_) => skipped += 1,
+			}
+		}
+	}
+
+	Ok(ImportResult { imported, skipped })
 }
 
 // ─────────────────────────────────────────────
@@ -1760,14 +1938,26 @@ fn lastfm_connection_status(state: State<'_, AppState>) -> Result<bool, String> 
 
 #[tauri::command]
 async fn scrobble_track(uid: String, state: State<'_, AppState>) -> Result<(), String> {
-    let profile_uid = state.get_uid();
-    lastfm_auth::scrobble_track(&profile_uid, &uid).await
+	let profile_uid = state.get_uid();
+	let timestamp = std::time::SystemTime::now()
+		.duration_since(std::time::UNIX_EPOCH)
+		.unwrap_or_default()
+		.as_secs() as i64;
+ 
+	let _ = lastfm_auth::scrobble_track(&profile_uid, &uid).await;
+	let _ = crate::connections::listenbrainz::submit_listen(&profile_uid, &uid, timestamp).await;
+ 
+	Ok(())
 }
 
 #[tauri::command]
 async fn update_now_playing(uid: String, state: State<'_, AppState>) -> Result<(), String> {
-    let profile_uid = state.get_uid();
-    lastfm_auth::update_now_playing(&profile_uid, &uid).await
+	let profile_uid = state.get_uid();
+ 
+	let _ = lastfm_auth::update_now_playing(&profile_uid, &uid).await;
+	let _ = crate::connections::listenbrainz::update_now_playing(&profile_uid, &uid).await;
+ 
+	Ok(())
 }
 
 // ─────────────────────────────────────────────
@@ -2738,6 +2928,11 @@ pub fn run() {
             download_playlist_tracks_cmd,
             sync_offline_subscriptions_cmd,
             unsubscribe_offline_cmd,
+            listenbrainz_connection_status,
+            listenbrainz_validate_token_cmd,
+            listenbrainz_connect_cmd,
+            listenbrainz_disconnect_cmd,
+            import_spotify_history_cmd,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

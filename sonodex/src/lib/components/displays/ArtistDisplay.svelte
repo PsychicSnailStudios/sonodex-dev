@@ -15,8 +15,8 @@
 	import ArtworkDisplay from "$lib/components/app-ui/ArtworkDisplay.svelte";
 	import AudioCard from "$lib/components/app-ui/AudioCard.svelte";
 	import NavButtons from "$lib/components/app-ui/NavButtons.svelte";
-	import TopTracks from "$lib/components/app-ui/TopTracks.svelte";
-	import TagList from "$lib/components/app-ui/TagList.svelte";
+	import ArtistTopTracks from "$lib/components/app-ui/ArtistTopTracks.svelte";
+	import TagList from "$lib/components/app-ui/tags/TagList.svelte";
 
 	// SCRIPTS
 	import { selection } from "$lib/ts/app-states/state_session.svelte";
@@ -134,7 +134,7 @@
 				<TagList tags={tags} canEdit={false} />
 
 				<h3 class="text-sm font-semibold mb-2 mt-2 pt-4">TOP SONGS</h3>
-				<TopTracks uid={artist.uid} />
+				<ArtistTopTracks artistUid={artist.uid} artistName={artist.name} />
 			</Tabs.Content>
 
 			<Tabs.Content value="discography" class="flex-1 overflow-y-auto">
@@ -150,8 +150,8 @@
 			</Tabs.Content>
 
 			<Tabs.Content value="about" class="flex-1 overflow-y-auto">
-				<h3 class="text-sm font-semibold mb-2 mt-2">AKA</h3>
 				{#if artist.aka}
+				<h3 class="text-sm font-semibold mb-2 mt-2">AKA</h3>
 					{@const akaList = JSON.parse(artist.aka) as string[]}
 					<div class="flex flex-row gap-1 flex-wrap">
 						{#each akaList as aka, i}
