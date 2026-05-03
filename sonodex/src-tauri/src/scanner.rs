@@ -388,7 +388,6 @@ fn parse_folder_path(path: &Path) -> FilenameMetadata {
 
 	let immediate = components[components.len() - 1];
 
-	// If the immediate parent is a disc folder, skip up to the real album folder
 	let (folder, artist_idx) = if is_disc_folder(immediate) && components.len() >= 3 {
 		(components[components.len() - 2], components.len() - 3)
 	} else {
@@ -407,7 +406,6 @@ fn parse_folder_path(path: &Path) -> FilenameMetadata {
 
 	let artist = components[artist_idx].to_string();
 
-	// Check for year in the component above artist (Year/Artist/Album structure)
 	if artist_idx >= 1 {
 		let maybe_year = components[artist_idx - 1];
 		if maybe_year.len() == 4 && maybe_year.parse::<u32>().is_ok() {
@@ -445,19 +443,6 @@ fn parse_folder_path(path: &Path) -> FilenameMetadata {
 /// Match criteria: same title (case-insensitive) + same album_artist/first artist + duration within 1000ms.
 pub fn find_remote_local_counterpart(conn: &Connection, incoming: &Track) -> Option<String> {
 	let incoming_title = incoming.title.as_deref()?.to_lowercase();
-	let incoming_artist = incoming
-		.album_artist
-		.as_deref()
-		.or_else(|| {
-			incoming.artists.as_deref().and_then(|a| {
-				serde_json::from_str::<Vec<String>>(a)
-					.ok()
-					.and_then(|v| v.into_iter().next())
-					.map(|s| Box::leak(s.into_boxed_str()) as &str)
-					.map(|_| "")
-			})
-		})
-		.map(|s| s.to_lowercase());
 
 	let incoming_artist_owned: Option<String> = incoming
 		.album_artist
@@ -932,7 +917,7 @@ pub fn read_track_with_settings(
 		id: None,
 		uid: generate_uid("t"),
 		path: local_path,
-		remote_path: remote_path,
+		remote_path,
 		last_modified,
 		title,
 		artists,
@@ -952,7 +937,7 @@ pub fn read_track_with_settings(
 		artwork_path: None,
 		artwork_thumb: artwork_blob.as_deref().and_then(crate::thumb::make_thumb),
 		format: format.clone(),
-		bitrate: bitrate,
+		bitrate,
 		remote_data: None,
 		track_data: {
 			let td = serde_json::json!({
@@ -1112,6 +1097,8 @@ fn find_or_create_artist(conn: &Connection, name: &str) -> Option<(i64, String)>
 	Some((created_artist.id?, uid))
 }
 
+// process_track is called after upsert_track succeeds.
+// conn must be open to the specific library db being scanned (not merged.db).
 pub fn process_track(conn: &Connection, track: &Track) {
 	let track_uid = track.uid.clone();
 	let track_title = track.title.as_deref();
@@ -1212,6 +1199,10 @@ pub fn process_track(conn: &Connection, track: &Track) {
 	}
 }
 
+// scan_directory_with_progress now takes an explicit lib_conn that points to the
+// target library db. The caller is responsible for opening the correct db.
+// settings are still read via the ATTACHed settings schema on lib_conn.
+// After the scan completes, the caller should trigger an incremental merge update.
 pub fn scan_directory_with_progress(conn: &Connection, dir: &str, app: &AppHandle) {
 	let priority_title = get_setting(conn, "filename_priority_title")
 		.ok()

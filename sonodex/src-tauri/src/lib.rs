@@ -5,6 +5,7 @@ mod profiles;
 mod scanner;
 mod state;
 mod watcher;
+mod library_manager;
 pub mod thumb;
 
 use db::{
@@ -21,8 +22,8 @@ use crate::connections::spotify_auth;
 use crate::db::MetadataUpdate;
 
 use profiles::{
-    create_profile as new_profile, get_lib_db_path, get_settings_db_path, read_registry,
-    write_registry, Profile,
+	create_profile as new_profile, get_lib_db_path, get_library_db_path,
+	get_local_library_db_path, get_settings_db_path, read_registry, write_registry, Profile,
 };
 use argon2::{
 	password_hash::{rand_core::OsRng, PasswordHash, PasswordHasher, PasswordVerifier, SaltString},
@@ -58,6 +59,18 @@ pub fn open_lib_conn(uid: &str) -> Connection {
     ))
     .ok();
     conn
+}
+
+pub fn open_local_library_conn(uid: &str) -> Connection {
+	let path = get_local_library_db_path(uid);
+	let conn = Connection::open(&path).expect("Failed to open local library database");
+	let settings_path = get_settings_db_path(uid);
+	conn.execute_batch(&format!(
+		"ATTACH DATABASE '{}' AS settings;",
+		settings_path.to_string_lossy().replace('\'', "''")
+	))
+	.ok();
+	conn
 }
 
 // ─────────────────────────────────────────────
@@ -103,42 +116,45 @@ fn get_profile_avatar(uid: String) -> Result<Option<Vec<u8>>, String> {
 
 #[tauri::command]
 fn create_profile_cmd(
-    app: AppHandle,
-    state: State<AppState>,
-    name: String,
-    avatar_blob: Option<Vec<u8>>,
-    copy_paths_from: Option<String>,
+	app: AppHandle,
+	state: State<AppState>,
+	name: String,
+	avatar_blob: Option<Vec<u8>>,
+	copy_paths_from: Option<String>,
 ) -> Result<Profile, String> {
-    let profile = new_profile(&name, avatar_blob);
+	let profile = new_profile(&name, avatar_blob);
 
-    let settings_conn = open_settings_conn(&profile.uid);
-    init_settings_db(&settings_conn).map_err(|e| e.to_string())?;
+	let settings_conn = open_settings_conn(&profile.uid);
+	init_settings_db(&settings_conn).map_err(|e| e.to_string())?;
 
-    let lib_conn = Connection::open(get_lib_db_path(&profile.uid)).map_err(|e| e.to_string())?;
-    init_lib_db(&lib_conn).map_err(|e| e.to_string())?;
+	let lib_conn = Connection::open(get_lib_db_path(&profile.uid)).map_err(|e| e.to_string())?;
+	db::init_lib_db(&lib_conn).map_err(|e| e.to_string())?;
 
-    if let Some(source_uid) = copy_paths_from {
-        let source_conn = open_settings_conn(&source_uid);
-        let paths = get_library_paths(&source_conn).unwrap_or_default();
-        for p in paths {
-            add_library_path(&settings_conn, &p.path).ok();
-        }
-    }
+	// Bootstrap the new federated library structure
+	library_manager::ensure_default_library(&profile.uid)?;
 
-    let mut registry = read_registry();
-    let is_first = registry.profiles.is_empty();
-    registry.profiles.push(profile.clone());
-    if is_first {
-        registry.active = profile.uid.clone();
-        state.set_uid(profile.uid.clone());
-    }
-    write_registry(&registry);
+	if let Some(source_uid) = copy_paths_from {
+		let source_conn = open_settings_conn(&source_uid);
+		let paths = get_library_paths(&source_conn).unwrap_or_default();
+		for p in paths {
+			add_library_path(&settings_conn, &p.path).ok();
+		}
+	}
 
-    if is_first {
-        app.emit("profile:ready", ()).ok();
-    }
+	let mut registry = read_registry();
+	let is_first = registry.profiles.is_empty();
+	registry.profiles.push(profile.clone());
+	if is_first {
+		registry.active = profile.uid.clone();
+		state.set_uid(profile.uid.clone());
+	}
+	write_registry(&registry);
 
-    Ok(profile)
+	if is_first {
+		app.emit("profile:ready", ()).ok();
+	}
+
+	Ok(profile)
 }
 
 #[tauri::command]
@@ -301,103 +317,139 @@ fn normalize_path(path: &str) -> String {
 }
 
 #[tauri::command]
-fn add_path(app: AppHandle, state: State<AppState>, path: String) -> Result<(), String> {
-    let path = normalize_path(&path);
-    let uid = state.get_uid();
-    let settings_conn = open_settings_conn(&uid);
-    add_library_path(&settings_conn, &path).map_err(|e| e.to_string())?;
+fn add_path(
+	app: AppHandle,
+	state: State<AppState>,
+	path: String,
+	lib_uid: Option<String>,
+) -> Result<(), String> {
+	let path = normalize_path(&path);
+	let uid = state.get_uid();
+	let settings_conn = open_settings_conn(&uid);
 
-    let app_clone = app.clone();
-    let path_clone = path.clone();
-    let uid_clone = uid.clone();
-    std::thread::spawn(move || {
-        let lib_conn = open_lib_conn(&uid_clone);
-        scanner::scan_directory_with_progress(&lib_conn, &path_clone, &app_clone);
+	// Resolve which library to scan into — default to the local default library
+	let target_lib_uid = match lib_uid {
+		Some(ref l) => l.clone(),
+		None => {
+			library_manager::ensure_default_library(&uid)?;
+			db::library_registry::get_default_library(&settings_conn)
+				.map_err(|e| e.to_string())?
+				.ok_or("No default library found")?
+				.uid
+		}
+	};
 
-        let settings_conn = open_settings_conn(&uid_clone);
-        let auto_tracks = db::get_setting(&settings_conn, "auto_enrich_tracks")
-            .ok()
-            .flatten()
-            .map(|v| v == "true")
-            .unwrap_or(false);
-        let auto_albums = db::get_setting(&settings_conn, "auto_enrich_albums")
-            .ok()
-            .flatten()
-            .map(|v| v == "true")
-            .unwrap_or(false);
-        let auto_artists = db::get_setting(&settings_conn, "auto_enrich_artists")
-            .ok()
-            .flatten()
-            .map(|v| v == "true")
-            .unwrap_or(false);
+	add_library_path(&settings_conn, &path).map_err(|e| e.to_string())?;
 
-        if auto_tracks || auto_albums || auto_artists {
-            let app_enrich = app_clone.clone();
-            let uid_enrich = uid_clone.clone();
-            tauri::async_runtime::spawn(async move {
-                let state = app_enrich.state::<AppState>();
-                if auto_tracks {
-                    let _ = enrich_all(app_enrich.clone(), state.clone()).await;
-                }
-                if auto_albums {
-                    let _ = enrich_all_albums(app_enrich.clone(), state.clone()).await;
-                }
-                if auto_artists {
-                    let _ = enrich_all_artists(app_enrich.clone(), state.clone()).await;
-                }
-                let _ = uid_enrich;
-            });
-        }
+	// Also store lib_uid alongside the path so we know which library owns it
+	settings_conn.execute(
+		"UPDATE library_paths SET lib_uid = ?1 WHERE path = ?2",
+		rusqlite::params![target_lib_uid, path],
+	).ok();
 
-        let settings_conn2 = open_settings_conn(&uid_clone);
-        let paths = get_library_paths(&settings_conn2)
-            .unwrap_or_default()
-            .into_iter()
-            .map(|p| p.path)
-            .collect();
-        watcher::start_watcher(app_clone, uid_clone, paths);
-    });
+	let app_clone = app.clone();
+	let path_clone = path.clone();
+	let uid_clone = uid.clone();
+	let lib_uid_clone = target_lib_uid.clone();
 
-    Ok(())
+	std::thread::spawn(move || {
+		let lib_path = get_library_db_path(&uid_clone, &lib_uid_clone);
+		let lib_conn = Connection::open(&lib_path).expect("Failed to open library db");
+		let settings_path = get_settings_db_path(&uid_clone);
+		lib_conn.execute_batch(&format!(
+			"ATTACH DATABASE '{}' AS settings;",
+			settings_path.to_string_lossy().replace('\'', "''")
+		)).ok();
+		scanner::scan_directory_with_progress(&lib_conn, &path_clone, &app_clone);
+
+		// Incremental merge after scan
+		let _ = library_manager::incremental_update(&uid_clone, &[lib_uid_clone.clone()]);
+
+		let settings_conn2 = open_settings_conn(&uid_clone);
+		let auto_tracks = db::get_setting(&settings_conn2, "auto_enrich_tracks")
+			.ok().flatten().map(|v| v == "true").unwrap_or(false);
+		let auto_albums = db::get_setting(&settings_conn2, "auto_enrich_albums")
+			.ok().flatten().map(|v| v == "true").unwrap_or(false);
+		let auto_artists = db::get_setting(&settings_conn2, "auto_enrich_artists")
+			.ok().flatten().map(|v| v == "true").unwrap_or(false);
+
+		if auto_tracks || auto_albums || auto_artists {
+			let app_enrich = app_clone.clone();
+			tauri::async_runtime::spawn(async move {
+				let state = app_enrich.state::<AppState>();
+				if auto_tracks { let _ = enrich_all(app_enrich.clone(), state.clone()).await; }
+				if auto_albums { let _ = enrich_all_albums(app_enrich.clone(), state.clone()).await; }
+				if auto_artists { let _ = enrich_all_artists(app_enrich.clone(), state.clone()).await; }
+			});
+		}
+
+		let settings_conn3 = open_settings_conn(&uid_clone);
+		let paths = get_library_paths(&settings_conn3)
+			.unwrap_or_default()
+			.into_iter()
+			.map(|p| p.path)
+			.collect();
+		watcher::start_watcher(app_clone, uid_clone, lib_uid_clone, paths);
+	});
+
+	Ok(())
 }
 
 #[tauri::command]
 fn remove_path(state: State<AppState>, path: String) -> Result<(), String> {
-    let path = normalize_path(&path);
-    let uid = state.get_uid();
-    let settings_conn = open_settings_conn(&uid);
-    remove_library_path(&settings_conn, &path).map_err(|e| e.to_string())?;
-    let lib_conn = Connection::open(get_lib_db_path(&uid)).map_err(|e| e.to_string())?;
-    lib_conn
-        .execute(
-            "DELETE FROM tracks WHERE path LIKE ?1",
-            rusqlite::params![format!("{}%", path)],
-        )
-        .map_err(|e| e.to_string())?;
-    lib_conn
-        .execute(
-            "DELETE FROM albums WHERE uid NOT IN (
-                SELECT DISTINCT json_extract(json_each.value, '$.uid')
-                FROM tracks, json_each(tracks.albums)
-                WHERE json_extract(json_each.value, '$.uid') IS NOT NULL
-                AND json_extract(json_each.value, '$.uid') != ''
-            )",
-            [],
-        )
-        .map_err(|e| e.to_string())?;
-    lib_conn
-        .execute(
-            "DELETE FROM artists WHERE name NOT IN (
-                SELECT DISTINCT json_each.value
-                FROM tracks, json_each(tracks.artists)
-                WHERE tracks.artists IS NOT NULL AND tracks.artists != '[]'
-            ) AND name NOT IN (
-                SELECT DISTINCT album_artist FROM tracks WHERE album_artist IS NOT NULL
-            )",
-            [],
-        )
-        .map_err(|e| e.to_string())?;
-    Ok(())
+	let path = normalize_path(&path);
+	let uid = state.get_uid();
+	let settings_conn = open_settings_conn(&uid);
+
+	// Find which library owns this path before removing it
+	let lib_uid: Option<String> = settings_conn.query_row(
+		"SELECT lib_uid FROM library_paths WHERE path = ?1",
+		rusqlite::params![path],
+		|row| row.get(0),
+	).ok();
+
+	remove_library_path(&settings_conn, &path).map_err(|e| e.to_string())?;
+
+	// Remove tracks from the correct library db
+	if let Some(ref luid) = lib_uid {
+		let lib_path = get_library_db_path(&uid, luid);
+		if let Ok(lib_conn) = Connection::open(&lib_path) {
+			lib_conn.execute(
+				"DELETE FROM tracks WHERE path LIKE ?1",
+				rusqlite::params![format!("{}%", path)],
+			).ok();
+			lib_conn.execute(
+				"DELETE FROM albums WHERE uid NOT IN (
+					SELECT DISTINCT json_extract(json_each.value, '$.uid')
+					FROM tracks, json_each(tracks.albums)
+					WHERE json_extract(json_each.value, '$.uid') IS NOT NULL
+					AND json_extract(json_each.value, '$.uid') != ''
+				)", [],
+			).ok();
+			lib_conn.execute(
+				"DELETE FROM artists WHERE name NOT IN (
+					SELECT DISTINCT json_each.value
+					FROM tracks, json_each(tracks.artists)
+					WHERE tracks.artists IS NOT NULL AND tracks.artists != '[]'
+				) AND name NOT IN (
+					SELECT DISTINCT album_artist FROM tracks WHERE album_artist IS NOT NULL
+				)", [],
+			).ok();
+
+			// Update merged cache
+			let _ = library_manager::incremental_update(&uid, &[luid.clone()]);
+		}
+	} else {
+		// Fallback: try the legacy lib.db
+		if let Ok(lib_conn) = Connection::open(get_lib_db_path(&uid)) {
+			lib_conn.execute(
+				"DELETE FROM tracks WHERE path LIKE ?1",
+				rusqlite::params![format!("{}%", path)],
+			).ok();
+		}
+	}
+
+	Ok(())
 }
 
 #[tauri::command]
@@ -409,22 +461,203 @@ fn get_paths(state: State<AppState>) -> Result<Vec<LibraryPath>, String> {
 
 #[tauri::command]
 fn rescan(app: AppHandle, state: State<AppState>) -> Result<(), String> {
-    let uid = state.get_uid();
-    let settings_conn = open_settings_conn(&uid);
-    let paths = get_library_paths(&settings_conn).map_err(|e| e.to_string())?;
+	let uid = state.get_uid();
+	let settings_conn = open_settings_conn(&uid);
+	let paths = get_library_paths(&settings_conn).map_err(|e| e.to_string())?;
 
-    let app_clone = app.clone();
-    let uid_clone = uid.clone();
-    let path_strings: Vec<String> = paths.into_iter().map(|p| p.path).collect();
-    std::thread::spawn(move || {
-        let lib_conn = open_lib_conn(&uid_clone);
-        for p in &path_strings {
-            scanner::scan_directory_with_progress(&lib_conn, p, &app_clone);
-        }
-        watcher::start_watcher(app_clone, uid_clone, path_strings);
-    });
+	let default_lib_uid = db::library_registry::get_default_library(&settings_conn)
+		.map_err(|e| e.to_string())?
+		.map(|l| l.uid)
+		.unwrap_or_default();
 
-    Ok(())
+	let app_clone = app.clone();
+	let uid_clone = uid.clone();
+	let lib_uid_clone = default_lib_uid.clone();
+	let path_strings: Vec<String> = paths.into_iter().map(|p| p.path).collect();
+
+	std::thread::spawn(move || {
+		let lib_path = get_library_db_path(&uid_clone, &lib_uid_clone);
+		let lib_conn = Connection::open(&lib_path).expect("Failed to open library db");
+		let settings_path = get_settings_db_path(&uid_clone);
+		lib_conn.execute_batch(&format!(
+			"ATTACH DATABASE '{}' AS settings;",
+			settings_path.to_string_lossy().replace('\'', "''")
+		)).ok();
+
+		for p in &path_strings {
+			scanner::scan_directory_with_progress(&lib_conn, p, &app_clone);
+		}
+
+		let _ = library_manager::incremental_update(&uid_clone, &[lib_uid_clone.clone()]);
+		watcher::start_watcher(app_clone, uid_clone, lib_uid_clone, path_strings);
+	});
+
+	Ok(())
+}
+
+// ─────────────────────────────────────────────
+// FEDERATED LIBRARY MANAGEMENT
+// ─────────────────────────────────────────────
+
+#[tauri::command]
+fn get_libraries(state: State<AppState>) -> Result<Vec<db::library_registry::Library>, String> {
+	let uid = state.get_uid();
+	let conn = open_settings_conn(&uid);
+	db::library_registry::get_all_libraries(&conn).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn create_library_cmd(state: State<AppState>, name: String) -> Result<db::library_registry::Library, String> {
+	let uid = state.get_uid();
+	library_manager::create_local_library(&uid, &name)
+}
+
+#[tauri::command]
+async fn import_library_cmd(
+	state: State<'_, AppState>,
+	name: String,
+	sync_url: String,
+	sync_meta_url: String,
+	write_token: Option<String>,
+) -> Result<db::library_registry::Library, String> {
+	let uid = state.get_uid();
+	library_manager::import_library(&uid, &name, &sync_url, &sync_meta_url, write_token.as_deref()).await
+}
+
+#[tauri::command]
+fn export_library_cmd(state: State<AppState>, lib_uid: String, dest_path: String) -> Result<(), String> {
+	let uid = state.get_uid();
+	library_manager::export_library(&uid, &lib_uid, &dest_path)
+}
+
+#[tauri::command]
+fn update_library_cmd(
+	state: State<AppState>,
+	lib_uid: String,
+	update: db::library_registry::LibraryUpdate,
+) -> Result<(), String> {
+	let uid = state.get_uid();
+	let conn = open_settings_conn(&uid);
+	db::library_registry::update_library(&conn, &lib_uid, &update).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn delete_library_cmd(
+	state: State<AppState>,
+	lib_uid: String,
+	delete_file: bool,
+) -> Result<(), String> {
+	let uid = state.get_uid();
+	library_manager::delete_local_library(&uid, &lib_uid, delete_file)
+}
+
+#[tauri::command]
+async fn sync_library_cmd(
+	app: AppHandle,
+	state: State<'_, AppState>,
+	lib_uid: String,
+) -> Result<bool, String> {
+	let uid = state.get_uid();
+	let pulled = library_manager::try_pull_library(&uid, &lib_uid).await?;
+	if pulled {
+		library_manager::full_rebuild(&uid)?;
+		app.emit("library:updated", ()).ok();
+	}
+	Ok(pulled)
+}
+
+#[tauri::command]
+async fn push_library_cmd(
+	state: State<'_, AppState>,
+	lib_uid: String,
+) -> Result<bool, String> {
+	let uid = state.get_uid();
+	let conn = open_settings_conn(&uid);
+	let lib = db::library_registry::get_library_by_uid(&conn, &lib_uid)
+		.map_err(|e| e.to_string())?
+		.ok_or("Library not found")?;
+	Ok(library_manager::try_push_library(&lib).await)
+}
+
+#[tauri::command]
+async fn check_write_permission_cmd(
+	state: State<'_, AppState>,
+	lib_uid: String,
+) -> Result<bool, String> {
+	let uid = state.get_uid();
+	library_manager::check_write_permission(&uid, &lib_uid).await
+}
+
+#[tauri::command]
+fn rebuild_merged_cmd(state: State<AppState>) -> Result<library_manager::MergeResult, String> {
+	let uid = state.get_uid();
+	library_manager::full_rebuild(&uid)
+}
+
+#[tauri::command]
+fn get_blocklist(state: State<AppState>) -> Result<Vec<db::blocklist_manager::BlocklistEntry>, String> {
+	let uid = state.get_uid();
+	let conn = open_settings_conn(&uid);
+	db::blocklist_manager::get_all_blocklist_entries(&conn).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn add_to_blocklist_cmd(
+	state: State<AppState>,
+	uid: String,
+	entity_type: String,
+	cascade: bool,
+	source_lib_uid: String,
+) -> Result<(), String> {
+	let profile_uid = state.get_uid();
+	let conn = open_settings_conn(&profile_uid);
+	db::blocklist_manager::add_to_blocklist(
+		&conn, &uid, &entity_type, Some("hidden by user"), cascade, &source_lib_uid,
+	).map_err(|e| e.to_string())?;
+
+	// Remove from merged immediately
+	let merged_path = crate::profiles::get_merged_db_path(&profile_uid);
+	if merged_path.exists() {
+		if let Ok(merged_conn) = Connection::open(&merged_path) {
+			merged_conn.execute(
+				&format!("DELETE FROM {} WHERE uid = ?1", entity_type),
+				rusqlite::params![uid],
+			).ok();
+		}
+	}
+	Ok(())
+}
+
+#[tauri::command]
+fn remove_from_blocklist_cmd(state: State<AppState>, uid: String) -> Result<(), String> {
+	let profile_uid = state.get_uid();
+	let conn = open_settings_conn(&profile_uid);
+	db::blocklist_manager::remove_from_blocklist(&conn, &uid).map_err(|e| e.to_string())?;
+	// Trigger a full rebuild so the unblocked record reappears
+	library_manager::full_rebuild(&profile_uid)?;
+	Ok(())
+}
+
+#[tauri::command]
+fn get_delete_preference_cmd(
+	state: State<AppState>,
+	lib_uid: String,
+) -> Result<Option<db::blocklist_manager::LibraryDeletePreference>, String> {
+	let uid = state.get_uid();
+	let conn = open_settings_conn(&uid);
+	db::blocklist_manager::get_delete_preference(&conn, &lib_uid).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn set_delete_preference_cmd(
+	state: State<AppState>,
+	lib_uid: String,
+	cascade_delete: i64,
+) -> Result<(), String> {
+	let uid = state.get_uid();
+	let conn = open_settings_conn(&uid);
+	db::blocklist_manager::set_delete_preference(&conn, &lib_uid, cascade_delete)
+		.map_err(|e| e.to_string())
 }
 
 // ─────────────────────────────────────────────
@@ -2789,18 +3022,43 @@ pub fn run() {
         .plugin(tauri_plugin_os::init())
         .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_shell::init())
-        .setup(|app| {
+        .setup(move |app| {
             let handle = app.handle().clone();
             let uid = app.state::<AppState>().get_uid();
 
+            if !initial_uid.is_empty() {
+                let settings_conn = Connection::open(get_settings_db_path(&initial_uid))
+                    .expect("Failed to open settings db");
+                init_settings_db(&settings_conn).expect("Failed to init settings db");
+
+                let lib_conn = Connection::open(get_lib_db_path(&initial_uid))
+                    .expect("Failed to open lib db");
+                db::init_lib_db(&lib_conn).expect("Failed to init lib db");
+
+                // Bootstrap federated library structure and run on-load merge
+                library_manager::ensure_default_library(&initial_uid)
+                    .expect("Failed to ensure default library");
+                library_manager::on_load_sync(&initial_uid)
+                    .unwrap_or_else(|e| {
+                        eprintln!("[startup] merge sync failed: {e}");
+                        library_manager::MergeResult { rebuilt: false, libraries_processed: 0 }
+                    });
+            }
+
             if !uid.is_empty() {
                 let settings_conn = open_settings_conn(&uid);
+                let default_lib_uid = db::library_registry::get_default_library(&settings_conn)
+                    .unwrap_or(None)
+                    .map(|l| l.uid)
+                    .unwrap_or_default();
+
                 let paths = get_library_paths(&settings_conn)
                     .unwrap_or_default()
                     .into_iter()
                     .map(|p| p.path)
                     .collect();
-                watcher::start_watcher(handle.clone(), uid, paths);
+
+                watcher::start_watcher(handle.clone(), uid, default_lib_uid, paths);
             }
 
             app.deep_link().on_open_url(move |event| {
@@ -2933,6 +3191,21 @@ pub fn run() {
             listenbrainz_connect_cmd,
             listenbrainz_disconnect_cmd,
             import_spotify_history_cmd,
+            get_libraries,
+            create_library_cmd,
+            import_library_cmd,
+            export_library_cmd,
+            update_library_cmd,
+            delete_library_cmd,
+            sync_library_cmd,
+            push_library_cmd,
+            check_write_permission_cmd,
+            rebuild_merged_cmd,
+            get_blocklist,
+            add_to_blocklist_cmd,
+            remove_from_blocklist_cmd,
+            get_delete_preference_cmd,
+            set_delete_preference_cmd,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
