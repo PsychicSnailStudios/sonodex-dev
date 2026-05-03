@@ -36,6 +36,8 @@ export type Track = {
 	remote_data: string | null;
 	track_data: string | null;
 	artwork_thumb: string | null;
+	source_lib_uid: string | null;
+	is_local_override: boolean | null;
 };
 
 export type Album = {
@@ -55,6 +57,8 @@ export type Album = {
 	artwork_path: string | null;
 	emulate_type: string | null;
 	artwork_thumb: string | null;
+	source_lib_uid: string | null;
+	is_local_override: boolean | null;
 };
 
 export type Artist = {
@@ -71,6 +75,8 @@ export type Artist = {
 	banner_art_path: string | null;
 	profile_art_thumb: string | null;
 	banner_art_thumb: string | null;
+	source_lib_uid: string | null;
+	is_local_override: boolean | null;
 };
 
 export type Playlist = {
@@ -123,7 +129,57 @@ export type ImportState = "idle" | "parsed" | "importing" | "done" | "error";
 export type DuplicateGroup = {
 	tracks: Track[];
 };
- 
+
+// ─── Federated library types ──────────────────────────────────────────────────
+
+export type Library = {
+	uid: string;
+	name: string;
+	is_default: boolean;
+	file_path: string;
+	sync_url: string | null;
+	sync_meta_url: string | null;
+	has_write_permission: boolean;
+	last_synced: number;
+	last_data_version: number;
+	sort_order: number;
+};
+
+export type LibraryUpdate = {
+	name?: string | null;
+	sync_url?: string | null;
+	sync_meta_url?: string | null;
+	write_token?: string | null;
+	has_write_permission?: boolean | null;
+	last_synced?: number | null;
+	last_data_version?: number | null;
+	sort_order?: number | null;
+};
+
+export type BlocklistEntry = {
+	uid: string;
+	entity_type: string;
+	blocked_at: number;
+	reason: string | null;
+	cascade: boolean;
+	source_lib_uid: string;
+};
+
+export type LibraryDeletePreference = {
+	lib_uid: string;
+	cascade_delete: number;
+};
+
+export type MergeResult = {
+	rebuilt: boolean;
+	libraries_processed: number;
+};
+
+// cascade_delete values for LibraryDeletePreference
+export const CASCADE_SINGLE = 0;
+export const CASCADE_ALL = 1;
+export const CASCADE_ASK = 2;
+
 export function parseUserOptions(raw: string | null | undefined): UserOptions {
 	const defaults: UserOptions = { linkedShuffle: null, trimStart: null, trimEnd: null };
 	if (!raw) return defaults;
@@ -133,7 +189,14 @@ export function parseUserOptions(raw: string | null | undefined): UserOptions {
 		return defaults;
 	}
 }
- 
+
 export function serializeUserOptions(opts: UserOptions): string {
 	return JSON.stringify(opts);
+}
+
+// ─── Helpers for merged record source resolution ──────────────────────────────
+
+export function isReadOnly(entity: { source_lib_uid: string | null; is_local_override: boolean | null }): boolean {
+	if (!entity.source_lib_uid) return false;
+	return !entity.is_local_override;
 }
