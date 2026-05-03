@@ -1,0 +1,14 @@
+pub mod albums;
+pub mod artists;
+pub mod connections;
+pub mod downloads;
+pub mod enrichment;
+pub mod libraries;
+pub mod lyrics;
+pub mod paths;
+pub mod playlists;
+pub mod profiles;
+pub mod scrobbles;
+pub mod settings;
+pub mod tags;
+pub mod tracks;
