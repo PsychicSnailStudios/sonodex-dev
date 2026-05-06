@@ -55,6 +55,7 @@ export function isEntityWritable(
 // ─── Load ─────────────────────────────────────────────────────────────────────
 
 export async function loadLibrary() {
+	await invoke("rebuild_merged_cmd");
 	library.tracks = await invoke("get_tracks");
 	library.albums = await invoke("get_albums");
 	library.artists = await invoke("get_artists");

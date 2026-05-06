@@ -247,6 +247,7 @@ pub fn run() {
 			commands::paths::add_path,
 			commands::paths::remove_path,
 			commands::paths::get_paths,
+			commands::paths::get_paths_for_library,
 			commands::paths::rescan,
 			// Tracks
 			commands::tracks::get_tracks,

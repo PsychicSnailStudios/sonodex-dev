@@ -173,6 +173,24 @@ pub fn get_paths(state: State<AppState>) -> Result<Vec<LibraryPath>, String> {
 }
 
 #[tauri::command]
+pub fn get_paths_for_library(state: State<AppState>, lib_uid: String) -> Result<Vec<LibraryPath>, String> {
+	let uid = state.get_uid();
+	let conn = open_settings_conn(&uid);
+	let mut stmt = conn
+		.prepare("SELECT id, path FROM library_paths WHERE lib_uid = ?1 ORDER BY id ASC")
+		.map_err(|e| e.to_string())?;
+	let rows = stmt
+		.query_map(rusqlite::params![lib_uid], |row| {
+			Ok(LibraryPath {
+				id: Some(row.get(0)?),
+				path: row.get(1)?,
+			})
+		})
+		.map_err(|e| e.to_string())?;
+	rows.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 pub fn rescan(app: AppHandle, state: State<AppState>) -> Result<(), String> {
 	let uid = state.get_uid();
 	let settings_conn = open_settings_conn(&uid);
