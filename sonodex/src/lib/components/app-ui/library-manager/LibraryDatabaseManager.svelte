@@ -57,6 +57,7 @@
 	};
 
 	let libStates = $state<Record<string, LibState>>({});
+	let lastScannedLibUid = $state<string | null>(null);
 
 	function ensureLibState(libUid: string) {
 		if (!libStates[libUid]) {
@@ -109,6 +110,7 @@
 		scanState.progress = 0;
 		scanState.total = 0;
 		try {
+			lastScannedLibUid = libUid;
 			await addPathToLibrary(s.newPath.trim(), libUid);
 			s.newPath = "";
 			await loadPathsForLib(libUid);
@@ -176,7 +178,14 @@
 			scanState.loading = false;
 			scanState.progress = 0;
 			scanState.total = 0;
+		});
+
+		await listen("library:updated", async () => {
 			await loadLibrary();
+			if (lastScannedLibUid) {
+				await loadPathsForLib(lastScannedLibUid);
+				lastScannedLibUid = null;
+			}
 		});
 
 		await listen("scan:error", (event: any) => {

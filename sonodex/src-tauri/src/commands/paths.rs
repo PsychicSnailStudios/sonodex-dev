@@ -41,14 +41,22 @@ pub fn add_path(
 		)
 		.ok();
 
+	let lib_file_path: String = {
+		let settings_conn2 = open_settings_conn(&uid);
+		crate::db::library_registry::get_library_by_uid(&settings_conn2, &target_lib_uid)
+			.ok()
+			.flatten()
+			.map(|l| l.file_path)
+			.unwrap_or_else(|| get_library_db_path(&uid, &target_lib_uid).to_string_lossy().to_string())
+	};
+
 	let app_clone = app.clone();
 	let path_clone = path.clone();
 	let uid_clone = uid.clone();
 	let lib_uid_clone = target_lib_uid.clone();
 
 	std::thread::spawn(move || {
-		let lib_path = get_library_db_path(&uid_clone, &lib_uid_clone);
-		let lib_conn = Connection::open(&lib_path).expect("Failed to open library db");
+		let lib_conn = Connection::open(&lib_file_path).expect("Failed to open library db");
 		let settings_path = get_settings_db_path(&uid_clone);
 		lib_conn
 			.execute_batch(&format!(
