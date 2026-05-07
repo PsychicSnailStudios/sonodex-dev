@@ -1,41 +1,33 @@
 <script lang="ts">
-	
-	// APP
-	import { invoke } from "@tauri-apps/api/core";
-
-	// COMPONENTS
 	import { CirclePlus, Pencil, X } from "lucide-svelte";
 
 	import { Button } from "$lib/components/ui/button/index.js";
 	import { ScrollArea } from "$lib/components/ui/scroll-area/index.js";
-	import { Input } from "$lib/components/ui/input/index.js";
 
-	// CUSTOM COMPONENTS
-	import TrackTableSettings from "$lib/components/app-ui/track-table/TrackTableSettings.svelte"
+	import TrackTableSettings from "$lib/components/app-ui/track-table/TrackTableSettings.svelte";
 	import ArtworkDisplay from "$lib/components/app-ui/ArtworkDisplay.svelte";
 	import TrackTable from "$lib/components/app-ui/track-table/TrackTable.svelte";
-   import DefultPlaylistArt from "$lib/components/app-ui/playlist/DefultPlaylistArt.svelte";
+	import DefultPlaylistArt from "$lib/components/app-ui/playlist/DefultPlaylistArt.svelte";
 	import NavButtons from "$lib/components/app-ui/NavButtons.svelte";
 	import SearchBar from "$lib/components/app-ui/search/SearchBar.svelte";
 	import DownloadButton from "$lib/components/app-ui/DownloadButton.svelte";
 
-	// SCRIPTS
-	import Fuse from "fuse.js";
 	import { selection } from "$lib/ts/app-states/state_session.svelte";
 	import { getPlaylistTracks, library } from "$lib/ts/library.svelte";
 	import { openEditModal } from "$lib/ts/app/editModal.svelte";
-	import { getArtworkColor, getArtworkColorFromPath, parseAlbum, parseArtists, totalDuration } from '$lib/ts/util/helpers';
-	import { addTrackToPlaylist, addTracksToPlaylist } from "$lib/ts/audio/playlistManager.svelte";
+	import { getArtworkColor, getArtworkColorFromPath, parseArtists, totalDuration } from "$lib/ts/util/helpers";
 	import { queueTracksByObject } from "$lib/ts/audio/audioManager.svelte";
 	import { dragState, endDrag } from "$lib/ts/app-states/state_drag.svelte";
 	import { createPersistedViewState } from "$lib/ts/app-states/state_session.svelte";
+	import { searchTracks } from "$lib/ts/app/fuseStore.svelte";
+	import { artworkCache } from "$lib/ts/app-states/artworkCache";
 
 	import type { Track } from "$lib/ts/util/types";
+   import { addTracksToPlaylist } from "$lib/ts/audio/playlistManager.svelte";
 
-	// VARIABLES
 	let search = $state("");
 	let playlist = $derived(library.playlists.find(p => p.uid === selection.uid) ?? null);
-	let color = $state("rgb(30, 30, 30)")
+	let color = $state("rgb(30, 30, 30)");
 	let showSearch = $state(false);
 
 	const view = createPersistedViewState("playlist", {
@@ -49,37 +41,8 @@
 		return getPlaylistTracks(playlist.uid, view.sort);
 	});
 
-	let fuseInstance: Fuse<(typeof library.tracks)[0]> | null = $state(null);
-	let lastTracksRef: typeof library.tracks | null = null;
+	let filteredTracks = $derived(searchTracks(search));
 
-	function getFuse() {
-		if (fuseInstance && lastTracksRef === library.tracks) return fuseInstance;
-		lastTracksRef = library.tracks;
-		fuseInstance = new Fuse(library.tracks, {
-			keys: [
-				{ name: "title",        weight: 0.5,  getFn: (t) => t.title ?? ""                    },
-				{ name: "artists",      weight: 0.25, getFn: (t) => parseArtists(t.artists ?? "[]")  },
-				{ name: "album_artist", weight: 0.15, getFn: (t) => t.album_artist ?? ""             },
-				{ name: "albums",       weight: 0.1,  getFn: (t) => parseAlbum(t.albums ?? "[]")     },
-				{ name: "tags",         weight: 0.05, getFn: (t) => t.tags ?? ""                     },
-				{ name: "genres",       weight: 0.05, getFn: (t) => t.genres ?? ""                   },
-			],
-			threshold: 0.35,
-			ignoreLocation: true,
-			includeScore: false,
-			useExtendedSearch: false,
-			minMatchCharLength: 2,
-		});
-		return fuseInstance;
-	}
-
-	const filteredTracks = $derived(
-		search.trim().length < 2
-			? library.tracks
-			: getFuse().search(search).map((r) => r.item)
-	);
-
-	// APP FUNCTIONS
 	$effect(() => {
 		const uid = selection.uid;
 		const firstTrack = tracks[0];
@@ -92,19 +55,22 @@
 			return;
 		}
 
-		invoke("get_playlist_artwork", { uid }).then((bytes) => {
-			if (bytes) {
-				getArtworkColor(bytes as number[], 0.3).then((c) => color = c);
-			} else {
+		const cached = artworkCache.get(`playlist:${uid}`);
+		if (cached) {
+			fetch(cached).then(r => r.arrayBuffer()).then(buf => {
+				getArtworkColor(Array.from(new Uint8Array(buf)), 0.3).then(c => color = c);
+			}).catch(() => {
 				if (!firstTrack) return;
-				invoke("get_track_artwork", { uid: firstTrack.uid }).then((trackBytes) => {
-					if (trackBytes) getArtworkColor(trackBytes as number[], 0.3).then((c) => color = c);
-				});
-			}
-		});
+				const trackCached = artworkCache.get(`track:${firstTrack.uid}`);
+				if (trackCached) {
+					fetch(trackCached).then(r => r.arrayBuffer()).then(buf => {
+						getArtworkColor(Array.from(new Uint8Array(buf)), 0.3).then(c => color = c);
+					}).catch(() => {});
+				}
+			});
+		}
 	});
 
-	// FUNCTIONS
 	function handleDisplayDragOver(e: DragEvent) {
 		if (dragState.active) e.preventDefault();
 	}
@@ -119,7 +85,7 @@
 	let allGhosts = $derived(
 		tracks.length > 0 && tracks.every(t => {
 			const hasLocal = t.path && t.path !== "" && t.path !== t.uid;
-			const hasRemote = t.remote_path && t.remote_path.length > 0;
+			const hasRemote = (t as any).remote_path && (t as any).remote_path.length > 0;
 			return !hasLocal && !hasRemote;
 		})
 	);
@@ -201,7 +167,7 @@
 										<span class="text-xs text-muted-foreground truncate">{parseArtists(track.artists)}</span>
 									</div>
 									<span></span>
-									<button onclick={() => { addTrackToPlaylist(playlist!, track) }}><CirclePlus size={20} /></button>
+									<button onclick={() => { addTracksToPlaylist(playlist, track) }}><CirclePlus size={20} /></button>
 								</div>
 							{/each}
 						</div>

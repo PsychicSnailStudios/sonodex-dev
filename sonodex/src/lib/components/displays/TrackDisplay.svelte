@@ -1,40 +1,32 @@
 <script lang="ts">
-
-	// APP
-	import { invoke } from "@tauri-apps/api/core";
-	
-	// COMPONENTS
-   import { Pencil } from "lucide-svelte";
+	import { Pencil } from "lucide-svelte";
 
 	import * as Tabs from "$lib/components/ui/tabs/index.js";
 	import ScrollArea from "$lib/components/ui/scroll-area/scroll-area.svelte";
 	import { Button } from "$lib/components/ui/button/index.js";
 
-	// CUSTOM COMPONENTS
 	import ArtworkDisplay from "$lib/components/app-ui/ArtworkDisplay.svelte";
-   import NavButtons from "$lib/components/app-ui/NavButtons.svelte";
-   import TrackPlaylistEditButton from "$lib/components/app-ui/TrackPlaylistEditButton.svelte";
-   import TrackRating from "$lib/components/app-ui/TrackRating.svelte";
+	import NavButtons from "$lib/components/app-ui/NavButtons.svelte";
+	import TrackPlaylistEditButton from "$lib/components/app-ui/TrackPlaylistEditButton.svelte";
+	import TrackRating from "$lib/components/app-ui/TrackRating.svelte";
 	import TagList from "$lib/components/app-ui/tags/TagList.svelte";
-   import ArtistsList from "$lib/components/app-ui/ArtistsList.svelte";
-   import LyricsViewer from "$lib/components/app-ui/LyricsViewer.svelte";
+	import ArtistsList from "$lib/components/app-ui/ArtistsList.svelte";
+	import LyricsViewer from "$lib/components/app-ui/LyricsViewer.svelte";
 	import DownloadButton from "$lib/components/app-ui/DownloadButton.svelte";
 
-	// SCRIPTS
 	import { getAlbumUidFromName, getArtistUidFromName, getLyrics, library } from "$lib/ts/library.svelte";
 	import { currentTrackTab, selection, setSelection } from "$lib/ts/app-states/state_session.svelte";
 	import { openEditModal } from "$lib/ts/app/editModal.svelte";
-	import { formatDuration, getArtworkColor, parseAlbumEntries, parseTags } from '$lib/ts/util/helpers';
-   import { playTrackByObject } from "$lib/ts/audio/audioManager.svelte";
+	import { formatDuration, getArtworkColor, parseAlbumEntries, parseTags } from "$lib/ts/util/helpers";
+	import { playTrackByObject } from "$lib/ts/audio/audioManager.svelte";
+	import { artworkCache } from "$lib/ts/app-states/artworkCache";
 
-	// VARIABLES
 	let track = $derived(library.tracks.find(t => t.uid === selection.uid) ?? null);
 	let fetchingLyrics = $state(false);
 	let genres = $derived(track?.genres ? parseTags(track.genres) : null);
 	let tags = $derived(track?.tags ? parseTags(track.tags) : null);
-	let color = $state("rgb(30, 30, 30)")
+	let color = $state("rgb(30, 30, 30)");
 
-	// All albums this track appears on
 	let featuredOnAlbums = $derived.by(() => {
 		if (!track?.albums) return [];
 		return parseAlbumEntries(track.albums)
@@ -42,7 +34,6 @@
 			.filter((a): a is NonNullable<typeof a> => a != null);
 	});
 
-	// Featured artists = all artists minus the album artist
 	let featuredArtists = $derived.by(() => {
 		if (!track?.artists) return [];
 		const all: string[] = JSON.parse(track.artists);
@@ -59,20 +50,20 @@
 	$effect(() => {
 		const uid = selection.uid;
 		if (!uid) return;
-
 		color = "var(--muted)";
-
-		invoke("get_track_artwork", { uid: uid }).then((trackBytes) => {
-			if (trackBytes) getArtworkColor(trackBytes as number[], 0.3).then((c) => color = c);
-		});
+		const cached = artworkCache.get(`track:${uid}`);
+		if (cached) {
+			fetch(cached).then(r => r.arrayBuffer()).then(buf => {
+				getArtworkColor(Array.from(new Uint8Array(buf)), 0.3).then(c => color = c);
+			}).catch(() => {});
+		}
 	});
 
 	function trackIsNotGhost(): boolean {
 		const hasLocal = track?.path && track.path !== "" && track.path !== track.uid;
-		const hasRemote = track?.remote_path && track.remote_path.length > 0;
+		const hasRemote = (track as any)?.remote_path && (track as any).remote_path.length > 0;
 		return !!(hasLocal || hasRemote);
 	}
-
 </script>
 
 <div class="flex flex-col gap-4 p-4 border-2 h-full w-full overflow-hidden rounded-md">
@@ -96,7 +87,6 @@
 								</button>
 							{/each}
 							{/if}
-
 						</div>
 						{#if track.year}
 							<span>|</span>
@@ -105,9 +95,9 @@
 						<span>|</span>
 						<span>{formatDuration(track.duration_ms)}</span>
 						<span>|</span>
-						<span>{track.format ?? "Unknown Format"}</span>
+						<span>{(track as any).format ?? "Unknown Format"}</span>
 						<span>|</span>
-						<span>{track.bitrate ?? "0"}</span><span>kbps</span>
+						<span>{(track as any).bitrate ?? "0"}</span><span>kbps</span>
 					</div>
 					<div>
 						<TrackRating uid={track.uid} rating={track.rating} tags={track.tags} />
@@ -157,7 +147,6 @@
 						<button
 							onclick={() => setSelection(artistUID, "artist")}
 							class="flex items-center gap-2 flex-row cursor-pointer p-2 rounded-md bg-muted/50 hover:bg-muted">
-
 							<ArtworkDisplay uid={artistUID} type="artist" size={40} />
 							{track.album_artist}
 						</button>
@@ -171,7 +160,6 @@
 							<button
 								onclick={() => setSelection(featArtistUID, "artist")}
 								class="flex items-center gap-2 flex-row cursor-pointer p-2 mb-2 rounded-md bg-muted/50 hover:bg-muted">
-
 								<ArtworkDisplay uid={featArtistUID} type="artist" size={40} />
 								{artistName}
 							</button>
@@ -236,7 +224,7 @@
 				<Tabs.Content value="paths" class="flex-1 overflow-y-auto mt-2">
 					<div class="flex flex-col gap-2 mt-2">
 						<span class="text-muted-foreground text-sm"><b>Local Path:</b> {track.path}</span>
-						<span class="text-muted-foreground text-sm"><b>Remote Path:</b> {track.remote_path}</span>
+						<span class="text-muted-foreground text-sm"><b>Remote Path:</b> {(track as any).remote_path}</span>
 					</div>
 				</Tabs.Content>
 			</Tabs.Root>

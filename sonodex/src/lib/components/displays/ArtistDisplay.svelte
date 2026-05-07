@@ -1,34 +1,34 @@
 <script lang="ts">
-
-	// APP
+	import { untrack } from "svelte";
 	import { invoke } from "@tauri-apps/api/core";
-	import { onMount, untrack } from "svelte";
 
-	// COMPONENTS
 	import { Pencil } from "lucide-svelte";
 
 	import * as Tabs from "$lib/components/ui/tabs/index.js";
 	import { Button } from "$lib/components/ui/button/index.js";
 	import ScrollArea from "$lib/components/ui/scroll-area/scroll-area.svelte";
 
-	// CUSTOM COMPONENTS
 	import ArtworkDisplay from "$lib/components/app-ui/ArtworkDisplay.svelte";
 	import AudioCard from "$lib/components/app-ui/AudioCard.svelte";
 	import NavButtons from "$lib/components/app-ui/NavButtons.svelte";
 	import ArtistTopTracks from "$lib/components/app-ui/ArtistTopTracks.svelte";
 	import TagList from "$lib/components/app-ui/tags/TagList.svelte";
 
-	// SCRIPTS
 	import { selection } from "$lib/ts/app-states/state_session.svelte";
 	import { library } from "$lib/ts/library.svelte";
 	import { openEditModal } from "$lib/ts/app/editModal.svelte";
 	import { parseTags } from "$lib/ts/util/helpers";
 	import { currentArtistTab } from "$lib/ts/app-states/state_session.svelte";
-	import type { Artist, Track, Album } from "$lib/ts/util/types";
+	import type { Artist, Album } from "$lib/ts/util/types";
 
-	// VARIABLES
-	let artist = $state<Artist | null>(null);
 	let bannerUrl = $state<string | null>(null);
+
+	let artist = $derived.by(() => {
+		const uid = selection.uid;
+		if (!uid) return null;
+		return library.artists.find(a => a.uid === uid) ?? null;
+	});
+
 	let genres = $derived(artist?.genres ? parseTags(artist.genres) : null);
 	let tags = $derived(artist?.tags ? parseTags(artist.tags) : null);
 
@@ -46,7 +46,7 @@
 			if (!artistsArr.some(a => allNames.has(a.toLowerCase()))) continue;
 			if (!t.albums) continue;
 			let albumsArr: { uid: string }[];
-			try { albumsArr = JSON.parse(t.albums); } catch { continue; }
+			try { albumsArr = JSON.parse(t.albums as unknown as string); } catch { continue; }
 			for (const a of albumsArr) albumUidsWithArtist.add(a.uid);
 		}
 
@@ -56,11 +56,9 @@
 		});
 	});
 
-	// APP FUNCTIONS
 	$effect(() => {
 		const uid = selection.uid;
 		if (!uid) return;
-		artist = null;
 
 		untrack(() => {
 			if (bannerUrl) {
@@ -69,28 +67,19 @@
 			}
 		});
 
-		invoke<string>("resolve_uid", { uid }).then((resolvedUid) => {
-			invoke("get_artist", { uid: resolvedUid }).then((a) => {
-				artist = a as Artist;
+		if (!artist) return;
+		if (artist.banner_art_path) return;
 
-				if (artist.banner_art_path) {
-					bannerUrl = null;
-					return;
-				}
-
-				invoke<number[] | null>("get_artist_banner_art", { uid: resolvedUid }).then((bytes) => {
-					if (bytes && bytes.length > 0) {
-						untrack(() => {
-							if (bannerUrl) URL.revokeObjectURL(bannerUrl);
-						});
-						const blob = new Blob([new Uint8Array(bytes)], { type: "image/jpeg" });
-						bannerUrl = URL.createObjectURL(blob);
-					}
+		invoke<number[] | null>("get_artist_banner_art", { uid }).then((bytes) => {
+			if (bytes && bytes.length > 0) {
+				untrack(() => {
+					if (bannerUrl) URL.revokeObjectURL(bannerUrl);
 				});
-			});
+				const blob = new Blob([new Uint8Array(bytes)], { type: "image/jpeg" });
+				bannerUrl = URL.createObjectURL(blob);
+			}
 		});
 	});
-
 </script>
 
 <div class="flex flex-col gap-4 border-2 h-full w-full overflow-hidden rounded-md">
