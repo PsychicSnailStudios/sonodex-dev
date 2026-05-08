@@ -1,13 +1,13 @@
 <script lang="ts">
 	import { Ellipsis } from "lucide-svelte";
 
-	import * as DropdownMenu from "$lib/components/ui/dropdown-menu/index.js";
-	import Button from "$lib/components/ui/button/button.svelte";
+	import * as DropdownMenu from "$shadcn/dropdown-menu/index.js";
+	import Button from "$shadcn/button/button.svelte";
 
-	import TrackPlaylistContent from "$lib/components/app-ui/context-menus/AddTrackToPlaylist.svelte";
-	import { addTrackToQueue } from "$lib/ts/audio/audioManager.svelte";
-	import { copySelectedNameToClipboard } from "$lib/ts/app/trackSelection.svelte";
-	import type { Track } from "$lib/ts/util/types";
+	import TrackPlaylistContent from "$lib/components/context-menus/AddTrackToPlaylist.svelte";
+	import { addTrackToQueue } from "$ts/audio/audioManager.svelte";
+	import { copySelectedNameToClipboard } from "$ts/store/trackSelection.svelte";
+	import type { Track } from "$ts/util/types";
 
 	let { track } = $props<{ track: Track }>()
 

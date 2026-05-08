@@ -1,6 +1,18 @@
 {
 	"compilerOptions": {
 		"paths": {
+			"$shadcn": [
+				"../src/lib/components/ui"
+			],
+			"$shadcn/*": [
+				"../src/lib/components/ui/*"
+			],
+			"$ts": [
+				"../src/lib/ts"
+			],
+			"$ts/*": [
+				"../src/lib/ts/*"
+			],
 			"$lib": [
 				"../src/lib"
 			],

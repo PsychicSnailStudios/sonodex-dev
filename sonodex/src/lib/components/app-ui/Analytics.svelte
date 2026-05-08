@@ -3,13 +3,13 @@
 	import { invoke } from "@tauri-apps/api/core";
 
 	import ArtworkDisplay from "$lib/components/app-ui/ArtworkDisplay.svelte";
-	import { ScrollArea } from "$lib/components/ui/scroll-area/index.js";
-	import { Button } from "$lib/components/ui/button/index.js";
+	import { ScrollArea } from "$shadcn/scroll-area/index.js";
+	import { Button } from "$shadcn/button/index.js";
 
-	import { library, getArtistUidFromName } from "$lib/ts/library.svelte";
-	import { setSelection } from "$lib/ts/app-states/state_session.svelte";
-	import { parseArtists } from "$lib/ts/util/helpers";
-	import type { Track, Album, Artist } from "$lib/ts/util/types";
+	import { library, getArtistUidFromName } from "$ts/store/library.svelte";
+	import { setSelection } from "$ts/store/state_session.svelte";
+	import { parseArtists } from "$ts/util/helpers";
+	import type { Track, Album, Artist } from "$ts/util/types";
 
 	type Scrobble = {
 		uid: string;

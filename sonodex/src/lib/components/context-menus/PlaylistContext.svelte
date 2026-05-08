@@ -1,8 +1,8 @@
 <script lang="ts">
-	import * as ContextMenu from "$lib/components/ui/context-menu/index.js";
-	import { movePlaylists } from "$lib/ts/drag-n-drop/dragdrop_playlists";
+	import * as ContextMenu from "$shadcn/context-menu/index.js";
+	import { movePlaylists } from "$ts/drag/dragdrop_playlists";
 	
-	import { deletePlaylist } from "$lib/ts/audio/playlistManager.svelte";
+	import { deletePlaylist } from "$ts/audio/playlistManager.svelte";
 
 	let { folderPaths, uid } = $props<{ folderPaths: string[]; uid: string }>();
 </script>

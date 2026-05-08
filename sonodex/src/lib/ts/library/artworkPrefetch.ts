@@ -1,6 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
-import { artworkCache, artworkInflight } from "$lib/ts/app-states/artworkCache";
-import type { AudioCatagories } from "$lib/ts/util/types";
+import { artworkCache, artworkInflight } from "$ts/store/artworkCache";
+import type { AudioCatagories } from "$ts/util/types";
 
 const commandMap: Record<string, string> = {
 	track: "get_track_artwork",

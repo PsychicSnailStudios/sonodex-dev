@@ -1,15 +1,15 @@
 <script lang="ts">
-	import { Button } from "$lib/components/ui/button/index.js";
-	import { Input } from "$lib/components/ui/input/index.js";
+	import { Button } from "$shadcn/button/index.js";
+	import { Input } from "$shadcn/input/index.js";
 	import {
 		spotifyIsConnected,
 		getSpotifyPlaylistInfo,
 		importSpotifyPlaylist,
 		extractSpotifyPlaylistId,
 		type SpotifyPlaylistInfo,
-	} from "$lib/ts/connections/spotify";
-	import { reloadLibrary } from "$lib/ts/library.svelte";
-	import { setSelection } from "$lib/ts/app-states/state_session.svelte";
+	} from "$ts/services/spotify";
+	import { reloadLibrary } from "$ts/store/library.svelte";
+	import { setSelection } from "$ts/store/state_session.svelte";
 	import { onMount } from "svelte";
 
 	let { folder = null, onClose }: { folder?: string | null; onClose: () => void } = $props();

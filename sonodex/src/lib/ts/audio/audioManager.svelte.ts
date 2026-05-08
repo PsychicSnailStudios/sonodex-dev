@@ -1,13 +1,13 @@
 import { convertFileSrc, invoke } from "@tauri-apps/api/core";
 import { flushSync } from "svelte";
 import { toast } from "svelte-sonner";
-import { library } from "$lib/ts/library.svelte";
-import type { Track, AudioCatagories } from "$lib/ts/util/types";
+import { library } from "$ts/store/library.svelte";
+import type { Track, AudioCatagories } from "$ts/util/types";
 import { parseTrackNumber, parseUidType } from "../util/helpers";
-import { eq, EQ_BANDS } from "$lib/ts/app/eqStore.svelte";
-import { scrobbleStart, scrobbleEnd, scrobbleMarkPaused, scrobbleMarkSeeked } from "$lib/ts/audio/scrobbler.svelte";
-import { profileState } from "$lib/ts/profiles.svelte";
-import { offlineMode } from "$lib/ts/app-states/state_session.svelte";
+import { eq, EQ_BANDS } from "$ts/store/eqStore.svelte";
+import { scrobbleStart, scrobbleEnd, scrobbleMarkPaused, scrobbleMarkSeeked } from "$ts/audio/scrobbler.svelte";
+import { profileState } from "$ts/store/profiles.svelte";
+import { offlineMode } from "$ts/store/state_session.svelte";
 
 let audio: HTMLAudioElement | null = null;
 

@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { Search, Funnel, FunnelX, FunnelPlus, X } from "lucide-svelte";
 
-	import * as InputGroup from "$lib/components/ui/input-group/index.js";
-   import { Button } from "$lib/components/ui/button";
+	import * as InputGroup from "$shadcn/input-group/index.js";
+   import { Button } from "$shadcn/button";
 
 	let { search = $bindable(""), searchCount = $bindable(-1) } = $props<{ search: string; searchCount: number }>();
 </script>

@@ -1,14 +1,14 @@
 <script lang="ts">
 
 	// COMPONENTS
-	import * as Tabs from "$lib/components/ui/tabs/index.js";
-	import ScrollArea from "$lib/components/ui/scroll-area/scroll-area.svelte";
+	import * as Tabs from "$shadcn/tabs/index.js";
+	import ScrollArea from "$shadcn/scroll-area/scroll-area.svelte";
 
 	// CUSTOM COMPONENTS
 	import QueueTrackItem from "$lib/components/app/now-playing/QueueTrackItem.svelte";
 
 	// SCRIPTS
-	import { getPlayedTracks } from "$lib/ts/audio/audioManager.svelte";
+	import { getPlayedTracks } from "$ts/audio/audioManager.svelte";
 
 	// VARIABLES
 	let recentTracks = $derived(getPlayedTracks());

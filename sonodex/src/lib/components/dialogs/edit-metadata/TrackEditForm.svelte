@@ -7,22 +7,22 @@
 	// COMPONENTS
 	import { X, Plus, ChevronUp, ChevronDown, Star, Disc, Hash } from "lucide-svelte";
 
-	import * as Tabs from "$lib/components/ui/tabs";
-	import { Label } from "$lib/components/ui/label";
-	import { Input } from "$lib/components/ui/input";
-	import { Textarea } from "$lib/components/ui/textarea";
-	import { Button } from "$lib/components/ui/button";
-	import { Separator } from "$lib/components/ui/separator";
-	import { Toggle } from "$lib/components/ui/toggle/index.js";
-	import { ScrollArea } from "$lib/components/ui/scroll-area/index.js";
+	import * as Tabs from "$shadcn/tabs";
+	import { Label } from "$shadcn/label";
+	import { Input } from "$shadcn/input";
+	import { Textarea } from "$shadcn/textarea";
+	import { Button } from "$shadcn/button";
+	import { Separator } from "$shadcn/separator";
+	import { Toggle } from "$shadcn/toggle/index.js";
+	import { ScrollArea } from "$shadcn/scroll-area/index.js";
 
 	// CUSTOM COMPONENTS
 	import ArtworkEditor from "./ArtworkEditor.svelte";
 	import IconInput from "$lib/components/app-ui/IconInput.svelte";
 
 	// SCRIPTS
-	import { closeEditModal } from "$lib/ts/app/editModal.svelte";
-	import { reloadLibrary } from "$lib/ts/library.svelte";
+	import { closeEditModal } from "$ts/store/editModal.svelte";
+	import { reloadLibrary } from "$ts/store/library.svelte";
 	import {
 		syncAlbums,
 		removeTrackFromOldAlbums,
@@ -31,11 +31,11 @@
 		renameArtistInLibrary,
 		renameAlbumInTracks,
 		warnEmptyFields,
-	} from "$lib/ts/dbManager";
-	import { enrichTrack, fetchLyrics } from "$lib/ts/app/enrichment";
+	} from "$ts/library/dbManager";
+	import { enrichTrack, fetchLyrics } from "$ts/library/enrichment";
 	import TagSelector from "$lib/components/app-ui/tags/TagSelector.svelte";
 
-	import type { TrackAlbumEntry } from "$lib/ts/util/types";
+	import type { TrackAlbumEntry } from "$ts/util/types";
 
 	// PROPS
 	let { uid } = $props<{ uid: string }>();

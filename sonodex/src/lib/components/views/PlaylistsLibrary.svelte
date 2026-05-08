@@ -2,36 +2,36 @@
 
 	// COMPONENTS
 	import { FolderPlus, ListPlus, FileDown, LayoutGrid, List, ChevronRight, ChevronDown, Folder, FolderOpen, House } from "lucide-svelte";
-	import * as ContextMenu from "$lib/components/ui/context-menu/index.js";
-	import { ScrollArea } from "$lib/components/ui/scroll-area/index.js";
-	import { Button } from "$lib/components/ui/button/index.js";
+	import * as ContextMenu from "$shadcn/context-menu/index.js";
+	import { ScrollArea } from "$shadcn/scroll-area/index.js";
+	import { Button } from "$shadcn/button/index.js";
 
 	// CUSTOM COMPONENTS
 	import PlaylistSortBar from "$lib/components/app-ui/playlist/PlaylistSortBar.svelte";
 	import PlaylistFolderCard from "$lib/components/app-ui/playlist/PlaylistFolderCard.svelte";
 	import PlaylistGridCard from "$lib/components/app-ui/playlist/PlaylistGridCard.svelte";
 	import PlaylistCompactRow from "$lib/components/app-ui/playlist/PlaylistCompactRow.svelte";
-	import FolderContext from "$lib/components/app-ui/context-menus/FolderContext.svelte";
+	import FolderContext from "$lib/components/context-menus/FolderContext.svelte";
 	import CreateNewPlaylist from "$lib/components/dialogs/playlists/CreateNewPlaylist.svelte";
 	import CreateNewFolder from "$lib/components/dialogs/playlists/CreateNewFolder.svelte";
 	import ImportPlaylist from "$lib/components/dialogs/playlists/ImportPlaylist.svelte";
 	import SearchBar from "$lib/components/app-ui/search/SearchBar.svelte";
 	import MediaGrid from "$lib/layouts/MediaGrid.svelte";
-   import PlaylistViewContext from "$lib/components/app-ui/context-menus/PlaylistViewContext.svelte";
+   import PlaylistViewContext from "$lib/components/context-menus/PlaylistViewContext.svelte";
 
 	// SCRIPTS
 	import Fuse from "fuse.js";
-	import { library } from "$lib/ts/library.svelte";
-	import { dragState, endDrag, setHoveredPlaylist } from "$lib/ts/app-states/state_drag.svelte";
-	import { isDraggingFolderType } from "$lib/ts/drag-n-drop/dragdrop";
-	import { startFolderDrag, onFolderDragOver, onFolderDragExit, onBreadcrumbDragOver, onBreadcrumbDragExit, nestFolder, moveFolderToRoot, resetFolderTimers, doFolderReorder, doCompactFolderReorder } from "$lib/ts/drag-n-drop/dragdrop_folders";
-	import { startPlaylistDrag, dropOnPlaylist, movePlaylists, doPlaylistReorder } from "$lib/ts/drag-n-drop/dragdrop_playlists";
-	import { addTracksToPlaylist } from "$lib/ts/audio/playlistManager.svelte";
-	import { folderSelection, navigateTo, breadcrumbs } from "$lib/ts/app/folderSelection.svelte";
-	import { playlistOrder } from "$lib/ts/app/playlistOrderStore.svelte";
-	import { folderOf, folderLabel, getSortedFolders, getDirectPlaylists, getFolderArtworkUids, compactRows, compactFolderRows } from "$lib/ts/app/playlistLibrary.svelte";
-	import type { PlaylistSortField, CompactRow } from "$lib/ts/app/playlistLibrary.svelte";
-	import { setSelection } from "$lib/ts/app-states/state_session.svelte";
+	import { library } from "$ts/store/library.svelte";
+	import { dragState, endDrag, setHoveredPlaylist } from "$ts/store/state_drag.svelte";
+	import { isDraggingFolderType } from "$ts/drag/dragdrop";
+	import { startFolderDrag, onFolderDragOver, onFolderDragExit, onBreadcrumbDragOver, onBreadcrumbDragExit, nestFolder, moveFolderToRoot, resetFolderTimers, doFolderReorder, doCompactFolderReorder } from "$ts/drag/dragdrop_folders";
+	import { startPlaylistDrag, dropOnPlaylist, movePlaylists, doPlaylistReorder } from "$ts/drag/dragdrop_playlists";
+	import { addTracksToPlaylist } from "$ts/audio/playlistManager.svelte";
+	import { folderSelection, navigateTo, breadcrumbs } from "$ts/store/folderSelection.svelte";
+	import { playlistOrder } from "$ts/store/playlistOrderStore.svelte";
+	import { folderOf, folderLabel, getSortedFolders, getDirectPlaylists, getFolderArtworkUids, compactRows, compactFolderRows } from "$ts/library/playlistLibrary.svelte";
+	import type { PlaylistSortField, CompactRow } from "$ts/library/playlistLibrary.svelte";
+	import { setSelection } from "$ts/store/state_session.svelte";
 
 	type GridDropTarget = {
 		kind: "folder" | "playlist";

@@ -3,7 +3,7 @@
 	import ArtworkDisplay from "$lib/components/app-ui/ArtworkDisplay.svelte";
 	import DefultPlaylistArt from "$lib/components/app-ui/playlist/DefultPlaylistArt.svelte";
 
-	import { getPlaylistTracks } from "$lib/ts/library.svelte";
+	import { getPlaylistTracks } from "$ts/store/library.svelte";
 
 	let { folderPath, artUids } = $props<{ folderPath: string; artUids: string[] }>();
 </script>

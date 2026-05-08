@@ -1,9 +1,9 @@
 <script lang="ts">
-	import * as ContextMenu from "$lib/components/ui/context-menu/index.js";
+	import * as ContextMenu from "$shadcn/context-menu/index.js";
 
-	import { nestFolder, moveFolderToRoot, deleteFolder, deleteFolderAndContents } from "$lib/ts/drag-n-drop/dragdrop_folders";
-	import { library } from "$lib/ts/library.svelte";
-	import type { PlaylistSortField } from "$lib/ts/app/playlistLibrary.svelte";
+	import { nestFolder, moveFolderToRoot, deleteFolder, deleteFolderAndContents } from "$ts/drag/dragdrop_folders";
+	import { library } from "$ts/store/library.svelte";
+	import type { PlaylistSortField } from "$ts/library/playlistLibrary.svelte";
 
 	let {
 		path,

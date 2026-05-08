@@ -3,10 +3,10 @@
 	// COMPONENTS
 	import { ArrowDownAZ, ArrowUpAZ, ArrowUpDown, ChevronUp, ChevronDown, LayoutGrid, List } from "lucide-svelte";
 
-	import { Button } from "$lib/components/ui/button/index.js";
-	import { ScrollArea } from "$lib/components/ui/scroll-area/index.js";
-	import { Input } from "$lib/components/ui/input/index.js";
-	import Toggle from "$lib/components/ui/toggle/toggle.svelte";
+	import { Button } from "$shadcn/button/index.js";
+	import { ScrollArea } from "$shadcn/scroll-area/index.js";
+	import { Input } from "$shadcn/input/index.js";
+	import Toggle from "$shadcn/toggle/toggle.svelte";
 
 	// CUSTOM COMPONENTS
 	import ArtworkDisplay from "$lib/components/app-ui/ArtworkDisplay.svelte";
@@ -15,9 +15,9 @@
 
 	// SCRIPTS
 	import Fuse from "fuse.js";
-	import { library } from "$lib/ts/library.svelte";
-	import { setSelection } from "$lib/ts/app-states/state_session.svelte";
-	import { createPersistedViewState } from "$lib/ts/app-states/state_session.svelte";
+	import { library } from "$ts/store/library.svelte";
+	import { setSelection } from "$ts/store/state_session.svelte";
+	import { createPersistedViewState } from "$ts/store/state_session.svelte";
 	
 	// VARIABLES
 	let search = $state("");

@@ -1,14 +1,14 @@
 <script lang="ts">
 	import { ChevronRight, House, Folder, CirclePlus, CircleCheck } from "lucide-svelte";
 
-	import * as DropdownMenu from "$lib/components/ui/dropdown-menu/index.js";
-	import Button from "$lib/components/ui/button/button.svelte";
-	import Input from "$lib/components/ui/input/input.svelte";
-	import ScrollArea from "$lib/components/ui/scroll-area/scroll-area.svelte";
+	import * as DropdownMenu from "$shadcn/dropdown-menu/index.js";
+	import Button from "$shadcn/button/button.svelte";
+	import Input from "$shadcn/input/input.svelte";
+	import ScrollArea from "$shadcn/scroll-area/scroll-area.svelte";
 
-	import { library } from "$lib/ts/library.svelte";
-	import { addTrackToPlaylist, removeTrackFromPlaylist } from "$lib/ts/audio/playlistManager.svelte";
-	import type { Playlist, Track } from "$lib/ts/util/types";
+	import { library } from "$ts/store/library.svelte";
+	import { addTrackToPlaylist, removeTrackFromPlaylist } from "$ts/audio/playlistManager.svelte";
+	import type { Playlist, Track } from "$ts/util/types";
 
 	let { track } = $props<{ track: Track }>();
 

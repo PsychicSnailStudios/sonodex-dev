@@ -1,14 +1,14 @@
 <script lang="ts">
-	import * as AlertDialog from "$lib/components/ui/alert-dialog/index.js";
-	import * as Tabs from "$lib/components/ui/tabs/index.js";
-	import { Input } from "$lib/components/ui/input/index.js";
+	import * as AlertDialog from "$shadcn/alert-dialog/index.js";
+	import * as Tabs from "$shadcn/tabs/index.js";
+	import { Input } from "$shadcn/input/index.js";
 
 	import ImportPlaylist from "$lib/components/dialogs/playlists/ImportPlaylist.svelte";
 	import SpotifyURLImport from "$lib/components/dialogs/playlists/SpotifyUrlImport.svelte";
 	
-	import { createPlaylist } from "$lib/ts/audio/playlistManager.svelte";
-	import { profileState } from "$lib/ts/profiles.svelte";
-   import { setSelection } from "$lib/ts/app-states/state_session.svelte";
+	import { createPlaylist } from "$ts/audio/playlistManager.svelte";
+	import { profileState } from "$ts/store/profiles.svelte";
+   import { setSelection } from "$ts/store/state_session.svelte";
 
 	let { open = $bindable(false), folder = null } = $props<{ open: boolean; folder?: string | null }>();
 

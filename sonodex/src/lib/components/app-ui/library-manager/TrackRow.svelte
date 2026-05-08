@@ -1,22 +1,22 @@
 <script lang="ts">
 	import { Pencil, Trash, FolderInput, Paperclip, CloudDownload, FolderOpen, Loader2 } from "lucide-svelte";
-	import * as Tooltip from "$lib/components/ui/tooltip/index.js";
-	import { buttonVariants } from "$lib/components/ui/button/index.js";
+	import * as Tooltip from "$shadcn/tooltip/index.js";
+	import { buttonVariants } from "$shadcn/button/index.js";
 	import ArtworkDisplay from "$lib/components/app-ui/ArtworkDisplay.svelte";
 	import ArtistsList from "$lib/components/app-ui/ArtistsList.svelte";
-	import { getAlbumUidFromName, library } from "$lib/ts/library.svelte";
-	import { parseAlbumEntries } from "$lib/ts/util/helpers";
-	import { setSelection } from "$lib/ts/app-states/state_session.svelte";
-	import { openEditModal } from "$lib/ts/app/editModal.svelte";
+	import { getAlbumUidFromName, library } from "$ts/store/library.svelte";
+	import { parseAlbumEntries } from "$ts/util/helpers";
+	import { setSelection } from "$ts/store/state_session.svelte";
+	import { openEditModal } from "$ts/store/editModal.svelte";
 	import {
 		removeTrackFromLibrary,
 		enrichTrack,
 		replaceTrackPath,
 		openTrackInExplorer,
-	} from "$lib/ts/app/libraryManager";
-	import type { Track } from "$lib/ts/util/types";
-	import ScrollingText from "../ScrollingText.svelte";
-	import { Checkbox } from "$lib/components/ui/checkbox/index.js";
+	} from "$ts/library/libraryManager";
+	import type { Track } from "$ts/util/types";
+	import ScrollingText from "$lib/components/app-ui/ScrollingText.svelte";
+	import { Checkbox } from "$shadcn/checkbox/index.js";
 
 	let {
 		track,

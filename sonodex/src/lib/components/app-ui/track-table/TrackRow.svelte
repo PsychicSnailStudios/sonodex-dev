@@ -2,7 +2,7 @@
 
 	// COMPONENTS
 	import { Pause, Play } from "lucide-svelte";
-	import Button from "$lib/components/ui/button/button.svelte";
+	import Button from "$shadcn/button/button.svelte";
 
 	// CUSTOM COMPONENTS
 	import ArtworkDisplay from "$lib/components/app-ui/ArtworkDisplay.svelte";
@@ -11,13 +11,13 @@
 	import ArtistsList from "$lib/components/app-ui/ArtistsList.svelte";
 
 	// SCRIPTS
-	import { setSelection } from "$lib/ts/app-states/state_session.svelte";
-	import { trackSelection, selectTrack } from "$lib/ts/app/trackSelection.svelte";
-	import { startDrag, endDrag } from "$lib/ts/app-states/state_drag.svelte";
-	import { player, playTrackByUid, togglePlay } from "$lib/ts/audio/audioManager.svelte";
-	import { getAlbumUidFromName, getArtistUidFromName } from "$lib/ts/library.svelte";
-	import { formatDuration, parseAlbum, parseArtists, parseTrackNumber } from "$lib/ts/util/helpers";
-	import type { Track } from "$lib/ts/util/types";
+	import { setSelection } from "$ts/store/state_session.svelte";
+	import { trackSelection, selectTrack } from "$ts/store/trackSelection.svelte";
+	import { startDrag, endDrag } from "$ts/store/state_drag.svelte";
+	import { player, playTrackByUid, togglePlay } from "$ts/audio/audioManager.svelte";
+	import { getAlbumUidFromName, getArtistUidFromName } from "$ts/store/library.svelte";
+	import { formatDuration, parseAlbum, parseArtists, parseTrackNumber } from "$ts/util/helpers";
+	import type { Track } from "$ts/util/types";
 
 	// PROPS
 	let {

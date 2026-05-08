@@ -2,11 +2,11 @@
 	import { onMount, tick } from 'svelte';
 
 	import X from '@lucide/svelte/icons/x';
-	import { Badge } from "$lib/components/ui/badge/index.js";
-	import { ScrollArea } from "$lib/components/ui/scroll-area/index.js";
+	import { Badge } from "$shadcn/badge/index.js";
+	import { ScrollArea } from "$shadcn/scroll-area/index.js";
 
-	import { tagStore } from '$lib/ts/tagManager.svelte';
-	import type { TagKind } from '$lib/ts/tagManager.svelte';
+	import { tagStore } from '$ts/store/tagManager.svelte';
+	import type { TagKind } from '$ts/store/tagManager.svelte';
 
 	let {
 		value = $bindable<string[]>([]),

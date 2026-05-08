@@ -4,9 +4,9 @@
 
 	import { Pencil } from "lucide-svelte";
 
-	import * as Tabs from "$lib/components/ui/tabs/index.js";
-	import { Button } from "$lib/components/ui/button/index.js";
-	import ScrollArea from "$lib/components/ui/scroll-area/scroll-area.svelte";
+	import * as Tabs from "$shadcn/tabs/index.js";
+	import { Button } from "$shadcn/button/index.js";
+	import ScrollArea from "$shadcn/scroll-area/scroll-area.svelte";
 
 	import ArtworkDisplay from "$lib/components/app-ui/ArtworkDisplay.svelte";
 	import AudioCard from "$lib/components/app-ui/AudioCard.svelte";
@@ -14,12 +14,12 @@
 	import ArtistTopTracks from "$lib/components/app-ui/ArtistTopTracks.svelte";
 	import TagList from "$lib/components/app-ui/tags/TagList.svelte";
 
-	import { selection } from "$lib/ts/app-states/state_session.svelte";
-	import { library } from "$lib/ts/library.svelte";
-	import { openEditModal } from "$lib/ts/app/editModal.svelte";
-	import { parseTags } from "$lib/ts/util/helpers";
-	import { currentArtistTab } from "$lib/ts/app-states/state_session.svelte";
-	import type { Artist, Album } from "$lib/ts/util/types";
+	import { selection } from "$ts/store/state_session.svelte";
+	import { library } from "$ts/store/library.svelte";
+	import { openEditModal } from "$ts/store/editModal.svelte";
+	import { parseTags } from "$ts/util/helpers";
+	import { currentArtistTab } from "$ts/store/state_session.svelte";
+	import type { Artist, Album } from "$ts/util/types";
 
 	let bannerUrl = $state<string | null>(null);
 

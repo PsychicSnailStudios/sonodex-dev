@@ -1,7 +1,7 @@
 <script lang="ts">
 
 	// COMPONENTS
-	import * as Dialog from "$lib/components/ui/dialog/index.js";
+	import * as Dialog from "$shadcn/dialog/index.js";
 
 	// CUSTOM COMPONENTS
 	import TrackEditForm from "$lib/components/dialogs/edit-metadata/TrackEditForm.svelte";
@@ -10,7 +10,7 @@
 	import PlaylistEditForm from "$lib/components/dialogs/edit-metadata/PlaylistEditForm.svelte";
 
 	// SCRIPTS
-	import { editModal, closeEditModal } from "$lib/ts/app/editModal.svelte";
+	import { editModal, closeEditModal } from "$ts/store/editModal.svelte";
 
 	// VARIABLES
 	const titles: Record<string, string> = {

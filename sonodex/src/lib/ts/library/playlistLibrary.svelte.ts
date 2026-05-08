@@ -1,6 +1,6 @@
-import { folderSelection } from "$lib/ts/app/folderSelection.svelte";
-import { playlistOrder, applyCustomOrder } from "$lib/ts/app/playlistOrderStore.svelte";
-import type { Playlist } from "$lib/ts/util/types";
+import { folderSelection } from "$ts/store/folderSelection.svelte";
+import { playlistOrder, applyCustomOrder } from "$ts/store/playlistOrderStore.svelte";
+import type { Playlist } from "$ts/util/types";
 
 export type PlaylistSortField = "title" | "date_created" | "custom";
 

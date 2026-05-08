@@ -1,21 +1,21 @@
 <script lang="ts">
 	import { ArrowUpDown, ArrowUp, ArrowDown, LayoutGrid, List } from "lucide-svelte";
 
-	import * as DropdownMenu from "$lib/components/ui/dropdown-menu/index.js";
-	import { ScrollArea } from "$lib/components/ui/scroll-area/index.js";
-	import { Button } from "$lib/components/ui/button/index.js";
+	import * as DropdownMenu from "$shadcn/dropdown-menu/index.js";
+	import { ScrollArea } from "$shadcn/scroll-area/index.js";
+	import { Button } from "$shadcn/button/index.js";
 
 	import AudioCard from "$lib/components/app-ui/AudioCard.svelte";
 	import ArtworkDisplay from "$lib/components/app-ui/ArtworkDisplay.svelte";
 	import SearchBar from "$lib/components/app-ui/search/SearchBar.svelte";
 	import MediaGrid from "$lib/layouts/MediaGrid.svelte";
 
-	import { parseArtists } from "$lib/ts/util/helpers";
-	import { library } from "$lib/ts/library.svelte";
-	import { searchAlbums } from "$lib/ts/app/fuseStore.svelte";
-	import { setSelection } from "$lib/ts/app-states/state_session.svelte";
-	import { createPersistedViewState } from "$lib/ts/app-states/state_session.svelte";
-	import type { SortField } from "$lib/ts/app/sortConfig.svelte";
+	import { parseArtists } from "$ts/util/helpers";
+	import { library } from "$ts/store/library.svelte";
+	import { searchAlbums } from "$ts/store/fuseStore.svelte";
+	import { setSelection } from "$ts/store/state_session.svelte";
+	import { createPersistedViewState } from "$ts/store/state_session.svelte";
+	import type { SortField } from "$ts/util/sortConfig.svelte";
 
 	let search = $state("");
 

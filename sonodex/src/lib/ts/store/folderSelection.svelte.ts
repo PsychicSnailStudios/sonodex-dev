@@ -1,4 +1,4 @@
-import { library } from "$lib/ts/library.svelte";
+import { library } from "$ts/store/library.svelte";
 
 let currentPath = $state<string | null>(null);
 let _knownFolders = $state<Set<string>>(new Set());

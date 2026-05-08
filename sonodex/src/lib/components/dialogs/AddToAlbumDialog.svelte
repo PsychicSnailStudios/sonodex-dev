@@ -1,13 +1,13 @@
 <script lang="ts">
-	import * as Dialog from "$lib/components/ui/dialog/index.js";
-	import * as Popover from "$lib/components/ui/popover/index.js";
-	import * as Command from "$lib/components/ui/command/index.js";
-	import { Button } from "$lib/components/ui/button/index.js";
+	import * as Dialog from "$shadcn/dialog/index.js";
+	import * as Popover from "$shadcn/popover/index.js";
+	import * as Command from "$shadcn/command/index.js";
+	import { Button } from "$shadcn/button/index.js";
 	import ChevronsUpDownIcon from "@lucide/svelte/icons/chevrons-up-down";
 	import CheckIcon from "@lucide/svelte/icons/check";
 	import { cn } from "$lib/utils.js";
 	import { tick } from "svelte";
-	import { library, loadLibrary } from "$lib/ts/library.svelte";
+	import { library, loadLibrary } from "$ts/store/library.svelte";
 	import { invoke } from "@tauri-apps/api/core";
 
 	let {

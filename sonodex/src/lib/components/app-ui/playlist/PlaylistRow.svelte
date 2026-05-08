@@ -1,13 +1,13 @@
 <script lang="ts">
 	import { Play } from "lucide-svelte";
-	import Button from "$lib/components/ui/button/button.svelte";
+	import Button from "$shadcn/button/button.svelte";
 	import ArtworkDisplay from "$lib/components/app-ui/ArtworkDisplay.svelte";
 	import DefultPlaylistArt from "$lib/components/app-ui/playlist/DefultPlaylistArt.svelte";
 
-	import { setSelection } from "$lib/ts/app-states/state_session.svelte";
-	import { queueTracksByObject } from "$lib/ts/audio/audioManager.svelte";
-   import { getPlaylistTracks } from "$lib/ts/library.svelte";
-	import type { Playlist } from "$lib/ts/util/types";
+	import { setSelection } from "$ts/store/state_session.svelte";
+	import { queueTracksByObject } from "$ts/audio/audioManager.svelte";
+   import { getPlaylistTracks } from "$ts/store/library.svelte";
+	import type { Playlist } from "$ts/util/types";
 
 	let {
 		playlist,

@@ -1,9 +1,9 @@
-import { SortState } from "$lib/ts/app/sortConfig.svelte";
-import { createColumnState } from "$lib/ts/app/columnConfig.svelte";
-import { clamp } from "$lib/ts/util/helpers";
-import type { SortField, SortDirection } from "$lib/ts/app/sortConfig.svelte";
-import type { ColumnKey } from "$lib/ts/app/columnConfig.svelte";
-import { profileState } from "$lib/ts/profiles.svelte";
+import { SortState } from "$ts/util/sortConfig.svelte";
+import { createColumnState } from "$ts/util/columnConfig.svelte";
+import { clamp } from "$ts/util/helpers";
+import type { SortField, SortDirection } from "$ts/util/sortConfig.svelte";
+import type { ColumnKey } from "$ts/util/columnConfig.svelte";
+import { profileState } from "$ts/store/profiles.svelte";
 
 type Selection = {
 	uid: string;

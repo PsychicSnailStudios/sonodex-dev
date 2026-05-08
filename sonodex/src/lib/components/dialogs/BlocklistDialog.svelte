@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { ShieldOff, Layers, Square } from "lucide-svelte";
-	import * as AlertDialog from "$lib/components/ui/alert-dialog/index.js";
-	import { Checkbox } from "$lib/components/ui/checkbox/index.js";
-	import { blocklistDialogState, resolveBlocklistDialog } from "$lib/ts/app/federatedLibrary.svelte";
+	import * as AlertDialog from "$shadcn/alert-dialog/index.js";
+	import { Checkbox } from "$shadcn/checkbox/index.js";
+	import { blocklistDialogState, resolveBlocklistDialog } from "$ts/store/federatedLibrary.svelte";
 
 	let remember = $state(false);
 

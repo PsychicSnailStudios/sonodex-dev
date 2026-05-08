@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { ArrowUpDown, ArrowUp, ArrowDown } from "lucide-svelte";
-	import { Button } from "$lib/components/ui/button/index.js";
-	import * as DropdownMenu from "$lib/components/ui/dropdown-menu/index.js";
+	import { Button } from "$shadcn/button/index.js";
+	import * as DropdownMenu from "$shadcn/dropdown-menu/index.js";
 
 	export type PlaylistSortField = "title" | "date_created" | "custom";
 

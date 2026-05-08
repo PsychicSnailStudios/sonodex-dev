@@ -1,14 +1,14 @@
 import { invoke } from "@tauri-apps/api/core";
-import { library } from "$lib/ts/library.svelte";
-import { dragState, setHoveredFolder, setDragActive, setDragPayload, endDrag } from "$lib/ts/app-states/state_drag.svelte";
-import { isDraggingFolderType } from "$lib/ts/drag-n-drop/dragdrop";
-import { registerFolder, removeFolder } from "$lib/ts/app/folderSelection.svelte";
-import { addTracksToPlaylist } from "$lib/ts/audio/playlistManager.svelte";
-import { movePlaylists } from "$lib/ts/drag-n-drop/dragdrop_playlists";
-import { getSortedFolders, getDirectPlaylists, compactFolderRows } from "$lib/ts/app/playlistLibrary.svelte";
-import { playlistOrder } from "$lib/ts/app/playlistOrderStore.svelte";
-import type { Playlist } from "$lib/ts/util/types";
-import type { PlaylistSortField } from "$lib/ts/app/playlistLibrary.svelte";
+import { library } from "$ts/store/library.svelte";
+import { dragState, setHoveredFolder, setDragActive, setDragPayload, endDrag } from "$ts/store/state_drag.svelte";
+import { isDraggingFolderType } from "$ts/drag/dragdrop";
+import { registerFolder, removeFolder } from "$ts/store/folderSelection.svelte";
+import { addTracksToPlaylist } from "$ts/audio/playlistManager.svelte";
+import { movePlaylists } from "$ts/drag/dragdrop_playlists";
+import { getSortedFolders, getDirectPlaylists, compactFolderRows } from "$ts/library/playlistLibrary.svelte";
+import { playlistOrder } from "$ts/store/playlistOrderStore.svelte";
+import type { Playlist } from "$ts/util/types";
+import type { PlaylistSortField } from "$ts/library/playlistLibrary.svelte";
 
 let _folderHoverTimer: ReturnType<typeof setTimeout> | null = null;
 let _folderHoverKey: string | null = null;

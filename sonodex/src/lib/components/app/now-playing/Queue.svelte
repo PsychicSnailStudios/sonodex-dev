@@ -1,7 +1,7 @@
 <script lang="ts">
 	// COMPONENTS
-	import * as Tabs from "$lib/components/ui/tabs/index.js";
-	import ScrollArea from "$lib/components/ui/scroll-area/scroll-area.svelte";
+	import * as Tabs from "$shadcn/tabs/index.js";
+	import ScrollArea from "$shadcn/scroll-area/scroll-area.svelte";
 
 	// CUSTOM COMPONENTS
 	import QueueTrackItem from "$lib/components/app/now-playing/QueueTrackItem.svelte";
@@ -14,10 +14,10 @@
 		reorderQueue,
 		insertIntoQueue,
 		removeFromQueue,
-	} from "$lib/ts/audio/audioManager.svelte";
-	import { dragState, endDrag } from "$lib/ts/app-states/state_drag.svelte";
-	import { clearQueueSelection, queueSelection } from "$lib/ts/app/queueSelection.svelte";
-	import { library } from "$lib/ts/library.svelte";
+	} from "$ts/audio/audioManager.svelte";
+	import { dragState, endDrag } from "$ts/store/state_drag.svelte";
+	import { clearQueueSelection, queueSelection } from "$ts/store/queueSelection.svelte";
+	import { library } from "$ts/store/library.svelte";
 
 	// VARIABLES
 	let upcomingTracks = $derived(getQueuedTracks());

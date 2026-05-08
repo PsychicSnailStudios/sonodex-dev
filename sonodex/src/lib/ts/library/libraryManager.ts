@@ -1,8 +1,8 @@
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
-import { library, loadLibrary } from "$lib/ts/library.svelte";
-import { showWarning } from "$lib/ts/app/dialogManager.svelte";
-import type { DuplicateGroup } from "$lib/ts/util/types";
+import { library, loadLibrary } from "$ts/store/library.svelte";
+import { showWarning } from "$ts/store/dialogManager.svelte";
+import type { DuplicateGroup } from "$ts/util/types";
 
 // ─── Track Actions ───────────────────────────────────────────────────────────
 

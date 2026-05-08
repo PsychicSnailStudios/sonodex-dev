@@ -1,14 +1,14 @@
 <script lang="ts">
 	import { Pencil, Trash, CloudDownload, Loader2 } from "lucide-svelte";
-	import * as Tooltip from "$lib/components/ui/tooltip/index.js";
-	import { buttonVariants } from "$lib/components/ui/button/index.js";
-	import { Checkbox } from "$lib/components/ui/checkbox/index.js";
+	import * as Tooltip from "$shadcn/tooltip/index.js";
+	import { buttonVariants } from "$shadcn/button/index.js";
+	import { Checkbox } from "$shadcn/checkbox/index.js";
 	import ArtworkDisplay from "$lib/components/app-ui/ArtworkDisplay.svelte";
-	import { openEditModal } from "$lib/ts/app/editModal.svelte";
-	import { removeAlbum, enrichAlbum } from "$lib/ts/app/libraryManager";
-	import { setSelection } from "$lib/ts/app-states/state_session.svelte";
-	import { getArtistUidFromName } from "$lib/ts/library.svelte";
-	import type { Album } from "$lib/ts/util/types";
+	import { openEditModal } from "$ts/store/editModal.svelte";
+	import { removeAlbum, enrichAlbum } from "$ts/library/libraryManager";
+	import { setSelection } from "$ts/store/state_session.svelte";
+	import { getArtistUidFromName } from "$ts/store/library.svelte";
+	import type { Album } from "$ts/util/types";
 
 	let {
 		album,

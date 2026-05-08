@@ -4,13 +4,13 @@
 	import { onMount } from "svelte";
 
 	// COMPONENTS
-	import * as Dialog from "$lib/components/ui/dialog/index.js";
-	import { Input } from "$lib/components/ui/input/index.js";
-	import { Button } from "$lib/components/ui/button/index.js";
-	import { Label } from "$lib/components/ui/label/index.js";
+	import * as Dialog from "$shadcn/dialog/index.js";
+	import { Input } from "$shadcn/input/index.js";
+	import { Button } from "$shadcn/button/index.js";
+	import { Label } from "$shadcn/label/index.js";
 
 	// SCRIPTS
-	import { createProfile } from "$lib/ts/profiles.svelte";
+	import { createProfile } from "$ts/store/profiles.svelte";
 
 	// PROPS
 	let { onComplete }: { onComplete: () => void } = $props();

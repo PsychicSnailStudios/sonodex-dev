@@ -7,9 +7,9 @@ import type {
 	LibraryDeletePreference,
 	MergeResult,
 	CASCADE_ASK,
-} from "$lib/ts/util/types";
-import { CASCADE_SINGLE, CASCADE_ALL } from "$lib/ts/util/types";
-import { loadLibrary } from "$lib/ts/library.svelte";
+} from "$ts/util/types";
+import { CASCADE_SINGLE, CASCADE_ALL } from "$ts/util/types";
+import { loadLibrary } from "$ts/store/library.svelte";
 
 // ─── Library registry ─────────────────────────────────────────────────────────
 

@@ -1,9 +1,9 @@
 <script lang="ts">
 	import { Pencil } from "lucide-svelte";
 
-	import * as Tabs from "$lib/components/ui/tabs/index.js";
-	import ScrollArea from "$lib/components/ui/scroll-area/scroll-area.svelte";
-	import { Button } from "$lib/components/ui/button/index.js";
+	import * as Tabs from "$shadcn/tabs/index.js";
+	import ScrollArea from "$shadcn/scroll-area/scroll-area.svelte";
+	import { Button } from "$shadcn/button/index.js";
 
 	import ArtworkDisplay from "$lib/components/app-ui/ArtworkDisplay.svelte";
 	import NavButtons from "$lib/components/app-ui/NavButtons.svelte";
@@ -14,12 +14,12 @@
 	import LyricsViewer from "$lib/components/app-ui/LyricsViewer.svelte";
 	import DownloadButton from "$lib/components/app-ui/DownloadButton.svelte";
 
-	import { getAlbumUidFromName, getArtistUidFromName, getLyrics, library } from "$lib/ts/library.svelte";
-	import { currentTrackTab, selection, setSelection } from "$lib/ts/app-states/state_session.svelte";
-	import { openEditModal } from "$lib/ts/app/editModal.svelte";
-	import { formatDuration, getArtworkColor, parseAlbumEntries, parseTags } from "$lib/ts/util/helpers";
-	import { playTrackByObject } from "$lib/ts/audio/audioManager.svelte";
-	import { artworkCache } from "$lib/ts/app-states/artworkCache";
+	import { getAlbumUidFromName, getArtistUidFromName, getLyrics, library } from "$ts/store/library.svelte";
+	import { currentTrackTab, selection, setSelection } from "$ts/store/state_session.svelte";
+	import { openEditModal } from "$ts/store/editModal.svelte";
+	import { formatDuration, getArtworkColor, parseAlbumEntries, parseTags } from "$ts/util/helpers";
+	import { playTrackByObject } from "$ts/audio/audioManager.svelte";
+	import { artworkCache } from "$ts/store/artworkCache";
 
 	let track = $derived(library.tracks.find(t => t.uid === selection.uid) ?? null);
 	let fetchingLyrics = $state(false);

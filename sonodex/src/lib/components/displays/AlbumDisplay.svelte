@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { Pencil } from "lucide-svelte";
 
-	import { ScrollArea } from "$lib/components/ui/scroll-area/index.js";
-	import Button from "$lib/components/ui/button/button.svelte";
+	import { ScrollArea } from "$shadcn/scroll-area/index.js";
+	import Button from "$shadcn/button/button.svelte";
 
 	import TrackTableSettings from "$lib/components/app-ui/track-table/TrackTableSettings.svelte";
 	import ArtworkDisplay from "$lib/components/app-ui/ArtworkDisplay.svelte";
@@ -12,15 +12,15 @@
 	import TagList from "$lib/components/app-ui/tags/TagList.svelte";
 	import DownloadButton from "$lib/components/app-ui/DownloadButton.svelte";
 
-	import { selection, setSelection } from "$lib/ts/app-states/state_session.svelte";
-	import { getArtistUidFromName, getAlbumTracks, library } from "$lib/ts/library.svelte";
-	import { queueTracksByObject } from "$lib/ts/audio/audioManager.svelte";
-	import { openEditModal } from "$lib/ts/app/editModal.svelte";
-	import { getArtworkColor, parseTags, totalDuration } from "$lib/ts/util/helpers";
-	import { createPersistedViewState } from "$lib/ts/app-states/state_session.svelte";
-	import { artworkCache } from "$lib/ts/app-states/artworkCache";
+	import { selection, setSelection } from "$ts/store/state_session.svelte";
+	import { getArtistUidFromName, getAlbumTracks, library } from "$ts/store/library.svelte";
+	import { queueTracksByObject } from "$ts/audio/audioManager.svelte";
+	import { openEditModal } from "$ts/store/editModal.svelte";
+	import { getArtworkColor, parseTags, totalDuration } from "$ts/util/helpers";
+	import { createPersistedViewState } from "$ts/store/state_session.svelte";
+	import { artworkCache } from "$ts/store/artworkCache";
 
-	import type { Album, Track } from "$lib/ts/util/types";
+	import type { Album, Track } from "$ts/util/types";
 
 	const view = createPersistedViewState("album", {
 		sortField: "number",

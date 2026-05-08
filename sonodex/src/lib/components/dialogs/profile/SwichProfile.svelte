@@ -6,12 +6,12 @@
 	// COMPONENTS
 	import { User, Lock, Eye, EyeOff } from "lucide-svelte";
 
-	import * as AlertDialog from "$lib/components/ui/alert-dialog/index.js";
-	import * as Dialog from "$lib/components/ui/dialog/index.js";
-	import ScrollArea from "$lib/components/ui/scroll-area/scroll-area.svelte";
-	import { Button } from "$lib/components/ui/button/index.js";
-	import { Input } from "$lib/components/ui/input/index.js";
-	import { Label } from "$lib/components/ui/label/index.js";
+	import * as AlertDialog from "$shadcn/alert-dialog/index.js";
+	import * as Dialog from "$shadcn/dialog/index.js";
+	import ScrollArea from "$shadcn/scroll-area/scroll-area.svelte";
+	import { Button } from "$shadcn/button/index.js";
+	import { Input } from "$shadcn/input/index.js";
+	import { Label } from "$shadcn/label/index.js";
 	
 	// SCRIPTS
 	import {
@@ -23,9 +23,9 @@
 		profileHasPassword,
 		verifyProfilePassword,
 		verifyRecoveryKey,
-	} from "$lib/ts/profiles.svelte";
-	import { saveSessionState } from "$lib/ts/app-states/state_session.svelte";
-	import { savePlayerState } from "$lib/ts/audio/audioManager.svelte";
+	} from "$ts/store/profiles.svelte";
+	import { saveSessionState } from "$ts/store/state_session.svelte";
+	import { savePlayerState } from "$ts/audio/audioManager.svelte";
 	
 	// VARIABLES
 	let { open = $bindable(true), openAdd = $bindable(true) } = $props<{ open: boolean, openAdd: boolean }>();

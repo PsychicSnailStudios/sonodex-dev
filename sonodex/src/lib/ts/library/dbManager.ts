@@ -1,6 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
-import { showWarning } from "$lib/ts/app/dialogManager.svelte";
-import type {TrackAlbumEntry} from "$lib/ts/util/types";
+import { showWarning } from "$ts/store/dialogManager.svelte";
+import type {TrackAlbumEntry} from "$ts/util/types";
 
 // ─── Internal helpers ─────────────────────────────────────────────────────────
 

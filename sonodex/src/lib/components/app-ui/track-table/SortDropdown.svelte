@@ -3,11 +3,11 @@
 	// COMPONENTS
 	import { ArrowDownUp, ChevronUp, ChevronDown, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-svelte"
 
-	import * as DropdownMenu from "$lib/components/ui/dropdown-menu"
-	import { Button } from "$lib/components/ui/button"
+	import * as DropdownMenu from "$shadcn/dropdown-menu"
+	import { Button } from "$shadcn/button"
 	
 	// SCRIPTS
-	import type { SortState, SortField } from "$lib/ts/app/sortConfig.svelte"
+	import type { SortState, SortField } from "$ts/util/sortConfig.svelte"
 
 	// PROPS
 	let { sort } = $props<{ sort: SortState }>()

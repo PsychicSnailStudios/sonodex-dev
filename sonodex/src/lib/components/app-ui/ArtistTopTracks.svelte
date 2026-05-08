@@ -4,10 +4,10 @@
 
 	import ArtworkDisplay from "$lib/components/app-ui/ArtworkDisplay.svelte";
 
-	import { library } from "$lib/ts/library.svelte";
-	import { setSelection } from "$lib/ts/app-states/state_session.svelte";
-	import { parseArtists } from "$lib/ts/util/helpers";
-	import type { Track, Album } from "$lib/ts/util/types";
+	import { library } from "$ts/store/library.svelte";
+	import { setSelection } from "$ts/store/state_session.svelte";
+	import { parseArtists } from "$ts/util/helpers";
+	import type { Track, Album } from "$ts/util/types";
 
 	let { artistUid, artistName } = $props<{ artistUid: string; artistName: string }>();
 

@@ -1,7 +1,7 @@
 import Fuse from "fuse.js";
-	import { library } from "$lib/ts/library.svelte";
-import { parseArtists, parseAlbum } from "$lib/ts/util/helpers";
-import type { Track, Album, Artist } from "$lib/ts/util/types";
+	import { library } from "$ts/store/library.svelte";
+import { parseArtists, parseAlbum } from "$ts/util/helpers";
+import type { Track, Album, Artist } from "$ts/util/types";
 
 function makeFuse<T>(list: T[], keys: Fuse.FuseOptionKey<T>[]): Fuse<T> {
 	return new Fuse(list, {

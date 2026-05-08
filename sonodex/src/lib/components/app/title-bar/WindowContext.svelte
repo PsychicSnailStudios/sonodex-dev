@@ -3,10 +3,10 @@
 	// COMPONENTS
 	import { Ellipsis } from "lucide-svelte";
 
-	import * as DropdownMenu from "$lib/components/ui/dropdown-menu/index.js";
+	import * as DropdownMenu from "$shadcn/dropdown-menu/index.js";
 	
 	// SCRIPTS
-   import { setView } from "$lib/ts/app-states/state_session.svelte";
+   import { setView } from "$ts/store/state_session.svelte";
 	
 	// VARIABLES
   

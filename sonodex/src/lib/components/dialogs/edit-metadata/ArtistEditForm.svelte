@@ -5,22 +5,22 @@
 	import { onMount } from "svelte";
 
 	// COMPONENTS
-	import * as Tabs from "$lib/components/ui/tabs";
-	import { Label } from "$lib/components/ui/label";
-	import { Input } from "$lib/components/ui/input";
-	import { Textarea } from "$lib/components/ui/textarea";
-	import { Button } from "$lib/components/ui/button";
-	import { Separator } from "$lib/components/ui/separator";
+	import * as Tabs from "$shadcn/tabs";
+	import { Label } from "$shadcn/label";
+	import { Input } from "$shadcn/input";
+	import { Textarea } from "$shadcn/textarea";
+	import { Button } from "$shadcn/button";
+	import { Separator } from "$shadcn/separator";
 
 	// CUSTOM COMPONENTS
 	import ArtworkEditor from "$lib/components/dialogs/edit-metadata/ArtworkEditor.svelte";
 	import TagSelector from "$lib/components/app-ui/tags/TagSelector.svelte";
 
 	// SCRIPTS
-	import { closeEditModal } from "$lib/ts/app/editModal.svelte";
-	import { loadLibrary, library, reloadSingle, reloadLibrary } from "$lib/ts/library.svelte";
-	import { enrichArtist } from "$lib/ts/app/enrichment";
-	import { renameArtistInLibrary, mergeArtistAkas, warnEmptyFields } from "$lib/ts/dbManager";
+	import { closeEditModal } from "$ts/store/editModal.svelte";
+	import { loadLibrary, library, reloadSingle, reloadLibrary } from "$ts/store/library.svelte";
+	import { enrichArtist } from "$ts/library/enrichment";
+	import { renameArtistInLibrary, mergeArtistAkas, warnEmptyFields } from "$ts/library/dbManager";
 
 	// PROPS
 	let { uid } = $props<{ uid: string }>();

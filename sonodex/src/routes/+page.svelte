@@ -3,7 +3,7 @@
 	import { invoke } from "@tauri-apps/api/core";
 	import { listen } from "@tauri-apps/api/event";
 
-	import * as Resizable from "$lib/components/ui/resizable/index.js";
+	import * as Resizable from "$shadcn/resizable/index.js";
 
 	import PlayControls from "$lib/components/app/PlayControls.svelte";
 	import NowPlaying from "$lib/components/app/now-playing/NowPlaying.svelte";
@@ -26,12 +26,12 @@
 	import ProfileSetup from "$lib/components/dialogs/profile/ProfileSetup.svelte";
 	import UpdateDialog from "$lib/components/dialogs/UpdateDialog.svelte";
 
-	import { loadLibrary } from "$lib/ts/library.svelte";
-	import { selection, scanState, activeView, loadSessionState, saveSessionState } from "$lib/ts/app-states/state_session.svelte";
-	import { dragState } from "$lib/ts/app-states/state_drag.svelte";
-	import { togglePlay, skipBack, skipNext, loadPlayerState, savePlayerState } from "$lib/ts/audio/audioManager.svelte";
+	import { loadLibrary } from "$ts/store/library.svelte";
+	import { selection, scanState, activeView, loadSessionState, saveSessionState } from "$ts/store/state_session.svelte";
+	import { dragState } from "$ts/store/state_drag.svelte";
+	import { togglePlay, skipBack, skipNext, loadPlayerState, savePlayerState } from "$ts/audio/audioManager.svelte";
 	import { checkForUpdate } from "$lib/updater.svelte";
-	import { loadProfiles, profileState } from "$lib/ts/profiles.svelte";
+	import { loadProfiles, profileState } from "$ts/store/profiles.svelte";
 
 	let needsSetup = $state(false);
 	let setupChecked = $state(false);

@@ -6,9 +6,9 @@
 	// COMPONENTS
 	import { Rows4, BadgePlus, Square } from "lucide-svelte";
 
-	import * as Tabs from "$lib/components/ui/tabs/index.js";
-	import ScrollArea from "$lib/components/ui/scroll-area/scroll-area.svelte";
-	import { Button } from "$lib/components/ui/button";
+	import * as Tabs from "$shadcn/tabs/index.js";
+	import ScrollArea from "$shadcn/scroll-area/scroll-area.svelte";
+	import { Button } from "$shadcn/button";
 
 	// CUSTOM COMPONENTS
 	import ArtworkDisplay from "$lib/components/app-ui/ArtworkDisplay.svelte";
@@ -19,10 +19,10 @@
 	import LyricsViewer from "$lib/components/app-ui/LyricsViewer.svelte";
 
 	// SCRIPTS
-	import { setSelection } from "$lib/ts/app-states/state_session.svelte";
-	import { getArtistUidFromName } from "$lib/ts/library.svelte";
-	import { currentlyPlaying, player } from "$lib/ts/audio/audioManager.svelte";
-	import { getArtworkColor, parseArtists } from "$lib/ts/util/helpers";
+	import { setSelection } from "$ts/store/state_session.svelte";
+	import { getArtistUidFromName } from "$ts/store/library.svelte";
+	import { currentlyPlaying, player } from "$ts/audio/audioManager.svelte";
+	import { getArtworkColor, parseArtists } from "$ts/util/helpers";
 
 	// VARIABLES
 	let showQueue = $state(false);

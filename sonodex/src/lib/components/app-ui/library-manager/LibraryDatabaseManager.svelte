@@ -26,12 +26,12 @@
 	import { open } from "@tauri-apps/plugin-dialog";
 	import { onMount } from "svelte";
 
-	import { Button, buttonVariants } from "$lib/components/ui/button/index.js";
-	import * as Dialog from "$lib/components/ui/dialog/index.js";
-	import * as Tooltip from "$lib/components/ui/tooltip/index.js";
-	import * as DropdownMenu from "$lib/components/ui/dropdown-menu/index.js";
+	import { Button, buttonVariants } from "$shadcn/button/index.js";
+	import * as Dialog from "$shadcn/dialog/index.js";
+	import * as Tooltip from "$shadcn/tooltip/index.js";
+	import * as DropdownMenu from "$shadcn/dropdown-menu/index.js";
 
-	import { libraryStore, loadLibraryRegistry } from "$lib/ts/library.svelte";
+	import { libraryStore, loadLibraryRegistry } from "$ts/store/library.svelte";
 	import {
 		createLibrary,
 		deleteLibrary,
@@ -42,9 +42,9 @@
 		checkWritePermission,
 		rebuildMerged,
 		addPathToLibrary,
-	} from "$lib/ts/app/federatedLibrary.svelte";
-	import { scanState } from "$lib/ts/app-states/state_session.svelte";
-	import { loadLibrary } from "$lib/ts/library.svelte";
+	} from "$ts/store/federatedLibrary.svelte";
+	import { scanState } from "$ts/store/state_session.svelte";
+	import { loadLibrary } from "$ts/store/library.svelte";
 
 	// ─── Per-library state ────────────────────────────────────────────────────────
 

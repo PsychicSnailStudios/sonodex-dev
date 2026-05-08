@@ -1,5 +1,5 @@
-import { setDragActive, setDragPayload } from "$lib/ts/app-states/state_drag.svelte";
-import type { DragPayload } from "$lib/ts/app-states/state_drag.svelte";
+import { setDragActive, setDragPayload } from "$ts/store/state_drag.svelte";
+import type { DragPayload } from "$ts/store/state_drag.svelte";
 
 export function startTrackDrag(e: DragEvent, uids: string[], sourcePlaylistUid: string | null = null) {
 	if (e.dataTransfer) {

@@ -2,12 +2,12 @@
 		
 	// COMPONENTS
    import { Loader2 } from "lucide-svelte";
-	import { Button } from "$lib/components/ui/button/index.js";
+	import { Button } from "$shadcn/button/index.js";
 
 	// SCRIPTS
-	import { getLyrics, library } from "$lib/ts/library.svelte";
-	import type { Lyrics } from "$lib/ts/util/types";
-   import { fetchLyrics } from "$lib/ts/app/enrichment";
+	import { getLyrics, library } from "$ts/store/library.svelte";
+	import type { Lyrics } from "$ts/util/types";
+   import { fetchLyrics } from "$ts/library/enrichment";
 
 	// VARIABLES
 	let { uid } = $props<{ uid: string }>();

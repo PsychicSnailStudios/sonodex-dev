@@ -1,7 +1,7 @@
 <script lang="ts">
 
 	// COMPONENTS
-	import Button from "$lib/components/ui/button/button.svelte";
+	import Button from "$shadcn/button/button.svelte";
 	
 	// CUSTOM COMPONENTS
 	import { Play } from "lucide-svelte";
@@ -9,10 +9,10 @@
 	import DefultPlaylistArt from "$lib/components/app-ui/playlist/DefultPlaylistArt.svelte";
 
 	// SCRIPTS
-	import { setSelection } from "$lib/ts/app-states/state_session.svelte";
-	import { playTrackByUid, queueTracksByObject } from "$lib/ts/audio/audioManager.svelte";
-   import { getAlbumTracks, getPlaylistTracks } from "$lib/ts/library.svelte";
-	import type { AudioCatagories } from "$lib/ts/util/types";
+	import { setSelection } from "$ts/store/state_session.svelte";
+	import { playTrackByUid, queueTracksByObject } from "$ts/audio/audioManager.svelte";
+   import { getAlbumTracks, getPlaylistTracks } from "$ts/store/library.svelte";
+	import type { AudioCatagories } from "$ts/util/types";
 	
 	// PROPS
 	let { title, subTitle, artworkUid, type } = $props<{ title: string; subTitle: string | null; artworkUid: string; type: AudioCatagories }>();

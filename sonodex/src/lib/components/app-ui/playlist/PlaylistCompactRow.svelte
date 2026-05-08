@@ -1,9 +1,9 @@
 <script lang="ts">
-	import * as ContextMenu from "$lib/components/ui/context-menu/index.js";
+	import * as ContextMenu from "$shadcn/context-menu/index.js";
 	import PlaylistRow from "$lib/components/app-ui/playlist/PlaylistRow.svelte";
-	import PlaylistContext from "$lib/components/app-ui/context-menus/PlaylistContext.svelte";
-	import { dragState } from "$lib/ts/app-states/state_drag.svelte";
-	import type { Playlist } from "$lib/ts/util/types";
+	import PlaylistContext from "$lib/components/context-menus/PlaylistContext.svelte";
+	import { dragState } from "$ts/store/state_drag.svelte";
+	import type { Playlist } from "$ts/util/types";
 
 	type Props = {
 		playlist: Playlist;

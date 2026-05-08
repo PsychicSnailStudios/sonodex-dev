@@ -1,21 +1,21 @@
 <script lang="ts">
 
 	// COMPONENTS
-	import * as ContextMenu from "$lib/components/ui/context-menu/index.js";
-	import * as DropdownMenu from "$lib/components/ui/dropdown-menu/index.js";
+	import * as ContextMenu from "$shadcn/context-menu/index.js";
+	import * as DropdownMenu from "$shadcn/dropdown-menu/index.js";
 
-	import TrackPlaylistContent from "$lib/components/app-ui/context-menus/AddTrackToPlaylist.svelte";
+	import TrackPlaylistContent from "$lib/components/context-menus/AddTrackToPlaylist.svelte";
 
 	// CUSTOM COMPONENTS
    import TrackPlaylistEditButton from "$lib/components/app-ui/TrackPlaylistEditButton.svelte";
 
 	// SCRIPTS
-   import { setSelection } from "$lib/ts/app-states/state_session.svelte";
-	import { addTrackToQueue, removeFromQueue } from "$lib/ts/audio/audioManager.svelte";
-   import { openEditModal } from "$lib/ts/app/editModal.svelte";
-   import { copySelectedNameToClipboard } from "$lib/ts/app/trackSelection.svelte";
+   import { setSelection } from "$ts/store/state_session.svelte";
+	import { addTrackToQueue, removeFromQueue } from "$ts/audio/audioManager.svelte";
+   import { openEditModal } from "$ts/store/editModal.svelte";
+   import { copySelectedNameToClipboard } from "$ts/store/trackSelection.svelte";
 
-   import type { Track } from "$lib/ts/util/types";
+   import type { Track } from "$ts/util/types";
 
 	// PROPS
 	let { track, inQueue = false, displayIndex = null } = $props<{ track: Track; inQueue?: boolean; displayIndex?: number | null }>();

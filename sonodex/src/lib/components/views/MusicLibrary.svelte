@@ -1,25 +1,25 @@
 <!-- NOTE: This view has been deprecated -->
 
 <script lang="ts">
-	import { library } from "$lib/ts/library.svelte";
-	import { setSelection } from "$lib/ts/app-states/state_session.svelte";
+	import { library } from "$ts/store/library.svelte";
+	import { setSelection } from "$ts/store/state_session.svelte";
 
-	import { createColumnState } from "$lib/ts/app/columnConfig.svelte"
+	import { createColumnState } from "$ts/util/columnConfig.svelte"
 
-	import * as ToggleGroup from "$lib/components/ui/toggle-group/index.js";
-	import { ScrollArea } from "$lib/components/ui/scroll-area/index.js";
-	import { Input } from "$lib/components/ui/input/index.js";
-	import Toggle from "$lib/components/ui/toggle/toggle.svelte";
+	import * as ToggleGroup from "$shadcn/toggle-group/index.js";
+	import { ScrollArea } from "$shadcn/scroll-area/index.js";
+	import { Input } from "$shadcn/input/index.js";
+	import Toggle from "$shadcn/toggle/toggle.svelte";
 
 	import AudioCard from "$lib/components/app-ui/AudioCard.svelte";
 	import TrackTable from "$lib/components/app-ui/track-table/TrackTable.svelte";
-	import ArtworkDisplay from "../app-ui/ArtworkDisplay.svelte";
+	import ArtworkDisplay from "$lib/components/app-ui/ArtworkDisplay.svelte";
 	import TrackTableSettings from "$lib/components/app-ui/track-table/TrackTableSettings.svelte";
-	import { SortState } from "$lib/ts/app/sortConfig.svelte"
+	import { SortState } from "$ts/util/sortConfig.svelte"
 	import { ArrowDownAZ, ArrowUpAZ, ArrowUpDown, ChevronUp, ChevronDown, LayoutGrid, List } from "lucide-svelte";
-	import { parseArtists } from "$lib/ts/util/helpers";
-	import * as DropdownMenu from "$lib/components/ui/dropdown-menu/index.js";
-	import { Button } from "$lib/components/ui/button/index.js";
+	import { parseArtists } from "$ts/util/helpers";
+	import * as DropdownMenu from "$shadcn/dropdown-menu/index.js";
+	import { Button } from "$shadcn/button/index.js";
 	
 	let activeTab = $state("album");
 	let search = $state("");

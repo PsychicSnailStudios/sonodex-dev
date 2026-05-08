@@ -5,7 +5,7 @@
 	
 	// COMPONENTS
 	import { Rows4, BadgePlus, Square } from "lucide-svelte";
-	import { Button } from "$lib/components/ui/button";
+	import { Button } from "$shadcn/button";
 
 	// CUSTOM COMPONENTS
 	import ArtworkDisplay from "$lib/components/app-ui/ArtworkDisplay.svelte";
@@ -13,8 +13,8 @@
 	import ScrollingText from "$lib/components/app-ui/ScrollingText.svelte";
 
 	// SCRIPTS
-	import { currentlyPlaying, player } from "$lib/ts/audio/audioManager.svelte";
-	import { getArtworkColor, parseArtists } from "$lib/ts/util/helpers";
+	import { currentlyPlaying, player } from "$ts/audio/audioManager.svelte";
+	import { getArtworkColor, parseArtists } from "$ts/util/helpers";
 
 	// VARIABLES
 	let color = $state("rgb(30, 30, 30)");

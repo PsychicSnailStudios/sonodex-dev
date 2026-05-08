@@ -1,8 +1,8 @@
 import { invoke } from "@tauri-apps/api/core";
-import { library, getArtistUidFromName } from "$lib/ts/library.svelte";
-import type { Track } from "$lib/ts/util/types";
-import { player } from "$lib/ts/audio/audioManager.svelte";
-import { offlineMode } from "$lib/ts/app-states/state_session.svelte";
+import { library, getArtistUidFromName } from "$ts/store/library.svelte";
+import type { Track } from "$ts/util/types";
+import { player } from "$ts/audio/audioManager.svelte";
+import { offlineMode } from "$ts/store/state_session.svelte";
 
 let activeScrobbleUid: string | null = null;
 let activeTrackUid: string | null = null;

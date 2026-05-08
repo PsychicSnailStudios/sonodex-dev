@@ -1,16 +1,16 @@
 <script lang="ts">
-	import { Button } from "$lib/components/ui/button/index.js";
-	import { ScrollArea } from "$lib/components/ui/scroll-area/index.js";
-	import * as AlertDialog from "$lib/components/ui/alert-dialog/index.js";
+	import { Button } from "$shadcn/button/index.js";
+	import { ScrollArea } from "$shadcn/scroll-area/index.js";
+	import * as AlertDialog from "$shadcn/alert-dialog/index.js";
 	import {
 		spotifyIsConnected,
 		getSpotifyPlaylists,
 		importSpotifyPlaylist,
 		connectSpotify,
 		type SpotifyPlaylistSummary,
-	} from "$lib/ts/connections/spotify";
-	import { reloadLibrary } from "$lib/ts/library.svelte";
-	import { setSelection } from "$lib/ts/app-states/state_session.svelte";
+	} from "$ts/services/spotify";
+	import { reloadLibrary } from "$ts/store/library.svelte";
+	import { setSelection } from "$ts/store/state_session.svelte";
 	import { onMount } from "svelte";
 	import Fuse from "fuse.js";
 	import SearchBar from "$lib/components/app-ui/search/SearchBar.svelte";

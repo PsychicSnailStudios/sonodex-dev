@@ -1,7 +1,7 @@
 <script lang="ts">
-   import { setSelection } from "$lib/ts/app-states/state_session.svelte";
-   import { getArtistUidFromName } from "$lib/ts/library.svelte";
-   import { parseArtists } from "$lib/ts/util/helpers";
+   import { setSelection } from "$ts/store/state_session.svelte";
+   import { getArtistUidFromName } from "$ts/store/library.svelte";
+   import { parseArtists } from "$ts/util/helpers";
 
 	// PROPS
 	let { artists } = $props<{ artists: string }>();

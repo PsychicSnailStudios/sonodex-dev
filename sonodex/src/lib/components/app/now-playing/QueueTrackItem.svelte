@@ -1,17 +1,17 @@
 <script lang="ts">
 	// COMPONENTS
-	import * as ContextMenu from "$lib/components/ui/context-menu/index.js";
+	import * as ContextMenu from "$shadcn/context-menu/index.js";
 
 	// CUSTOM COMPONENTS
 	import ArtworkDisplay from "$lib/components/app-ui/ArtworkDisplay.svelte";
-	import TrackContext from "$lib/components/app-ui/context-menus/TrackContext.svelte";
+	import TrackContext from "$lib/components/context-menus/TrackContext.svelte";
 
 	// SCRIPTS
-	import { setSelection } from "$lib/ts/app-states/state_session.svelte";
-	import { startDrag, endDrag } from "$lib/ts/app-states/state_drag.svelte";
-	import { queueSelection, selectQueueItem } from "$lib/ts/app/queueSelection.svelte";
+	import { setSelection } from "$ts/store/state_session.svelte";
+	import { startDrag, endDrag } from "$ts/store/state_drag.svelte";
+	import { queueSelection, selectQueueItem } from "$ts/store/queueSelection.svelte";
 	import ArtistsList from "$lib/components/app-ui/ArtistsList.svelte";
-	import type { Track } from "$lib/ts/util/types";
+	import type { Track } from "$ts/util/types";
 
 	// PROPS
 	let {

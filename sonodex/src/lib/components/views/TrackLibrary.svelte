@@ -1,14 +1,14 @@
 <script lang="ts">
-	import { ScrollArea } from "$lib/components/ui/scroll-area/index.js";
+	import { ScrollArea } from "$shadcn/scroll-area/index.js";
 
 	import TrackTable from "$lib/components/app-ui/track-table/TrackTable.svelte";
 	import TrackTableSettings from "$lib/components/app-ui/track-table/TrackTableButtons.svelte";
 	import SearchBar from "$lib/components/app-ui/search/SearchBar.svelte";
 
-	import { createPersistedViewState } from "$lib/ts/app-states/state_session.svelte";
-	import { library } from "$lib/ts/library.svelte";
-	import { searchTracks } from "$lib/ts/app/fuseStore.svelte";
-	import { createColumnState } from "$lib/ts/app/columnConfig.svelte";
+	import { createPersistedViewState } from "$ts/store/state_session.svelte";
+	import { library } from "$ts/store/library.svelte";
+	import { searchTracks } from "$ts/store/fuseStore.svelte";
+	import { createColumnState } from "$ts/util/columnConfig.svelte";
 
 	const cols = createColumnState("library");
 	const view = createPersistedViewState("track-library", {

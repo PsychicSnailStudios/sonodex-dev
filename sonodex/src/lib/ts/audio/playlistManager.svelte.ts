@@ -1,7 +1,7 @@
-import { library } from "$lib/ts/library.svelte";
-import type { Playlist, Track } from "$lib/ts/util/types";
+import { library } from "$ts/store/library.svelte";
+import type { Playlist, Track } from "$ts/util/types";
 import { invoke } from "@tauri-apps/api/core";
-import { showWarning } from "$lib/ts/app/dialogManager.svelte";
+import { showWarning } from "$ts/store/dialogManager.svelte";
 
 type TrackEntry = { uid: string; name: string; order: number }
 

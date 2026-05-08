@@ -1,9 +1,9 @@
 <script lang="ts">
 	import { Trash, Trash2, Upload, Plus, Pencil, Check, X, ChevronDown } from "lucide-svelte";
-	import { Button, buttonVariants } from "$lib/components/ui/button/index.js";
-	import { tagStore } from "$lib/ts/tagManager.svelte";
-	import { showWarning } from "$lib/ts/app/dialogManager.svelte";
-	import type { Tag, TagKind } from "$lib/ts/tagManager.svelte";
+	import { Button, buttonVariants } from "$shadcn/button/index.js";
+	import { tagStore } from "$ts/store/tagManager.svelte";
+	import { showWarning } from "$ts/store/dialogManager.svelte";
+	import type { Tag, TagKind } from "$ts/store/tagManager.svelte";
 
 	type Tab = "tags" | "genres";
 	let activeTab = $state<Tab>("tags");

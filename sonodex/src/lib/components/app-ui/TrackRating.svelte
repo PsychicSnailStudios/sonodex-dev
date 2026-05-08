@@ -3,10 +3,10 @@
 	import { invoke } from "@tauri-apps/api/core";
 
 	import { Star } from 'lucide-svelte';
-	import * as DropdownMenu from "$lib/components/ui/dropdown-menu/index.js";
-	import { Input } from "$lib/components/ui/input";
-	import { Toggle } from "$lib/components/ui/toggle/index.js";
-    import { reloadLibrary } from "$lib/ts/library.svelte";
+	import * as DropdownMenu from "$shadcn/dropdown-menu/index.js";
+	import { Input } from "$shadcn/input";
+	import { Toggle } from "$shadcn/toggle/index.js";
+    import { reloadLibrary } from "$ts/store/library.svelte";
 
 	let { uid, rating, tags }: { uid: string; rating: number | null, tags: string[] } = $props();
 

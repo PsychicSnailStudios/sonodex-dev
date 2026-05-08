@@ -4,12 +4,12 @@
 	import { invoke, convertFileSrc } from "@tauri-apps/api/core";
 
 	import { Music4, User, DiscAlbum } from "lucide-svelte";
-	import { Skeleton } from "$lib/components/ui/skeleton/index.js";
+	import { Skeleton } from "$shadcn/skeleton/index.js";
 
-	import { library } from "$lib/ts/library.svelte";
-	import type { AudioCatagories, Track } from "$lib/ts/util/types";
-	import { trackSelection } from "$lib/ts/app/trackSelection.svelte";
-	import { artworkCache, artworkInflight } from "$lib/ts/app-states/artworkCache";
+	import { library } from "$ts/store/library.svelte";
+	import type { AudioCatagories, Track } from "$ts/util/types";
+	import { trackSelection } from "$ts/store/trackSelection.svelte";
+	import { artworkCache, artworkInflight } from "$ts/store/artworkCache";
 
 	let { uid, size = null, type = "track", previewPath = null }: {
 		uid: string;

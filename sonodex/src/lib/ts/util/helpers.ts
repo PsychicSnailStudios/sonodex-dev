@@ -1,4 +1,4 @@
-import type { Track, TrackAlbumEntry, PlaylistTrackEntry, AudioCatagories } from "$lib/ts/util/types";
+import type { Track, TrackAlbumEntry, PlaylistTrackEntry, AudioCatagories } from "$ts/util/types";
 import { convertFileSrc } from "@tauri-apps/api/core";
 
 export function parseUidType(uid: string): AudioCatagories {

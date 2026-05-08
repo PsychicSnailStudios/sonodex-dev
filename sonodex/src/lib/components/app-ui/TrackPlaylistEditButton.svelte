@@ -1,11 +1,11 @@
 <script lang="ts">
 	import { BadgePlus } from "lucide-svelte";
 
-	import * as DropdownMenu from "$lib/components/ui/dropdown-menu/index.js";
-	import Button from "../ui/button/button.svelte";
+	import * as DropdownMenu from "$shadcn/dropdown-menu/index.js";
+	import Button from "$shadcn/button/button.svelte";
 
-	import TrackPlaylistContent from "./context-menus/AddTrackToPlaylist.svelte";
-	import type { Track } from "$lib/ts/util/types";
+	import TrackPlaylistContent from "$lib/components/context-menus/AddTrackToPlaylist.svelte";
+	import type { Track } from "$ts/util/types";
 
 	let { track } = $props<{ track: Track }>();
 

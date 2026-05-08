@@ -2,7 +2,7 @@
 
 	import { invoke } from "@tauri-apps/api/core";
 	import X from "@lucide/svelte/icons/x";
-	import { Badge } from "$lib/components/ui/badge/index.js";
+	import { Badge } from "$shadcn/badge/index.js";
 
 	let { tags, uid, canEdit = false }: { tags: string[], uid: string, canEdit?: boolean } = $props();
 

@@ -1,6 +1,6 @@
 <script lang="ts">
 
-	import * as InputGroup from "$lib/components/ui/input-group/index.js";
+	import * as InputGroup from "$shadcn/input-group/index.js";
 
 	let { value = $bindable(null), placeholder, classes, Icon, type } = $props<{ value: string | number | null; placeholder: string; classes: string; Icon: any; type: string }>();
 </script>

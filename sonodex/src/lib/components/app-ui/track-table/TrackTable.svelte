@@ -1,24 +1,24 @@
 <script lang="ts">
 	// COMPONENTS
 	import { Clock2, Star, ChevronUp, ChevronDown, ChevronsUpDown } from "lucide-svelte"
-	import * as ContextMenu from "$lib/components/ui/context-menu/index.js";
+	import * as ContextMenu from "$shadcn/context-menu/index.js";
 
 	// CUSTOM COMPONENTS
 	import TrackRow from "$lib/components/app-ui/track-table/TrackRow.svelte"
-	import TrackContext from "$lib/components/app-ui/context-menus/TrackContext.svelte";
+	import TrackContext from "$lib/components/context-menus/TrackContext.svelte";
 
 	// SCRIPTS
-	import { parseAlbum, parseTrackNumber } from "$lib/ts/util/helpers"
-	import { dragState, endDrag } from "$lib/ts/app-states/state_drag.svelte"
-	import { generateViewId, trackSelection, setTrackSelectionContext, clearTrackSelection, copySelectedToClipboard } from "$lib/ts/app/trackSelection.svelte"
-	import { removeTracksFromPlaylist, reorderPlaylistTracks, addTracksToPlaylist, parseTracks } from "$lib/ts/audio/playlistManager.svelte"
-	import { parseDiscNumber, buildDiscBreaks, type DiscBreakEntry } from "$lib/ts/util/discHelpers";
+	import { parseAlbum, parseTrackNumber } from "$ts/util/helpers"
+	import { dragState, endDrag } from "$ts/store/state_drag.svelte"
+	import { generateViewId, trackSelection, setTrackSelectionContext, clearTrackSelection, copySelectedToClipboard } from "$ts/store/trackSelection.svelte"
+	import { removeTracksFromPlaylist, reorderPlaylistTracks, addTracksToPlaylist, parseTracks } from "$ts/audio/playlistManager.svelte"
+	import { parseDiscNumber, buildDiscBreaks, type DiscBreakEntry } from "$ts/util/discHelpers";
 
 	// TYPES
-	import type { ColumnState } from "$lib/ts/app/columnConfig.svelte"
-	import type { SortState } from "$lib/ts/app/sortConfig.svelte"
-	import type { Track } from "$lib/ts/util/types"
-	import { library } from "$lib/ts/library.svelte";
+	import type { ColumnState } from "$ts/util/columnConfig.svelte"
+	import type { SortState } from "$ts/util/sortConfig.svelte"
+	import type { Track } from "$ts/util/types"
+	import { library } from "$ts/store/library.svelte";
 
 	// PROPS
 	let { tracks, columns, sort, compact = false, playlistUid = null, albumUid = null, emulateType = null } = $props<{

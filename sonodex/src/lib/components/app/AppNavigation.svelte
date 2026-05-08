@@ -2,11 +2,11 @@
 	// COMPONENTS
 	import { House, Music, ListMusic, Search, Tags, Settings, DiscAlbum, Disc, SquareUser, FolderCog } from "lucide-svelte";
 
-	import { Button } from "$lib/components/ui/button/index.js";
+	import { Button } from "$shadcn/button/index.js";
 
 	// SCRIPTS
-	import { dragState } from "$lib/ts/app-states/state_drag.svelte";
-	import { activeView, setView } from "$lib/ts/app-states/state_session.svelte";
+	import { dragState } from "$ts/store/state_drag.svelte";
+	import { activeView, setView } from "$ts/store/state_session.svelte";
 
 
 	// VARIABLES

@@ -7,8 +7,8 @@
 	import { ListMusic } from "lucide-svelte";
 
 	// SCRIPTS
-	import { getArtworkColor } from '$lib/ts/util/helpers';
-   import type { Track } from "$lib/ts/util/types";
+	import { getArtworkColor } from '$ts/util/helpers';
+   import type { Track } from "$ts/util/types";
 
 	// PROPS
 	let { tracks } = $props<{ tracks: Track[] }>();

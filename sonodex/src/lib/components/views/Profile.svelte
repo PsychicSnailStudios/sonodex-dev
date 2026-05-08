@@ -6,9 +6,9 @@
 	// COMPONENTS
 	import { Pencil, User, Settings } from "lucide-svelte";
 
-	import * as Tabs from "$lib/components/ui/tabs/index.js";
-	import ScrollArea from "$lib/components/ui/scroll-area/scroll-area.svelte";
-	import { Button } from "$lib/components/ui/button/index.js";
+	import * as Tabs from "$shadcn/tabs/index.js";
+	import ScrollArea from "$shadcn/scroll-area/scroll-area.svelte";
+	import { Button } from "$shadcn/button/index.js";
 	
 	// CUSTOM COMPONENTS
 	import TopTracks from "$lib/components/app-ui/Analytics.svelte";
@@ -17,8 +17,8 @@
 	import SwichProfile from "$lib/components/dialogs/profile/SwichProfile.svelte";
 	
 	// SCRIPTS
-	import { profileState, loadProfiles, getProfileAvatar, } from "$lib/ts/profiles.svelte";
-   import { setView } from "$lib/ts/app-states/state_session.svelte";
+	import { profileState, loadProfiles, getProfileAvatar, } from "$ts/store/profiles.svelte";
+   import { setView } from "$ts/store/state_session.svelte";
 
 	// VARIABLES
 	let swichOpen = $state(false);

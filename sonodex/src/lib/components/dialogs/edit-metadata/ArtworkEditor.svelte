@@ -5,7 +5,7 @@
 
 	// COMPONENTS
 	import { Upload, Clipboard, Trash2 } from "lucide-svelte";
-	import Button from "$lib/components/ui/button/button.svelte";
+	import Button from "$shadcn/button/button.svelte";
 
 	// CUSTOM COMPONENTS
 	import ArtworkDisplay from "$lib/components/app-ui/ArtworkDisplay.svelte";

@@ -6,11 +6,11 @@
 	// COMPONENTS
 	import { User, Eye, EyeOff, Copy, Check } from "lucide-svelte";
 
-	import * as Dialog from "$lib/components/ui/dialog/index.js";
-	import { Button } from "$lib/components/ui/button/index.js";
-	import { Input } from "$lib/components/ui/input/index.js";
-	import { Label } from "$lib/components/ui/label/index.js";
-	import { Separator } from "$lib/components/ui/separator/index.js";
+	import * as Dialog from "$shadcn/dialog/index.js";
+	import { Button } from "$shadcn/button/index.js";
+	import { Input } from "$shadcn/input/index.js";
+	import { Label } from "$shadcn/label/index.js";
+	import { Separator } from "$shadcn/separator/index.js";
 	
 	// SCRIPTS
 	import {
@@ -21,7 +21,7 @@
 		profileHasPassword,
 		setProfilePassword,
 		removeProfilePassword,
-	} from "$lib/ts/profiles.svelte";
+	} from "$ts/store/profiles.svelte";
 
 	// VARIABLES
 	let { open = $bindable(true) } = $props<{ open: boolean }>();

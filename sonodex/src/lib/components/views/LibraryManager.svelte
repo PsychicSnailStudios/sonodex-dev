@@ -4,11 +4,11 @@
 	import { listen } from "@tauri-apps/api/event";
 	import { onMount } from "svelte";
 
-	import * as Tabs from "$lib/components/ui/tabs/index.js";
-	import * as Tooltip from "$lib/components/ui/tooltip/index.js";
-	import { Checkbox } from "$lib/components/ui/checkbox/index.js";
-	import { ScrollArea } from "$lib/components/ui/scroll-area/index.js";
-	import { Button, buttonVariants } from "$lib/components/ui/button/index.js";
+	import * as Tabs from "$shadcn/tabs/index.js";
+	import * as Tooltip from "$shadcn/tooltip/index.js";
+	import { Checkbox } from "$shadcn/checkbox/index.js";
+	import { ScrollArea } from "$shadcn/scroll-area/index.js";
+	import { Button, buttonVariants } from "$shadcn/button/index.js";
 
 	import SearchBar from "$lib/components/app-ui/search/SearchBar.svelte";
 	import TrackRow from "$lib/components/app-ui/library-manager/TrackRow.svelte";
@@ -29,12 +29,12 @@
 		removeArtists,
 		enrichArtists,
 		getDuplicates,
-	} from "$lib/ts/app/libraryManager";
-	import { library, loadLibrary } from "$lib/ts/library.svelte";
-	import type { DuplicateGroup } from "$lib/ts/util/types";
-	import { scanState } from "$lib/ts/app-states/state_session.svelte";
-	import { enrichAllAlbums, enrichAllArtists, enrichAllTracks } from "$lib/ts/app/enrichment";
-	import { parseAlbum, parseArtists } from "$lib/ts/util/helpers";
+	} from "$ts/library/libraryManager";
+	import { library, loadLibrary } from "$ts/store/library.svelte";
+	import type { DuplicateGroup } from "$ts/util/types";
+	import { scanState } from "$ts/store/state_session.svelte";
+	import { enrichAllAlbums, enrichAllArtists, enrichAllTracks } from "$ts/library/enrichment";
+	import { parseAlbum, parseArtists } from "$ts/util/helpers";
 
 	// ─── Search ───────────────────────────────────────────────────────────────────
 	let trackSearch = $state("");

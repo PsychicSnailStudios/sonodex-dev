@@ -1,9 +1,9 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { Track, Album, Artist, Playlist, Lyrics, Library } from "$lib/ts/util/types";
-import { SortState } from "$lib/ts/app/sortConfig.svelte";
-import { parseUidType } from "$lib/ts/util/helpers";
-import { loadTags } from '$lib/ts/tagManager.svelte';
-import { prefetchArtwork } from "$lib/ts/app/artworkPrefetch";
+import type { Track, Album, Artist, Playlist, Lyrics, Library } from "$ts/util/types";
+import { SortState } from "$ts/util/sortConfig.svelte";
+import { parseUidType } from "$ts/util/helpers";
+import { loadTags } from '$ts/store/tagManager.svelte';
+import { prefetchArtwork } from "$ts/library/artworkPrefetch";
 
 // ─── Main library state ───────────────────────────────────────────────────────
 

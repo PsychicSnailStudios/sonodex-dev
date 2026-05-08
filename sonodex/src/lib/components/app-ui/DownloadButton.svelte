@@ -1,14 +1,14 @@
 <script lang="ts">
 	import { ArrowDownToLine, Loader2 } from "lucide-svelte";
-	import * as Tooltip from "$lib/components/ui/tooltip/index.js";
-	import { buttonVariants } from "$lib/components/ui/button/index.js";
+	import * as Tooltip from "$shadcn/tooltip/index.js";
+	import { buttonVariants } from "$shadcn/button/index.js";
 	import { open } from "@tauri-apps/plugin-dialog";
 	import { invoke } from "@tauri-apps/api/core";
 	import { toast } from "svelte-sonner";
-	import { parseUidType } from "$lib/ts/util/helpers";
-	import { downloadTrack, downloadAlbum, downloadPlaylist } from "$lib/ts/app/downloadManager";
-	import { library } from "$lib/ts/library.svelte";
-	import type { Track } from "$lib/ts/util/types";
+	import { parseUidType } from "$ts/util/helpers";
+	import { downloadTrack, downloadAlbum, downloadPlaylist } from "$ts/services/downloadManager";
+	import { library } from "$ts/store/library.svelte";
+	import type { Track } from "$ts/util/types";
 
 	let {
 		uid,

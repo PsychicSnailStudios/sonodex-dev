@@ -6,12 +6,12 @@
 				Volume, Volume2, VolumeX, Volume1, VolumeOff
 	} from "lucide-svelte";
 	
-	import { Button } from "$lib/components/ui/button";
-	import { Slider } from "$lib/components/ui/slider/index.js";
+	import { Button } from "$shadcn/button";
+	import { Slider } from "$shadcn/slider/index.js";
 
 	// SCRIPTS
-	import { player, getQueueIndex, getQueuedTracks, togglePlay, seek, skipBack, skipNext, toggleLoop, toggleShuffle, setVolume, toggleMute } from "$lib/ts/audio/audioManager.svelte";
-	import { formatDuration } from "$lib/ts/util/helpers";
+	import { player, getQueueIndex, getQueuedTracks, togglePlay, seek, skipBack, skipNext, toggleLoop, toggleShuffle, setVolume, toggleMute } from "$ts/audio/audioManager.svelte";
+	import { formatDuration } from "$ts/util/helpers";
 
 	// VARIABLES
 	let seeking = $state(false);

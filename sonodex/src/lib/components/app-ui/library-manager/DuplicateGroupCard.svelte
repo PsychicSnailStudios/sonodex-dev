@@ -1,12 +1,12 @@
 <script lang="ts">
 	import { Trash2, Check, FileX, GitMerge } from "lucide-svelte";
-	import * as Tooltip from "$lib/components/ui/tooltip/index.js";
-	import { Button, buttonVariants } from "$lib/components/ui/button/index.js";
+	import * as Tooltip from "$shadcn/tooltip/index.js";
+	import { Button, buttonVariants } from "$shadcn/button/index.js";
 	import ArtworkDisplay from "$lib/components/app-ui/ArtworkDisplay.svelte";
 	import ArtistsList from "$lib/components/app-ui/ArtistsList.svelte";
-	import { formatDuration } from "$lib/ts/util/helpers";
-	import { keepTrack, deleteTrackFile, mergeRemoteLocal } from "$lib/ts/app/libraryManager";
-	import type { DuplicateGroup } from "$lib/ts/util/types";
+	import { formatDuration } from "$ts/util/helpers";
+	import { keepTrack, deleteTrackFile, mergeRemoteLocal } from "$ts/library/libraryManager";
+	import type { DuplicateGroup } from "$ts/util/types";
 
 	let { group, onresolved }: { group: DuplicateGroup; onresolved: () => void } = $props();
 

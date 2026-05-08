@@ -1,11 +1,11 @@
 <script lang="ts">
-	import * as ContextMenu from "$lib/components/ui/context-menu/index.js";
+	import * as ContextMenu from "$shadcn/context-menu/index.js";
 	import AudioCard from "$lib/components/app-ui/AudioCard.svelte";
-	import PlaylistContext from "$lib/components/app-ui/context-menus/PlaylistContext.svelte";
+	import PlaylistContext from "$lib/components/context-menus/PlaylistContext.svelte";
    import DefultPlaylistArt from "$lib/components/app-ui/playlist/DefultPlaylistArt.svelte";
 	
-	import { getPlaylistTracks } from "$lib/ts/library.svelte";
-   import type { Playlist } from "$lib/ts/util/types";
+	import { getPlaylistTracks } from "$ts/store/library.svelte";
+   import type { Playlist } from "$ts/util/types";
 
 	type Props = {
 		playlist: Playlist;

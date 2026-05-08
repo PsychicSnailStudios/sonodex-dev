@@ -5,20 +5,20 @@
 	import { onMount } from "svelte";
 
 	// COMPONENTS
-	import * as Tabs from "$lib/components/ui/tabs";
-	import { Label } from "$lib/components/ui/label";
-	import { Input } from "$lib/components/ui/input";
-	import { Textarea } from "$lib/components/ui/textarea";
-	import { Button } from "$lib/components/ui/button";
-	import { Separator } from "$lib/components/ui/separator";
+	import * as Tabs from "$shadcn/tabs";
+	import { Label } from "$shadcn/label";
+	import { Input } from "$shadcn/input";
+	import { Textarea } from "$shadcn/textarea";
+	import { Button } from "$shadcn/button";
+	import { Separator } from "$shadcn/separator";
 
 	// CUSTOM COMPONENTS
 	import ArtworkEditor from "./ArtworkEditor.svelte";
 
 	// SCRIPTS
-	import { closeEditModal } from "$lib/ts/app/editModal.svelte";
-	import { loadLibrary, reloadLibrary } from "$lib/ts/library.svelte";
-	import { deletePlaylist } from "$lib/ts/audio/playlistManager.svelte";
+	import { closeEditModal } from "$ts/store/editModal.svelte";
+	import { loadLibrary, reloadLibrary } from "$ts/store/library.svelte";
+	import { deletePlaylist } from "$ts/audio/playlistManager.svelte";
 
 	// PROPS
 	let { uid } = $props<{ uid: string }>();

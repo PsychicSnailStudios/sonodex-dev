@@ -1,4 +1,4 @@
-import { library } from "$lib/ts/library.svelte";
+import { library } from "$ts/store/library.svelte";
 import { writeText } from "@tauri-apps/plugin-clipboard-manager";
 import type { Track } from "../util/types";
 

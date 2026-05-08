@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { CirclePlus, Pencil, X } from "lucide-svelte";
 
-	import { Button } from "$lib/components/ui/button/index.js";
-	import { ScrollArea } from "$lib/components/ui/scroll-area/index.js";
+	import { Button } from "$shadcn/button/index.js";
+	import { ScrollArea } from "$shadcn/scroll-area/index.js";
 
 	import TrackTableSettings from "$lib/components/app-ui/track-table/TrackTableSettings.svelte";
 	import ArtworkDisplay from "$lib/components/app-ui/ArtworkDisplay.svelte";
@@ -12,18 +12,18 @@
 	import SearchBar from "$lib/components/app-ui/search/SearchBar.svelte";
 	import DownloadButton from "$lib/components/app-ui/DownloadButton.svelte";
 
-	import { selection } from "$lib/ts/app-states/state_session.svelte";
-	import { getPlaylistTracks, library } from "$lib/ts/library.svelte";
-	import { openEditModal } from "$lib/ts/app/editModal.svelte";
-	import { getArtworkColor, getArtworkColorFromPath, parseArtists, totalDuration } from "$lib/ts/util/helpers";
-	import { queueTracksByObject } from "$lib/ts/audio/audioManager.svelte";
-	import { dragState, endDrag } from "$lib/ts/app-states/state_drag.svelte";
-	import { createPersistedViewState } from "$lib/ts/app-states/state_session.svelte";
-	import { searchTracks } from "$lib/ts/app/fuseStore.svelte";
-	import { artworkCache } from "$lib/ts/app-states/artworkCache";
+	import { selection } from "$ts/store/state_session.svelte";
+	import { getPlaylistTracks, library } from "$ts/store/library.svelte";
+	import { openEditModal } from "$ts/store/editModal.svelte";
+	import { getArtworkColor, getArtworkColorFromPath, parseArtists, totalDuration } from "$ts/util/helpers";
+	import { queueTracksByObject } from "$ts/audio/audioManager.svelte";
+	import { dragState, endDrag } from "$ts/store/state_drag.svelte";
+	import { createPersistedViewState } from "$ts/store/state_session.svelte";
+	import { searchTracks } from "$ts/store/fuseStore.svelte";
+	import { artworkCache } from "$ts/store/artworkCache";
 
-	import type { Track } from "$lib/ts/util/types";
-   import { addTracksToPlaylist } from "$lib/ts/audio/playlistManager.svelte";
+	import type { Track } from "$ts/util/types";
+   import { addTracksToPlaylist } from "$ts/audio/playlistManager.svelte";
 
 	let search = $state("");
 	let playlist = $derived(library.playlists.find(p => p.uid === selection.uid) ?? null);

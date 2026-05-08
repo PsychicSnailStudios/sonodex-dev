@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { Update } from "@tauri-apps/plugin-updater";
-	import * as AlertDialog from "$lib/components/ui/alert-dialog/index.js";
+	import * as AlertDialog from "$shadcn/alert-dialog/index.js";
 	import { downloadAndInstall } from "$lib/updater.svelte";
 
 	let {

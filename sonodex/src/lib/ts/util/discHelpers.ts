@@ -1,5 +1,5 @@
 import { Disc, Disc3, Videotape } from "lucide-svelte";
-import type { Track } from "$lib/ts/util/types";
+import type { Track } from "$ts/util/types";
 
 export type DiscBreakEntry = {
 	label: string;

@@ -9,12 +9,12 @@
   import TitleBar from '$lib/components/app/title-bar/TitleBar.svelte';
   import EditModal from '$lib/components/dialogs/edit-metadata/EditModal.svelte';
 
-	import * as Tooltip from "$lib/components/ui/tooltip/index.js";
-  import { Toaster } from "$lib/components/ui/sonner/index.js";
+	import * as Tooltip from "$shadcn/tooltip/index.js";
+  import { Toaster } from "$shadcn/sonner/index.js";
   import { ModeWatcher } from "mode-watcher";
 
   import WarningDialog from "$lib/components/dialogs/WarnDialog.svelte";
-	import { dialogState, confirmDialog, cancelDialog } from "$lib/ts/app/dialogManager.svelte";
+	import { dialogState, confirmDialog, cancelDialog } from "$ts/store/dialogManager.svelte";
 
   import circleLoader from '$lib/assets/circle-loader.json';
   import wavLoader from '$lib/assets/wav-loader.json';
