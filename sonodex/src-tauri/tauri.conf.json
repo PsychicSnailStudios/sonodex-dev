@@ -1,8 +1,8 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "productName": "sonodex",
+  "productName": "imago",
   "version": "0.0.5",
-  "identifier": "com.sonodex.dev",
+  "identifier": "com.imago.dev",
   "build": {
     "frontendDist": "../build",
     "devUrl": "http://localhost:5173",
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "sonodex",
+        "title": "Imago",
         "width": 1500,
         "height": 900,
         "minWidth": 965,
@@ -61,7 +61,7 @@
     "deep-link": {
       "mobile": [],
       "desktop": {
-          "schemes": ["sonodex"]
+          "schemes": ["imago"]
       }
     }
 	}

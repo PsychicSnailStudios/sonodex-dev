@@ -8,7 +8,7 @@ pub mod spotify;
 use reqwest::Client;
 use std::time::Duration;
 
-pub const USER_AGENT: &str = "Sonodex/1.0 (music library app)";
+pub const USER_AGENT: &str = "Imago Music";
 
 // ─────────────────────────────────────────────
 // SHARED TYPES

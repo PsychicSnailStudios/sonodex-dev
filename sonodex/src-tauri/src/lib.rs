@@ -173,7 +173,7 @@ pub fn run() {
 	tauri::Builder::default()
 		.plugin(tauri_plugin_single_instance::init(|app, args, cwd| {}))
 		.plugin(tauri_plugin_single_instance::init(|app, argv, _cwd| {
-			if let Some(url) = argv.iter().find(|a| a.starts_with("sonodex://")) {
+			if let Some(url) = argv.iter().find(|a| a.starts_with("imago://")) {
 				handle_deep_link(app.clone(), url);
 			}
 			use tauri::Manager;

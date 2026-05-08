@@ -21,7 +21,7 @@ pub struct ProfileRegistry {
 
 pub fn get_profiles_dir() -> PathBuf {
 	let mut path = dirs::data_dir().unwrap_or_else(|| PathBuf::from("."));
-	path.push("sonodex");
+	path.push("imago");
 	fs::create_dir_all(&path).ok();
 	path
 }

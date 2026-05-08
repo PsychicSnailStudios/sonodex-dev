@@ -11,7 +11,7 @@ const API_URL: &str = "https://ws.audioscrobbler.com/2.0/";
 
 pub fn lastfm_auth_url(api_key: &str) -> String {
     format!(
-        "https://www.last.fm/api/auth/?api_key={}&cb=sonodex://lastfm-callback",
+        "https://www.last.fm/api/auth/?api_key={}&cb=imago://lastfm-callback",
         api_key
     )
 }
