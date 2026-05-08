@@ -34,15 +34,15 @@ export async function deleteLibrary(libUid: string, deleteFile: boolean): Promis
 export async function importLibrary(
 	name: string,
 	syncUrl: string,
-	syncMetaUrl: string,
 	writeToken?: string
 ): Promise<Library> {
-	return invoke<Library>("import_library_cmd", {
+	const lib = await invoke<Library>("import_library_cmd", {
 		name,
 		syncUrl,
-		syncMetaUrl,
 		writeToken: writeToken ?? null,
 	});
+	await loadLibrary();
+	return lib;
 }
 
 export async function exportLibrary(libUid: string): Promise<void> {

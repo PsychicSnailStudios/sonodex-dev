@@ -132,8 +132,6 @@ pub fn init_settings_db(conn: &Connection) -> Result<()> {
 	)
 }
 
-// Schema for an individual library database (tracks, albums, artists, lyrics, tags).
-// Playlists are intentionally excluded — they live in playlists.db.
 pub fn init_library_db(conn: &Connection) -> Result<()> {
 	conn.execute_batch(
 		"
@@ -213,6 +211,11 @@ pub fn init_library_db(conn: &Connection) -> Result<()> {
 			FOREIGN KEY (track_id) REFERENCES tracks(id) ON DELETE CASCADE
 		);
 
+		CREATE TABLE IF NOT EXISTS library_paths (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			path TEXT NOT NULL UNIQUE
+		);
+
 		CREATE INDEX IF NOT EXISTS idx_tracks_album_artist ON tracks(album_artist);
 		CREATE INDEX IF NOT EXISTS idx_tracks_path ON tracks(path);
 		CREATE UNIQUE INDEX IF NOT EXISTS idx_tracks_uid ON tracks(uid);
@@ -223,8 +226,6 @@ pub fn init_library_db(conn: &Connection) -> Result<()> {
 	crate::db::tag_manager::create_tag_tables(conn)
 }
 
-// Schema for the merged read cache. Identical to library_db but with two
-// extra columns on every entity table so reads can trace back to the source.
 pub fn init_merged_db(conn: &Connection) -> Result<()> {
 	conn.execute_batch(
 		"
@@ -324,8 +325,6 @@ pub fn init_merged_db(conn: &Connection) -> Result<()> {
 	crate::db::tag_manager::create_tag_tables(conn)
 }
 
-// Schema for the playlists database. Playlists are always local to a profile
-// and never participate in library merging.
 pub fn init_playlists_db(conn: &Connection) -> Result<()> {
 	conn.execute_batch(
 		"
@@ -355,8 +354,6 @@ pub fn init_playlists_db(conn: &Connection) -> Result<()> {
 	)
 }
 
-// Legacy init_lib_db — kept intact so existing commands continue to work
-// during the migration period. New code should use init_library_db instead.
 pub fn init_lib_db(conn: &Connection) -> Result<()> {
 	conn.execute_batch(
 		"

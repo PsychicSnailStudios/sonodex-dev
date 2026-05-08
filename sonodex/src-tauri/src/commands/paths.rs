@@ -1,4 +1,4 @@
-use crate::db::{add_library_path, get_library_paths, remove_library_path, LibraryPath};
+use crate::db::settings_manager::LibraryPath;
 use crate::library_manager;
 use crate::profiles::{get_lib_db_path, get_library_db_path, get_settings_db_path};
 use crate::state::AppState;
@@ -9,6 +9,49 @@ use tauri::Manager;
 
 fn normalize_path(path: &str) -> String {
 	path.replace('\\', "/")
+}
+
+fn open_library_conn_for_uid(profile_uid: &str, lib_uid: &str) -> Result<Connection, String> {
+	let path = get_library_db_path(profile_uid, lib_uid);
+	Connection::open(&path).map_err(|e| e.to_string())
+}
+
+fn add_path_to_lib_db(conn: &Connection, path: &str) -> rusqlite::Result<()> {
+	conn.execute(
+		"INSERT OR IGNORE INTO library_paths (path) VALUES (?1)",
+		rusqlite::params![path],
+	)?;
+	Ok(())
+}
+
+fn remove_path_from_lib_db(conn: &Connection, path: &str) -> rusqlite::Result<()> {
+	conn.execute(
+		"DELETE FROM library_paths WHERE path = ?1",
+		rusqlite::params![path],
+	)?;
+	Ok(())
+}
+
+fn get_paths_from_lib_db(conn: &Connection) -> rusqlite::Result<Vec<LibraryPath>> {
+	let mut stmt = conn.prepare("SELECT id, path FROM library_paths ORDER BY id ASC")?;
+	let rows = stmt.query_map([], |row| {
+		Ok(LibraryPath {
+			id: Some(row.get(0)?),
+			path: row.get::<_, String>(1)?.replace('\\', "/"),
+		})
+	})?;
+	rows.collect()
+}
+
+fn get_lib_uid_for_path(settings_conn: &Connection, path: &str) -> Option<String> {
+	settings_conn
+		.query_row(
+			"SELECT lib_uid FROM library_paths WHERE path = ?1",
+			rusqlite::params![path],
+			|row| row.get(0),
+		)
+		.ok()
+		.flatten()
 }
 
 #[tauri::command]
@@ -33,30 +76,28 @@ pub fn add_path(
 		}
 	};
 
-	add_library_path(&settings_conn, &path).map_err(|e| e.to_string())?;
-	settings_conn
-		.execute(
-			"UPDATE library_paths SET lib_uid = ?1 WHERE path = ?2",
-			rusqlite::params![target_lib_uid, path],
-		)
-		.ok();
-
 	let lib_file_path: String = {
-		let settings_conn2 = open_settings_conn(&uid);
-		crate::db::library_registry::get_library_by_uid(&settings_conn2, &target_lib_uid)
+		crate::db::library_registry::get_library_by_uid(&settings_conn, &target_lib_uid)
 			.ok()
 			.flatten()
 			.map(|l| l.file_path)
 			.unwrap_or_else(|| get_library_db_path(&uid, &target_lib_uid).to_string_lossy().to_string())
 	};
 
+	{
+		let lib_conn = Connection::open(&lib_file_path).map_err(|e| e.to_string())?;
+		crate::db::init_library_db(&lib_conn).map_err(|e| e.to_string())?;
+		add_path_to_lib_db(&lib_conn, &path).map_err(|e| e.to_string())?;
+	}
+
 	let app_clone = app.clone();
 	let path_clone = path.clone();
 	let uid_clone = uid.clone();
 	let lib_uid_clone = target_lib_uid.clone();
+	let lib_file_path_clone = lib_file_path.clone();
 
 	std::thread::spawn(move || {
-		let lib_conn = Connection::open(&lib_file_path).expect("Failed to open library db");
+		let lib_conn = Connection::open(&lib_file_path_clone).expect("Failed to open library db");
 		let settings_path = get_settings_db_path(&uid_clone);
 		lib_conn
 			.execute_batch(&format!(
@@ -101,13 +142,18 @@ pub fn add_path(
 			});
 		}
 
-		let settings_conn3 = open_settings_conn(&uid_clone);
-		let paths = get_library_paths(&settings_conn3)
-			.unwrap_or_default()
-			.into_iter()
-			.map(|p| p.path)
-			.collect();
-		crate::watcher::start_watcher(app_clone, uid_clone, lib_uid_clone, paths);
+		let all_paths: Vec<String> = {
+			if let Ok(lc) = Connection::open(&lib_file_path_clone) {
+				get_paths_from_lib_db(&lc)
+					.unwrap_or_default()
+					.into_iter()
+					.map(|p| p.path)
+					.collect()
+			} else {
+				vec![]
+			}
+		};
+		crate::watcher::start_watcher(app_clone, uid_clone, lib_uid_clone, all_paths);
 	});
 
 	Ok(())
@@ -119,19 +165,32 @@ pub fn remove_path(state: State<AppState>, path: String) -> Result<(), String> {
 	let uid = state.get_uid();
 	let settings_conn = open_settings_conn(&uid);
 
-	let lib_uid: Option<String> = settings_conn
-		.query_row(
-			"SELECT lib_uid FROM library_paths WHERE path = ?1",
-			rusqlite::params![path],
-			|row| row.get(0),
-		)
-		.ok();
-
-	remove_library_path(&settings_conn, &path).map_err(|e| e.to_string())?;
+	let lib_uid = get_lib_uid_for_path(&settings_conn, &path)
+		.or_else(|| {
+			let all_libs = crate::db::library_registry::get_all_libraries(&settings_conn)
+				.unwrap_or_default();
+			for lib in &all_libs {
+				if let Ok(lc) = Connection::open(&lib.file_path) {
+					let found: bool = lc
+						.query_row(
+							"SELECT 1 FROM library_paths WHERE path = ?1",
+							rusqlite::params![path],
+							|_| Ok(true),
+						)
+						.unwrap_or(false);
+					if found {
+						return Some(lib.uid.clone());
+					}
+				}
+			}
+			None
+		});
 
 	if let Some(ref luid) = lib_uid {
 		let lib_path = get_library_db_path(&uid, luid);
 		if let Ok(lib_conn) = Connection::open(&lib_path) {
+			remove_path_from_lib_db(&lib_conn, &path).ok();
+
 			lib_conn
 				.execute(
 					"DELETE FROM tracks WHERE path LIKE ?1",
@@ -176,62 +235,81 @@ pub fn remove_path(state: State<AppState>, path: String) -> Result<(), String> {
 #[tauri::command]
 pub fn get_paths(state: State<AppState>) -> Result<Vec<LibraryPath>, String> {
 	let uid = state.get_uid();
-	let conn = open_settings_conn(&uid);
-	get_library_paths(&conn).map_err(|e| e.to_string())
+	let settings_conn = open_settings_conn(&uid);
+	let all_libs = crate::db::library_registry::get_all_libraries(&settings_conn)
+		.map_err(|e| e.to_string())?;
+
+	let mut all_paths = Vec::new();
+	for lib in &all_libs {
+		if let Ok(lc) = Connection::open(&lib.file_path) {
+			if let Ok(paths) = get_paths_from_lib_db(&lc) {
+				all_paths.extend(paths);
+			}
+		}
+	}
+	Ok(all_paths)
 }
 
 #[tauri::command]
 pub fn get_paths_for_library(state: State<AppState>, lib_uid: String) -> Result<Vec<LibraryPath>, String> {
 	let uid = state.get_uid();
-	let conn = open_settings_conn(&uid);
-	let mut stmt = conn
-		.prepare("SELECT id, path FROM library_paths WHERE lib_uid = ?1 ORDER BY id ASC")
-		.map_err(|e| e.to_string())?;
-	let rows = stmt
-		.query_map(rusqlite::params![lib_uid], |row| {
-			Ok(LibraryPath {
-				id: Some(row.get(0)?),
-				path: row.get(1)?,
-			})
-		})
-		.map_err(|e| e.to_string())?;
-	rows.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())
+	let settings_conn = open_settings_conn(&uid);
+	let lib = crate::db::library_registry::get_library_by_uid(&settings_conn, &lib_uid)
+		.map_err(|e| e.to_string())?
+		.ok_or_else(|| format!("Library not found: {}", lib_uid))?;
+
+	let lib_conn = Connection::open(&lib.file_path).map_err(|e| e.to_string())?;
+	get_paths_from_lib_db(&lib_conn).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub fn rescan(app: AppHandle, state: State<AppState>) -> Result<(), String> {
 	let uid = state.get_uid();
 	let settings_conn = open_settings_conn(&uid);
-	let paths = get_library_paths(&settings_conn).map_err(|e| e.to_string())?;
+	let all_libs = crate::db::library_registry::get_all_libraries(&settings_conn)
+		.map_err(|e| e.to_string())?;
 
-	let default_lib_uid = crate::db::library_registry::get_default_library(&settings_conn)
-		.map_err(|e| e.to_string())?
-		.map(|l| l.uid)
-		.unwrap_or_default();
+	for lib in all_libs {
+		let lib_file_path = lib.file_path.clone();
+		let lib_uid = lib.uid.clone();
+		let uid_clone = uid.clone();
+		let app_clone = app.clone();
 
-	let app_clone = app.clone();
-	let uid_clone = uid.clone();
-	let lib_uid_clone = default_lib_uid.clone();
-	let path_strings: Vec<String> = paths.into_iter().map(|p| p.path).collect();
+		let paths: Vec<String> = {
+			if let Ok(lc) = Connection::open(&lib_file_path) {
+				get_paths_from_lib_db(&lc)
+					.unwrap_or_default()
+					.into_iter()
+					.map(|p| p.path)
+					.collect()
+			} else {
+				vec![]
+			}
+		};
 
-	std::thread::spawn(move || {
-		let lib_path = get_library_db_path(&uid_clone, &lib_uid_clone);
-		let lib_conn = Connection::open(&lib_path).expect("Failed to open library db");
-		let settings_path = get_settings_db_path(&uid_clone);
-		lib_conn
-			.execute_batch(&format!(
-				"ATTACH DATABASE '{}' AS settings;",
-				settings_path.to_string_lossy().replace('\'', "''")
-			))
-			.ok();
-
-		for p in &path_strings {
-			crate::scanner::scan_directory_with_progress(&lib_conn, p, &app_clone);
+		if paths.is_empty() {
+			continue;
 		}
 
-		let _ = library_manager::incremental_update(&uid_clone, &[lib_uid_clone.clone()]);
-		crate::watcher::start_watcher(app_clone, uid_clone, lib_uid_clone, path_strings);
-	});
+		let paths_clone = paths.clone();
+		std::thread::spawn(move || {
+			let lib_conn = Connection::open(&lib_file_path).expect("Failed to open library db");
+			let settings_path = get_settings_db_path(&uid_clone);
+			lib_conn
+				.execute_batch(&format!(
+					"ATTACH DATABASE '{}' AS settings;",
+					settings_path.to_string_lossy().replace('\'', "''")
+				))
+				.ok();
+
+			for p in &paths_clone {
+				crate::scanner::scan_directory_with_progress(&lib_conn, p, &app_clone);
+			}
+
+			let _ = library_manager::incremental_update(&uid_clone, &[lib_uid.clone()]);
+			crate::watcher::start_watcher(app_clone, uid_clone, lib_uid, paths_clone);
+		});
+	}
 
 	Ok(())
 }

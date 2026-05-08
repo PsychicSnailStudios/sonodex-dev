@@ -28,11 +28,10 @@ pub async fn import_library_cmd(
 	state: State<'_, AppState>,
 	name: String,
 	sync_url: String,
-	sync_meta_url: String,
 	write_token: Option<String>,
 ) -> Result<Library, String> {
 	let uid = state.get_uid();
-	library_manager::import_library(&uid, &name, &sync_url, &sync_meta_url, write_token.as_deref())
+	library_manager::import_library(&uid, &name, &sync_url, write_token.as_deref())
 		.await
 }
 

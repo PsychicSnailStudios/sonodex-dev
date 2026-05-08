@@ -131,6 +131,23 @@
 		libStates[libUid].removingPath = null;
 	}
 
+	async function rescanPath(libUid: string, path: string) {
+		libStates[libUid].addingPath = true;
+		scanState.loading = true;
+		scanState.status = "Scanning…";
+		scanState.progress = 0;
+		scanState.total = 0;
+		lastScannedLibUid = libUid;
+		try {
+			await invoke("add_path", { path, libUid });
+		} catch (e) {
+			scanState.status = `Error: ${e}`;
+			scanState.loading = false;
+		} finally {
+			libStates[libUid].addingPath = false;
+		}
+	}
+
 	// ─── New local library dialog ─────────────────────────────────────────────────
 
 	let newLibOpen = $state(false);
@@ -269,14 +286,13 @@
 	}
 
 	async function handleImport() {
-		if (!importName.trim() || !importUrl.trim() || !importMetaUrl.trim()) return;
+		if (!importName.trim() || !importUrl.trim()) return;
 		importing = true;
 		importError = "";
 		try {
 			await importLibrary(
 				importName.trim(),
 				importUrl.trim(),
-				importMetaUrl.trim(),
 				importToken.trim() || undefined
 			);
 			await loadLibraryRegistry();
@@ -364,14 +380,12 @@
 				<label class="text-xs font-medium text-muted-foreground">Database URL (.db)</label>
 				<input bind:value={importUrl} placeholder="https://example.com/library.db" class="border rounded px-3 py-2 text-sm bg-background" />
 			</div>
-			<div class="flex flex-col gap-1">
-				<label class="text-xs font-medium text-muted-foreground">Sidecar URL (.json)</label>
-				<input bind:value={importMetaUrl} placeholder="https://example.com/library.json" class="border rounded px-3 py-2 text-sm bg-background" />
-			</div>
-			<div class="flex flex-col gap-1">
-				<label class="text-xs font-medium text-muted-foreground">Write token (optional)</label>
-				<input bind:value={importToken} type="password" placeholder="Leave blank for read-only" class="border rounded px-3 py-2 text-sm bg-background" />
-			</div>
+			{#if importUrl.startsWith('http://') || importUrl.startsWith('https://')}
+				<div class="flex flex-col gap-1">
+					<label class="text-xs font-medium text-muted-foreground">Write token (optional)</label>
+					<input bind:value={importToken} type="password" placeholder="Leave blank for read-only" class="border rounded px-3 py-2 text-sm bg-background" />
+				</div>
+			{/if}
 			{#if importError}
 				<p class="text-xs text-destructive flex items-center gap-1">
 					<AlertCircle class="w-3 h-3" /> {importError}
@@ -380,7 +394,7 @@
 		</div>
 		<Dialog.Footer>
 			<Button variant="outline" onclick={() => (importOpen = false)}>Cancel</Button>
-			<Button onclick={handleImport} disabled={importing || !importName.trim() || !importUrl.trim() || !importMetaUrl.trim()}>
+			<Button onclick={handleImport} disabled={importing || !importName.trim() || !importUrl.trim()}>
 				{#if importing}<Loader2 class="w-4 h-4 mr-1 animate-spin" />{/if}
 				Import
 			</Button>
@@ -537,9 +551,11 @@
 											Check Write Permission
 										</DropdownMenu.Item>
 									{/if}
+									{#if !lib.sync_url}
 									<DropdownMenu.Item onclick={() => handleExport(lib.uid)}>
 										<Download class="w-3.5 h-3.5 mr-2" /> Export as File
 									</DropdownMenu.Item>
+									{/if}
 									{#if !lib.is_default}
 										<DropdownMenu.Separator />
 										<DropdownMenu.Item
@@ -570,6 +586,21 @@
 										<div class="flex items-center gap-2 rounded px-2 py-1.5 text-xs bg-background border">
 											<FolderOpen class="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
 											<span class="truncate flex-1 font-mono">{p.path}</span>
+											<Tooltip.Root>
+												<Tooltip.Trigger
+													class={buttonVariants({ variant: "ghost", size: "sm" })}
+													style="height:1.5rem;width:1.5rem;padding:0;"
+													disabled={scanState.loading || s.addingPath}
+													onclick={() => rescanPath(lib.uid, p.path)}
+												>
+													{#if s.addingPath}
+														<Loader2 class="w-3 h-3 animate-spin" />
+													{:else}
+														<RefreshCw class="w-3 h-3" />
+													{/if}
+												</Tooltip.Trigger>
+												<Tooltip.Content><p>Rescan this folder</p></Tooltip.Content>
+											</Tooltip.Root>
 											<Button
 												variant="ghost"
 												size="sm"

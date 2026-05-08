@@ -25,6 +25,7 @@ use crate::profiles::{
 use rusqlite::{params, Connection};
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
+use serde_json;
 
 // ─── Public result type ───────────────────────────────────────────────────────
 
@@ -697,53 +698,77 @@ pub fn open_source_conn_for_entity(
 // On failure the error is logged but does not propagate — the local write
 // already succeeded; the library is simply flagged as having unpushed changes.
 pub async fn try_push_library(lib: &Library) -> bool {
-	let (sync_url, write_token) = match (&lib.sync_url, &lib.write_token) {
-		(Some(url), Some(token)) => (url.clone(), token.clone()),
-		_ => return false,
+	let sync_url = match &lib.sync_url {
+		Some(u) => u.clone(),
+		None => return false,
 	};
 
-	let file_bytes = match std::fs::read(&lib.file_path) {
-		Ok(b) => b,
-		Err(e) => {
-			eprintln!("[library_manager] push: failed to read file: {}", e);
-			return false;
-		}
-	};
+	fn is_remote_http(url: &str) -> bool {
+		url.starts_with("http://") || url.starts_with("https://")
+	}
 
-	let client = match reqwest::Client::builder()
-		.timeout(std::time::Duration::from_secs(30))
-		.build()
-	{
-		Ok(c) => c,
-		Err(e) => {
-			eprintln!("[library_manager] push: failed to build client: {}", e);
-			return false;
+	if !is_remote_http(&sync_url) {
+		match std::fs::copy(&lib.file_path, &sync_url) {
+			Ok(_) => {
+				let sidecar_path = format!("{}.json", sync_url);
+				let now = std::time::SystemTime::now()
+					.duration_since(std::time::UNIX_EPOCH)
+					.map(|d| d.as_secs() as i64)
+					.unwrap_or(0);
+				let sidecar = format!(
+					"{{\n\t\"last_modified\": {},\n\t\"write_requires_token\": false\n}}\n",
+					now
+				);
+				std::fs::write(&sidecar_path, sidecar).ok();
+				true
+			}
+			Err(e) => {
+				eprintln!("[library_manager] push: failed to copy to share: {}", e);
+				false
+			}
 		}
-	};
+	} else {
+		let write_token = match &lib.write_token {
+			Some(t) => t.clone(),
+			None => return false,
+		};
 
-	match client
-		.put(&sync_url)
-		.header("Authorization", format!("Bearer {}", write_token))
-		.header("Content-Type", "application/octet-stream")
-		.body(file_bytes)
-		.send()
-		.await
-	{
-		Ok(resp) if resp.status().is_success() => {
-			eprintln!("[library_manager] push: success for {}", lib.uid);
-			true
-		}
-		Ok(resp) => {
-			eprintln!(
-				"[library_manager] push: server returned {} for {}",
-				resp.status(),
-				lib.uid
-			);
-			false
-		}
-		Err(e) => {
-			eprintln!("[library_manager] push: request failed: {}", e);
-			false
+		let file_bytes = match std::fs::read(&lib.file_path) {
+			Ok(b) => b,
+			Err(e) => {
+				eprintln!("[library_manager] push: failed to read file: {}", e);
+				return false;
+			}
+		};
+
+		let client = match reqwest::Client::builder()
+			.timeout(std::time::Duration::from_secs(30))
+			.build()
+		{
+			Ok(c) => c,
+			Err(e) => {
+				eprintln!("[library_manager] push: failed to build client: {}", e);
+				return false;
+			}
+		};
+
+		match client
+			.put(&sync_url)
+			.header("Authorization", format!("Bearer {}", write_token))
+			.header("Content-Type", "application/octet-stream")
+			.body(file_bytes)
+			.send()
+			.await
+		{
+			Ok(resp) if resp.status().is_success() => true,
+			Ok(resp) => {
+				eprintln!("[library_manager] push: server returned {} for {}", resp.status(), lib.uid);
+				false
+			}
+			Err(e) => {
+				eprintln!("[library_manager] push: request failed: {}", e);
+				false
+			}
 		}
 	}
 }
@@ -763,49 +788,58 @@ pub async fn try_pull_library(
 		.map_err(|e| e.to_string())?
 		.ok_or_else(|| format!("Library not found: {}", lib_uid))?;
 
-	let meta_url = match &lib.sync_meta_url {
-		Some(u) => u.clone(),
-		None => return Ok(false),
-	};
-
 	let sync_url = match &lib.sync_url {
 		Some(u) => u.clone(),
 		None => return Ok(false),
 	};
 
-	let client = reqwest::Client::builder()
-		.timeout(std::time::Duration::from_secs(15))
-		.build()
-		.map_err(|e| e.to_string())?;
-
-	let sidecar: RemoteSidecar = client
-		.get(&meta_url)
-		.send()
-		.await
-		.map_err(|e| e.to_string())?
-		.json()
-		.await
-		.map_err(|e| e.to_string())?;
-
-	if sidecar.last_modified <= lib.last_synced {
-		return Ok(false);
+	fn is_unc_or_local(url: &str) -> bool {
+		url.starts_with("\\\\") || url.starts_with("//") || (!url.starts_with("http://") && !url.starts_with("https://"))
 	}
-
-	let bytes = client
-		.get(&sync_url)
-		.send()
-		.await
-		.map_err(|e| e.to_string())?
-		.bytes()
-		.await
-		.map_err(|e| e.to_string())?;
-
-	std::fs::write(&lib.file_path, &bytes).map_err(|e| e.to_string())?;
 
 	let now = std::time::SystemTime::now()
 		.duration_since(std::time::UNIX_EPOCH)
 		.map(|d| d.as_secs() as i64)
 		.unwrap_or(0);
+
+	if is_unc_or_local(&sync_url) {
+		let sidecar_path = format!("{}.json", sync_url);
+		if let Ok(content) = std::fs::read_to_string(&sidecar_path) {
+			if let Ok(s) = serde_json::from_str::<RemoteSidecar>(&content) {
+				if s.last_modified <= lib.last_synced {
+					return Ok(false);
+				}
+			}
+		}
+
+		std::fs::copy(&sync_url, &lib.file_path)
+			.map_err(|e| format!("Could not copy database file: {}", e))?;
+	} else {
+		let client = reqwest::Client::builder()
+			.timeout(std::time::Duration::from_secs(15))
+			.build()
+			.map_err(|e| e.to_string())?;
+
+		let sidecar_url = format!("{}.json", sync_url);
+		if let Ok(resp) = client.get(&sidecar_url).send().await {
+			if let Ok(sidecar) = resp.json::<RemoteSidecar>().await {
+				if sidecar.last_modified <= lib.last_synced {
+					return Ok(false);
+				}
+			}
+		}
+
+		let bytes = client
+			.get(&sync_url)
+			.send()
+			.await
+			.map_err(|e| e.to_string())?
+			.bytes()
+			.await
+			.map_err(|e| e.to_string())?;
+
+		std::fs::write(&lib.file_path, &bytes).map_err(|e| e.to_string())?;
+	}
 
 	crate::db::library_registry::update_library(
 		&settings_conn,
@@ -836,35 +870,35 @@ pub async fn check_write_permission(profile_uid: &str, lib_uid: &str) -> Result<
 		.map_err(|e| e.to_string())?
 		.ok_or_else(|| format!("Library not found: {}", lib_uid))?;
 
-	// Local-only libraries always have write permission
-	if lib.sync_url.is_none() {
-		let update = LibraryUpdate {
-			has_write_permission: Some(true),
-			name: None, sync_url: None, sync_meta_url: None, write_token: None,
-			last_synced: None, last_data_version: None, sort_order: None,
-		};
-		crate::db::library_registry::update_library(&settings_conn, lib_uid, &update)
-			.map_err(|e| e.to_string())?;
-		return Ok(true);
+	fn is_remote_http(url: &str) -> bool {
+		url.starts_with("http://") || url.starts_with("https://")
 	}
 
-	let sync_url = lib.sync_url.as_deref().unwrap_or("");
-	let token = lib.write_token.as_deref().unwrap_or("");
-
-	let client = reqwest::Client::builder()
-		.timeout(std::time::Duration::from_secs(10))
-		.build()
-		.map_err(|e| e.to_string())?;
-
-	let result = client
-		.head(sync_url)
-		.header("Authorization", format!("Bearer {}", token))
-		.send()
-		.await;
-
-	let has_permission = match result {
-		Ok(resp) => resp.status().is_success() || resp.status().as_u16() == 405,
-		Err(_) => false,
+	let has_permission = match &lib.sync_url {
+		None => true,
+		Some(url) if !is_remote_http(url) => {
+			std::fs::OpenOptions::new()
+				.write(true)
+				.open(url)
+				.is_ok()
+		}
+		Some(_) => {
+			let sync_url = lib.sync_url.as_deref().unwrap_or("");
+			let token = lib.write_token.as_deref().unwrap_or("");
+			let client = reqwest::Client::builder()
+				.timeout(std::time::Duration::from_secs(10))
+				.build()
+				.map_err(|e| e.to_string())?;
+			match client
+				.head(sync_url)
+				.header("Authorization", format!("Bearer {}", token))
+				.send()
+				.await
+			{
+				Ok(resp) => resp.status().is_success() || resp.status().as_u16() == 405,
+				Err(_) => false,
+			}
+		}
 	};
 
 	let update = LibraryUpdate {
@@ -878,43 +912,68 @@ pub async fn check_write_permission(profile_uid: &str, lib_uid: &str) -> Result<
 	Ok(has_permission)
 }
 
+
 // ─── Import a remote library ──────────────────────────────────────────────────
 
 pub async fn import_library(
 	profile_uid: &str,
 	name: &str,
 	sync_url: &str,
-	sync_meta_url: &str,
 	write_token: Option<&str>,
 ) -> Result<Library, String> {
-	let client = reqwest::Client::builder()
-		.timeout(std::time::Duration::from_secs(15))
-		.build()
-		.map_err(|e| e.to_string())?;
-
-	// Confirm remote is reachable via sidecar
-	let _sidecar: RemoteSidecar = client
-		.get(sync_meta_url)
-		.send()
-		.await
-		.map_err(|e| format!("Could not reach remote sidecar: {}", e))?
-		.json()
-		.await
-		.map_err(|e| format!("Invalid sidecar JSON: {}", e))?;
-
-	// Download the db file
-	let bytes = client
-		.get(sync_url)
-		.send()
-		.await
-		.map_err(|e| e.to_string())?
-		.bytes()
-		.await
-		.map_err(|e| e.to_string())?;
+	fn is_unc_or_local(url: &str) -> bool {
+		url.starts_with("\\\\") || url.starts_with("//") || (!url.starts_with("http://") && !url.starts_with("https://"))
+	}
 
 	let lib_uid = crate::db::generate_uid("lib");
 	let file_path = get_library_db_path(profile_uid, &lib_uid);
-	std::fs::write(&file_path, &bytes).map_err(|e| e.to_string())?;
+
+	let mut last_synced = 0i64;
+
+	if is_unc_or_local(sync_url) {
+		std::fs::copy(sync_url, &file_path)
+			.map_err(|e| format!("Could not copy database file: {}", e))?;
+
+		let sidecar_path = format!("{}.json", sync_url);
+		if let Ok(content) = std::fs::read_to_string(&sidecar_path) {
+			if let Ok(s) = serde_json::from_str::<RemoteSidecar>(&content) {
+				if s.last_modified > 0 {
+					last_synced = std::time::SystemTime::now()
+						.duration_since(std::time::UNIX_EPOCH)
+						.map(|d| d.as_secs() as i64)
+						.unwrap_or(0);
+				}
+			}
+		}
+	} else {
+		let client = reqwest::Client::builder()
+			.timeout(std::time::Duration::from_secs(15))
+			.build()
+			.map_err(|e| e.to_string())?;
+
+		let sidecar_url = format!("{}.json", sync_url);
+		if let Ok(resp) = client.get(&sidecar_url).send().await {
+			if let Ok(s) = resp.json::<RemoteSidecar>().await {
+				if s.last_modified > 0 {
+					last_synced = std::time::SystemTime::now()
+						.duration_since(std::time::UNIX_EPOCH)
+						.map(|d| d.as_secs() as i64)
+						.unwrap_or(0);
+				}
+			}
+		}
+
+		let bytes = client
+			.get(sync_url)
+			.send()
+			.await
+			.map_err(|e| format!("Could not download remote database: {}", e))?
+			.bytes()
+			.await
+			.map_err(|e| e.to_string())?;
+
+		std::fs::write(&file_path, &bytes).map_err(|e| e.to_string())?;
+	}
 
 	let settings_conn = Connection::open(get_settings_db_path(profile_uid))
 		.map_err(|e| e.to_string())?;
@@ -922,10 +981,7 @@ pub async fn import_library(
 	let existing_libs = get_all_libraries(&settings_conn).map_err(|e| e.to_string())?;
 	let sort_order = existing_libs.len() as i64;
 
-	let now = std::time::SystemTime::now()
-		.duration_since(std::time::UNIX_EPOCH)
-		.map(|d| d.as_secs() as i64)
-		.unwrap_or(0);
+	let sidecar_url = format!("{}.json", sync_url);
 
 	let library = Library {
 		uid: lib_uid.clone(),
@@ -933,10 +989,10 @@ pub async fn import_library(
 		is_default: false,
 		file_path: file_path.to_string_lossy().to_string(),
 		sync_url: Some(sync_url.to_string()),
-		sync_meta_url: Some(sync_meta_url.to_string()),
+		sync_meta_url: Some(sidecar_url),
 		write_token: write_token.map(|t| t.to_string()),
 		has_write_permission: false,
-		last_synced: now,
+		last_synced,
 		last_data_version: 0,
 		sort_order,
 	};
@@ -944,14 +1000,12 @@ pub async fn import_library(
 	crate::db::library_registry::create_library(&settings_conn, &library)
 		.map_err(|e| e.to_string())?;
 
-	// Check write permission in background — fire and forget
 	let puid = profile_uid.to_string();
 	let luid = lib_uid.clone();
 	tauri::async_runtime::spawn(async move {
 		let _ = check_write_permission(&puid, &luid).await;
 	});
 
-	// Trigger full rebuild to include the new library
 	full_rebuild(profile_uid)?;
 
 	Ok(library)
@@ -968,6 +1022,19 @@ pub fn export_library(profile_uid: &str, lib_uid: &str, dest_path: &str) -> Resu
 		.ok_or_else(|| format!("Library not found: {}", lib_uid))?;
 
 	std::fs::copy(&lib.file_path, dest_path).map_err(|e| e.to_string())?;
+
+	let now = std::time::SystemTime::now()
+		.duration_since(std::time::UNIX_EPOCH)
+		.map(|d| d.as_secs() as i64)
+		.unwrap_or(0);
+
+	let sidecar = format!(
+		"{{\n\t\"last_modified\": {},\n\t\"write_requires_token\": false\n}}\n",
+		now
+	);
+	let sidecar_path = format!("{}.json", dest_path);
+	std::fs::write(&sidecar_path, sidecar).map_err(|e| e.to_string())?;
+
 	Ok(())
 }
 
