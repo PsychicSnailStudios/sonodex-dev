@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { toast } from "svelte-sonner";
 	import {
 		Loader2,
 		Plus,
@@ -242,6 +243,10 @@
 		try {
 			await syncLibrary(libUid);
 			await loadLibraryRegistry();
+		} catch (e) {
+			toast.error("Could not reach remote library", {
+				description: String(e),
+			});
 		} finally {
 			syncingUid = null;
 		}
@@ -301,7 +306,11 @@
 			importUrl = "";
 			importMetaUrl = "";
 			importToken = "";
+			toast.success("Library imported successfully");
 		} catch (e) {
+			toast.error("Could not import library", {
+				description: String(e),
+			});
 			importError = String(e);
 		} finally {
 			importing = false;
