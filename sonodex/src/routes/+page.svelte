@@ -1,16 +1,13 @@
 <script lang="ts">
-	// APP
 	import { onMount } from "svelte";
 	import { invoke } from "@tauri-apps/api/core";
 	import { listen } from "@tauri-apps/api/event";
 
-	// COMPONENTS
 	import * as Resizable from "$lib/components/ui/resizable/index.js";
 
-	// CUSTOM COMPONENTS
 	import PlayControls from "$lib/components/app/PlayControls.svelte";
 	import NowPlaying from "$lib/components/app/now-playing/NowPlaying.svelte";
-   import AppNavigation from "$lib/components/app/AppNavigation.svelte";
+	import AppNavigation from "$lib/components/app/AppNavigation.svelte";
 
 	import HomeView from "$lib/components/views/Profile.svelte";
 	import PlaylistsView from "$lib/components/views/PlaylistsLibrary.svelte";
@@ -27,17 +24,15 @@
 	import TrackDisplay from "$lib/components/displays/TrackDisplay.svelte";
 
 	import ProfileSetup from "$lib/components/dialogs/profile/ProfileSetup.svelte";
-   import UpdateDialog from "$lib/components/dialogs/UpdateDialog.svelte";
+	import UpdateDialog from "$lib/components/dialogs/UpdateDialog.svelte";
 
-	// SCRIPTS
 	import { loadLibrary } from "$lib/ts/library.svelte";
-	import { selection, scanState, activeView, setView, loadSessionState, saveSessionState } from "$lib/ts/app-states/state_session.svelte";
+	import { selection, scanState, activeView, loadSessionState, saveSessionState } from "$lib/ts/app-states/state_session.svelte";
 	import { dragState } from "$lib/ts/app-states/state_drag.svelte";
 	import { togglePlay, skipBack, skipNext, loadPlayerState, savePlayerState } from "$lib/ts/audio/audioManager.svelte";
 	import { checkForUpdate } from "$lib/updater.svelte";
 	import { loadProfiles, profileState } from "$lib/ts/profiles.svelte";
 
-	// VARIABLES
 	let needsSetup = $state(false);
 	let setupChecked = $state(false);
 
@@ -50,12 +45,9 @@
 	let maxSidebarWidth = $derived(containerWidth ? (480 / containerWidth) * 100 : 40);
 	let defaultSidebarWidth = $derived(containerWidth ? (300 / containerWidth) * 100 : 40);
 
-	// APP FUNCTIONS
 	onMount(() => {
 		window.addEventListener("beforeunload", handleUnload);
-		return () => {
-			window.removeEventListener("beforeunload", handleUnload);
-		};
+		return () => window.removeEventListener("beforeunload", handleUnload);
 	});
 
 	onMount(async () => {
@@ -76,15 +68,10 @@
 			await loadLibrary();
 		}
 
-		await listen("library:updated", () => {
-			loadLibrary();
-		});
-
 		await listen("profile:ready", async () => {
 			needsSetup = false;
 			await loadProfiles();
 			const uid = profileState.active?.uid;
-			
 			loadPlayerState();
 			if (uid) loadSessionState(uid);
 			await loadLibrary();
@@ -93,7 +80,6 @@
 		window.addEventListener("keydown", keydown);
 	});
 
-	// FUNCTIONS
 	function handleUnload() {
 		const uid = profileState.active?.uid;
 		if (uid) saveSessionState(uid);
@@ -107,18 +93,10 @@
 
 	function keydown(e: KeyboardEvent) {
 		switch (e.key) {
-			case 'F5':
-				location.reload();
-				break;
-			case 'MediaPlayPause':
-				togglePlay();
-				break;
-			case 'MediaTrackNext':
-				skipNext();
-				break;
-			case 'MediaTrackPrevious':
-				skipBack();
-				break;
+			case "F5": location.reload(); break;
+			case "MediaPlayPause": togglePlay(); break;
+			case "MediaTrackNext": skipNext(); break;
+			case "MediaTrackPrevious": skipBack(); break;
 		}
 	}
 

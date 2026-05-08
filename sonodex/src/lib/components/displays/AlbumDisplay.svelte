@@ -1,15 +1,9 @@
 <script lang="ts">
-
-	// APP
-	import { invoke } from "@tauri-apps/api/core";
-
-	// COMPONENTS
 	import { Pencil } from "lucide-svelte";
 
 	import { ScrollArea } from "$lib/components/ui/scroll-area/index.js";
 	import Button from "$lib/components/ui/button/button.svelte";
 
-	// CUSTOM COMPONENTS
 	import TrackTableSettings from "$lib/components/app-ui/track-table/TrackTableSettings.svelte";
 	import ArtworkDisplay from "$lib/components/app-ui/ArtworkDisplay.svelte";
 	import TrackTable from "$lib/components/app-ui/track-table/TrackTable.svelte";
@@ -18,17 +12,16 @@
 	import TagList from "$lib/components/app-ui/tags/TagList.svelte";
 	import DownloadButton from "$lib/components/app-ui/DownloadButton.svelte";
 
-	// SCRIPTS
 	import { selection, setSelection } from "$lib/ts/app-states/state_session.svelte";
-	import { getArtistUidFromName, library, getAlbumTracks } from "$lib/ts/library.svelte";
+	import { getArtistUidFromName, getAlbumTracks, library } from "$lib/ts/library.svelte";
 	import { queueTracksByObject } from "$lib/ts/audio/audioManager.svelte";
 	import { openEditModal } from "$lib/ts/app/editModal.svelte";
-	import { getArtworkColor, parseTags, totalDuration } from "$lib/ts/util/helpers"
+	import { getArtworkColor, parseTags, totalDuration } from "$lib/ts/util/helpers";
 	import { createPersistedViewState } from "$lib/ts/app-states/state_session.svelte";
-	
+	import { artworkCache } from "$lib/ts/app-states/artworkCache";
+
 	import type { Album, Track } from "$lib/ts/util/types";
 
-	// VARIABLES
 	const view = createPersistedViewState("album", {
 		sortField: "number",
 		sortDir: "asc",
@@ -53,19 +46,21 @@
 		);
 	});
 
-	// APP FUNCTIONS
 	$effect(() => {
 		const uid = selection.uid;
 		if (!uid) return;
 		color = "var(--muted)";
-		invoke("get_album_artwork", { uid }).then((bytes) => {
-			if (bytes) getArtworkColor(bytes as number[], 0.3).then((c) => color = c);
-		});
+		const cached = artworkCache.get(`album:${uid}`);
+		if (cached) {
+			fetch(cached).then(r => r.arrayBuffer()).then(buf => {
+				getArtworkColor(Array.from(new Uint8Array(buf)), 0.3).then(c => color = c);
+			}).catch(() => {});
+		}
 	});
 
 	function trackIsGhost(t: Track): boolean {
 		const hasLocal = t.path && t.path !== "" && t.path !== t.uid;
-		const hasRemote = t.remote_path && t.remote_path.length > 0;
+		const hasRemote = (t as any).remote_path && (t as any).remote_path.length > 0;
 		return !hasLocal && !hasRemote;
 	}
 

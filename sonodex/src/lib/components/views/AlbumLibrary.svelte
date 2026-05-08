@@ -1,29 +1,22 @@
 <script lang="ts">
-	// APP
-	// COMPONENTS
 	import { ArrowUpDown, ArrowUp, ArrowDown, LayoutGrid, List } from "lucide-svelte";
 
 	import * as DropdownMenu from "$lib/components/ui/dropdown-menu/index.js";
 	import { ScrollArea } from "$lib/components/ui/scroll-area/index.js";
-	import { Input } from "$lib/components/ui/input/index.js";
 	import { Button } from "$lib/components/ui/button/index.js";
-	import Toggle from "$lib/components/ui/toggle/toggle.svelte";
 
-	// CUSTOM COMPONENTS
 	import AudioCard from "$lib/components/app-ui/AudioCard.svelte";
 	import ArtworkDisplay from "$lib/components/app-ui/ArtworkDisplay.svelte";
 	import SearchBar from "$lib/components/app-ui/search/SearchBar.svelte";
 	import MediaGrid from "$lib/layouts/MediaGrid.svelte";
 
-	// SCRIPTS
-	import Fuse from "fuse.js";
-	import { parseArtists, parseAlbum } from "$lib/ts/util/helpers";
+	import { parseArtists } from "$lib/ts/util/helpers";
 	import { library } from "$lib/ts/library.svelte";
+	import { searchAlbums } from "$lib/ts/app/fuseStore.svelte";
 	import { setSelection } from "$lib/ts/app-states/state_session.svelte";
 	import { createPersistedViewState } from "$lib/ts/app-states/state_session.svelte";
 	import type { SortField } from "$lib/ts/app/sortConfig.svelte";
-	
-	// VARIABLES
+
 	let search = $state("");
 
 	const view = createPersistedViewState("album-library", {
@@ -33,9 +26,7 @@
 	});
 
 	const filteredAlbums = $derived.by(() => {
-		const list = search.trim().length < 2
-			? library.albums
-			: getFuse().search(search).map((r) => r.item);
+		const list = searchAlbums(search);
 
 		return [...list].sort((a, b) => {
 			let cmp = 0;
@@ -50,31 +41,6 @@
 		});
 	});
 
-	let fuseInstance: Fuse<typeof library.albums[0]> | null = $state(null);
-	let lastAlbumsRef: typeof library.albums | null = null;
-
-	function getFuse() {
-		if (fuseInstance && lastAlbumsRef === library.albums) return fuseInstance;
-		lastAlbumsRef = library.albums;
-		fuseInstance = new Fuse(library.albums, {
-			keys: [
-				{ name: "title",        weight: 0.5,  getFn: (t) => t.title ?? ""               },
-				{ name: "artists",      weight: 0.25, getFn: (t) => parseArtists(t.artists ?? "[]") },
-				{ name: "album_artist", weight: 0.15, getFn: (t) => t.album_artist ?? ""         },
-				{ name: "year",         weight: 0.1,  getFn: (t) => t.release_date ?? ""         },
-				{ name: "tags",         weight: 0.05, getFn: (t) => t.tags ?? ""                 },
-				{ name: "genres",       weight: 0.05, getFn: (t) => t.genres ?? ""               },
-			],
-			threshold: 0.35,
-			ignoreLocation: true,
-			includeScore: false,
-			useExtendedSearch: false,
-			minMatchCharLength: 2,
-		});
-		return fuseInstance;
-	}
-
-	// FUNCTIONS
 	function toggleAlbumSort(field: "name" | "artist" | "year") {
 		if (view.sort.field === field) {
 			view.sort.direction = view.sort.direction === "asc" ? "desc" : "asc";
@@ -89,9 +55,7 @@
 
 	<div class="flex justify-between items-center gap-2 pr-4 pl-4">
 		<h1 class="h1">Albums</h1>
-
 		<SearchBar bind:search searchCount={filteredAlbums.length} />
-
 	</div>
 
 	<div class="flex justify-between pr-4 pl-4">
@@ -116,9 +80,7 @@
 						onSelect={() => toggleAlbumSort("name")}
 					>
 						{#if view.sort.field === "name"}
-							{#if view.sort.field === null}
-							<ArrowUpDown class="size-3 text-primary" />
-							{:else if view.sort.direction === "asc"}
+							{#if view.sort.direction === "asc"}
 								<ArrowUp class="size-3 text-primary" />
 							{:else}
 								<ArrowDown class="size-3 text-primary" />
@@ -131,9 +93,7 @@
 						onSelect={() => toggleAlbumSort("artist")}
 					>
 						{#if view.sort.field === "artist"}
-							{#if view.sort.field === null}
-							<ArrowUpDown class="size-3 text-primary" />
-							{:else if view.sort.direction === "asc"}
+							{#if view.sort.direction === "asc"}
 								<ArrowUp class="size-3 text-primary" />
 							{:else}
 								<ArrowDown class="size-3 text-primary" />
@@ -146,9 +106,7 @@
 						onSelect={() => toggleAlbumSort("year")}
 					>
 						{#if view.sort.field === "year"}
-							{#if view.sort.field === null}
-							<ArrowUpDown class="size-3 text-primary" />
-							{:else if view.sort.direction === "asc"}
+							{#if view.sort.direction === "asc"}
 								<ArrowUp class="size-3 text-primary" />
 							{:else}
 								<ArrowDown class="size-3 text-primary" />
@@ -161,11 +119,9 @@
 
 			<Button variant="ghost" size="icon" onclick={() => view.compact = !view.compact}>
 				{#if view.compact}
-				<!-- Table -->
-				<List />
+					<List />
 				{:else}
-				<LayoutGrid />
-					<!-- List -->
+					<LayoutGrid />
 				{/if}
 			</Button>
 		</div>

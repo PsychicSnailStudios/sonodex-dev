@@ -2,7 +2,6 @@
 	import { Trash, CloudDownload, FolderInput, Loader2 } from "lucide-svelte";
 	import { invoke } from "@tauri-apps/api/core";
 	import { listen } from "@tauri-apps/api/event";
-	import { open } from "@tauri-apps/plugin-dialog";
 	import { onMount } from "svelte";
 
 	import * as Tabs from "$lib/components/ui/tabs/index.js";
@@ -18,6 +17,8 @@
 	import DuplicateGroupCard from "$lib/components/app-ui/library-manager/DuplicateGroupCard.svelte";
 	import AddToAlbumDialog from "$lib/components/dialogs/AddToAlbumDialog.svelte";
 	import TagManager from "$lib/components/app-ui/library-manager/TagManager.svelte";
+	import LibraryDatabaseManager from "$lib/components/app-ui/library-manager/LibraryDatabaseManager.svelte";
+	import BlocklistDialog from "$lib/components/dialogs/BlocklistDialog.svelte";
 
 	import Fuse from "fuse.js";
 	import {
@@ -60,78 +61,7 @@
 	let lastAlbumIndex = $state<number | null>(null);
 	let lastArtistIndex = $state<number | null>(null);
 
-	// ─── Paths ────────────────────────────────────────────────────────────────────
-	let paths = $state<{ id: number; path: string }[]>([]);
-	let newPath = $state("");
-	let removingPath = $state<string | null>(null);
-
-	onMount(async () => {
-		await loadPaths();
-
-		await listen("scan:progress", async (event: any) => {
-			scanState.loading = true;
-			scanState.progress = event.payload.scanned;
-			scanState.total = event.payload.total;
-			scanState.status = `Scanning... ${scanState.progress} / ${scanState.total}`;
-		});
-
-		await listen("scan:done", async () => {
-			scanState.status = "Scan done.";
-			scanState.loading = false;
-			scanState.progress = 0;
-			scanState.total = 0;
-			await loadLibrary();
-		});
-
-		await listen("scan:error", (event: any) => {
-			scanState.status = `Scan error: ${event.payload}`;
-			scanState.loading = false;
-		});
-	});
-
-	async function loadPaths() {
-		const result = await invoke("get_paths");
-		paths = result as { id: number; path: string }[];
-	}
-
-	async function browsePath() {
-		const selected = await open({ directory: true, multiple: false });
-		if (selected) newPath = selected as string;
-	}
-
-	async function addPath() {
-		if (!newPath.trim()) return;
-		scanState.loading = true;
-		scanState.status = "Scanning...";
-		scanState.progress = 0;
-		scanState.total = 0;
-		try {
-			await invoke("add_path", { path: newPath.trim() });
-			newPath = "";
-			await loadPaths();
-		} catch (e) {
-			scanState.status = `Error: ${e}`;
-			scanState.loading = false;
-		}
-	}
-
-	async function removePath(path: string) {
-		removingPath = path;
-		await invoke("remove_path", { path });
-		await loadPaths();
-		await loadLibrary();
-		scanState.status = `Removed ${path}`;
-		removingPath = null;
-	}
-
-	async function rescan() {
-		scanState.loading = true;
-		scanState.status = "Rescanning...";
-		scanState.progress = 0;
-		scanState.total = 0;
-		await invoke("rescan");
-	}
-
+	// ─── Fuse instances ───────────────────────────────────────────────────────────
 	let tracksFuseInstance: Fuse<(typeof library.tracks)[0]> | null = $state(null);
 	let lastTracksRef: typeof library.tracks | null = null;
 
@@ -140,12 +70,12 @@
 		lastTracksRef = library.tracks;
 		tracksFuseInstance = new Fuse(library.tracks, {
 			keys: [
-				{ name: "title",        weight: 0.5,  getFn: (t) => t.title ?? ""                    },
-				{ name: "artists",      weight: 0.25, getFn: (t) => parseArtists(t.artists ?? "[]")  },
-				{ name: "album_artist", weight: 0.15, getFn: (t) => t.album_artist ?? ""             },
-				{ name: "albums",       weight: 0.1,  getFn: (t) => parseAlbum(t.albums ?? "[]")     },
-				{ name: "tags",         weight: 0.05, getFn: (t) => t.tags ?? ""                     },
-				{ name: "genres",       weight: 0.05, getFn: (t) => t.genres ?? ""                   },
+				{ name: "title",        weight: 0.5,  getFn: (t) => t.title ?? ""                   },
+				{ name: "artists",      weight: 0.25, getFn: (t) => parseArtists(t.artists ?? "[]") },
+				{ name: "album_artist", weight: 0.15, getFn: (t) => t.album_artist ?? ""            },
+				{ name: "albums",       weight: 0.1,  getFn: (t) => parseAlbum(t.albums ?? "[]")    },
+				{ name: "tags",         weight: 0.05, getFn: (t) => t.tags ?? ""                    },
+				{ name: "genres",       weight: 0.05, getFn: (t) => t.genres ?? ""                  },
 			],
 			threshold: 0.35,
 			ignoreLocation: true,
@@ -178,12 +108,12 @@
 		lastAlbumsRef = library.albums;
 		albumFuseInstance = new Fuse(library.albums, {
 			keys: [
-				{ name: "title",        weight: 0.5,  getFn: (t) => t.title ?? ""                    },
-				{ name: "artists",      weight: 0.25, getFn: (t) => parseArtists(t.artists ?? "[]")  },
-				{ name: "album_artist", weight: 0.15, getFn: (t) => t.album_artist ?? ""             },
-				{ name: "year",         weight: 0.1,  getFn: (t) => t.release_date ?? ""             },
-				{ name: "tags",         weight: 0.05, getFn: (t) => t.tags ?? ""                     },
-				{ name: "genres",       weight: 0.05, getFn: (t) => t.genres ?? ""                   },
+				{ name: "title",        weight: 0.5,  getFn: (t) => t.title ?? ""                   },
+				{ name: "artists",      weight: 0.25, getFn: (t) => parseArtists(t.artists ?? "[]") },
+				{ name: "album_artist", weight: 0.15, getFn: (t) => t.album_artist ?? ""            },
+				{ name: "year",         weight: 0.1,  getFn: (t) => t.release_date ?? ""            },
+				{ name: "tags",         weight: 0.05, getFn: (t) => t.tags ?? ""                    },
+				{ name: "genres",       weight: 0.05, getFn: (t) => t.genres ?? ""                  },
 			],
 			threshold: 0.35,
 			ignoreLocation: true,
@@ -360,20 +290,6 @@
 		}
 	}
 
-	async function enrichAll() {
-		scanState.enriching = true;
-		scanState.enrichDone = 0;
-		scanState.enrichTotal = 0;
-		scanState.enrichErrors = 0;
-		try {
-			enrichAllTracks();
-			enrichAllAlbums();
-			enrichAllArtists();
-		} catch (e) {
-			scanState.status = `Enrich error: ${e}`;
-			scanState.enriching = false;
-		}
-	}
 	async function enrich(type: "tracks" | "albums" | "artists") {
 		scanState.enriching = true;
 		scanState.enrichDone = 0;
@@ -381,8 +297,8 @@
 		scanState.enrichErrors = 0;
 		try {
 			switch (type) {
-				case "tracks": enrichAllTracks(); break;
-				case "albums": enrichAllAlbums(); break;
+				case "tracks":  enrichAllTracks();  break;
+				case "albums":  enrichAllAlbums();  break;
 				case "artists": enrichAllArtists(); break;
 			}
 		} catch (e) {
@@ -403,73 +319,29 @@
 	}
 </script>
 
+<!-- Dialogs (rendered outside the tab layout so they always work) -->
 <AddToAlbumDialog bind:open={addToAlbumOpen} trackUids={selectedTrackUids} />
+<BlocklistDialog />
 
 <div class="flex flex-col gap-2 p-2 border-2 rounded-md h-full w-full overflow-hidden">
 	<h2 class="h2">Library Manager</h2>
 
 	<ScrollArea class="h-full w-full min-h-0 min-w-0">
 		<div class="flex flex-col gap-4 p-2 pr-4">
-			<Tabs.Root value="paths" class="flex flex-col min-h-0 flex-1">
+			<Tabs.Root value="library" class="flex flex-col min-h-0 flex-1">
 				<Tabs.List class="w-full">
-					<Tabs.Trigger value="paths" class="flex-1">Library</Tabs.Trigger>
-					<Tabs.Trigger value="tracks" class="flex-1">Tracks</Tabs.Trigger>
-					<Tabs.Trigger value="albums" class="flex-1">Albums</Tabs.Trigger>
-					<Tabs.Trigger value="artists" class="flex-1">Artists</Tabs.Trigger>
-					<Tabs.Trigger value="tags" class="flex-1">Tags</Tabs.Trigger>
+					<Tabs.Trigger value="library"  class="flex-1">Library</Tabs.Trigger>
+					<Tabs.Trigger value="tracks"   class="flex-1">Tracks</Tabs.Trigger>
+					<Tabs.Trigger value="albums"   class="flex-1">Albums</Tabs.Trigger>
+					<Tabs.Trigger value="artists"  class="flex-1">Artists</Tabs.Trigger>
+					<Tabs.Trigger value="tags"     class="flex-1">Tags</Tabs.Trigger>
 					<Tabs.Trigger value="duplicates" class="flex-1" onclick={loadDuplicates}>Duplicates</Tabs.Trigger>
 				</Tabs.List>
 
-
-				<!-- PATHS -->
-				<Tabs.Content value="paths">
-					<div class="flex flex-col gap-4 pt-2">
-						<div class="flex flex-col gap-2">
-							<h4 class="text-sm font-semibold">Add Library Path</h4>
-							<div class="flex gap-2">
-								<input
-									bind:value={newPath}
-									placeholder="C:\Music or \\NAS\Music"
-									class="flex-1 border rounded px-3 py-2 text-sm bg-background"
-								/>
-								<Button variant="outline" onclick={browsePath}>Browse</Button>
-								<Button onclick={addPath} disabled={scanState.loading}>
-									{#if scanState.loading}
-										<Loader2 class="animate-spin w-4 h-4 mr-1" />
-									{/if}
-									Add & Scan
-								</Button>
-							</div>
-						</div>
-
-						<div class="flex flex-col gap-2">
-							<h4 class="text-sm font-semibold">Watched Paths ({paths.length})</h4>
-							{#each paths as p}
-								<div class="flex items-center justify-between border rounded px-3 py-2 text-sm">
-									<span class="truncate mr-2">{p.path}</span>
-									<Button
-										variant="destructive"
-										size="sm"
-										disabled={scanState.loading || removingPath === p.path}
-										onclick={() => removePath(p.path)}
-									>
-										{#if removingPath === p.path}
-											<Loader2 class="animate-spin w-4 h-4 mr-1" />
-										{/if}
-										Remove
-									</Button>
-								</div>
-							{:else}
-								<p class="text-sm text-muted-foreground">No paths added yet.</p>
-							{/each}
-						</div>
-
-						<Button onclick={rescan} disabled={scanState.loading} class="w-fit">
-							{#if scanState.loading}
-								<Loader2 class="animate-spin w-4 h-4 mr-1" />
-							{/if}
-							Rescan All
-						</Button>
+				<!-- LIBRARY (paths + federated databases) -->
+				<Tabs.Content value="library">
+					<div class="pt-2">
+						<LibraryDatabaseManager />
 					</div>
 				</Tabs.Content>
 
@@ -477,9 +349,11 @@
 				<Tabs.Content value="tracks">
 					<div class="flex flex-col gap-2 pt-2">
 						<div class="flex gap-2 justify-between items-center">
-							<span class="text-sm text-muted-foreground">{filteredTracks.length} {filteredTracks.length === 1 ? "track" : "tracks"}</span>
+							<span class="text-sm text-muted-foreground">
+								{filteredTracks.length} {filteredTracks.length === 1 ? "track" : "tracks"}
+							</span>
 							<div class="flex gap-2 items-center">
-								<div class="flex rounded-md border text-xs ">
+								<div class="flex rounded-md border text-xs">
 									{#each (["all", "local", "remote", "ghosts"] as TrackFilterMode[]) as mode}
 										<button
 											class="px-2 py-1 capitalize transition-colors"
@@ -495,9 +369,10 @@
 								<SearchBar bind:search={trackSearch} searchCount={filteredTracks.length} />
 							</div>
 						</div>
-						<div class="flex gap-2 justify-between items-center">
-							{#if anyTracksSelected}
-								<div class="flex gap-2">
+
+						{#if anyTracksSelected}
+							<div class="flex gap-2 justify-between items-center">
+								<div class="flex gap-2 items-center">
 									<Checkbox
 										checked={allTracksSelected}
 										onCheckedChange={(v) => {
@@ -508,7 +383,7 @@
 									/>
 									<span class="text-xs text-muted-foreground">{selectedTrackUids.length} selected</span>
 								</div>
-								<div>
+								<div class="flex gap-1">
 									<Tooltip.Root>
 										<Tooltip.Trigger
 											class={buttonVariants({ variant: "destructive", size: "sm" })}
@@ -543,8 +418,9 @@
 										<Tooltip.Content><p>Add selected to an album</p></Tooltip.Content>
 									</Tooltip.Root>
 								</div>
-							{/if}
-						</div>
+							</div>
+						{/if}
+
 						<div class="flex flex-col gap-2">
 							{#each filteredTracks as track, i (track.uid)}
 								<TrackRow
@@ -562,12 +438,15 @@
 				<Tabs.Content value="albums">
 					<div class="flex flex-col gap-2 pt-2">
 						<div class="flex gap-2 justify-between items-center">
-							<span class="text-sm text-muted-foreground">{filteredAlbums.length} {filteredAlbums.length === 1 ? "album" : "albums"}</span>
+							<span class="text-sm text-muted-foreground">
+								{filteredAlbums.length} {filteredAlbums.length === 1 ? "album" : "albums"}
+							</span>
 							<SearchBar bind:search={albumSearch} searchCount={filteredAlbums.length} />
 						</div>
-						<div class="flex gap-2 justify-between items-center">
-							{#if anyAlbumsSelected}
-								<div class="flex gap-2">
+
+						{#if anyAlbumsSelected}
+							<div class="flex gap-2 justify-between items-center">
+								<div class="flex gap-2 items-center">
 									<Checkbox
 										checked={allAlbumsSelected}
 										onCheckedChange={(v) => {
@@ -578,7 +457,7 @@
 									/>
 									<span class="text-xs text-muted-foreground">{selectedAlbumUids.length} selected</span>
 								</div>
-								<div class="flex gap-2">
+								<div class="flex gap-1">
 									<Tooltip.Root>
 										<Tooltip.Trigger
 											class={buttonVariants({ variant: "destructive", size: "sm" })}
@@ -604,8 +483,9 @@
 										<Tooltip.Content><p>Fetch metadata for selected</p></Tooltip.Content>
 									</Tooltip.Root>
 								</div>
-							{/if}
-						</div>
+							</div>
+						{/if}
+
 						<div class="flex flex-col gap-2">
 							{#each filteredAlbums as album, i (album.uid)}
 								<AlbumRow
@@ -623,12 +503,15 @@
 				<Tabs.Content value="artists">
 					<div class="flex flex-col gap-2 pt-2">
 						<div class="flex gap-2 justify-between items-center">
-							<span class="text-sm text-muted-foreground">{filteredArtists.length} {filteredArtists.length === 1 ? "artist" : "artists"}</span>
+							<span class="text-sm text-muted-foreground">
+								{filteredArtists.length} {filteredArtists.length === 1 ? "artist" : "artists"}
+							</span>
 							<SearchBar bind:search={artistSearch} searchCount={filteredArtists.length} />
 						</div>
-						<div class="flex gap-2 justify-between items-center">
-							{#if anyArtistsSelected}
-								<div class="flex gap-2">
+
+						{#if anyArtistsSelected}
+							<div class="flex gap-2 justify-between items-center">
+								<div class="flex gap-2 items-center">
 									<Checkbox
 										checked={allArtistsSelected}
 										onCheckedChange={(v) => {
@@ -639,7 +522,7 @@
 									/>
 									<span class="text-xs text-muted-foreground">{selectedArtistUids.length} selected</span>
 								</div>
-								<div class="flex gap-2">
+								<div class="flex gap-1">
 									<Tooltip.Root>
 										<Tooltip.Trigger
 											class={buttonVariants({ variant: "destructive", size: "sm" })}
@@ -665,8 +548,9 @@
 										<Tooltip.Content><p>Fetch metadata for selected</p></Tooltip.Content>
 									</Tooltip.Root>
 								</div>
-							{/if}
-						</div>
+							</div>
+						{/if}
+
 						<div class="flex flex-col gap-2">
 							{#each filteredArtists as artist, i (artist.uid)}
 								<ArtistRow
@@ -692,7 +576,9 @@
 						{:else if duplicates.length === 0}
 							<p class="text-sm text-muted-foreground">No duplicates found.</p>
 						{:else}
-							<span class="text-sm text-muted-foreground">{duplicates.length} duplicate {duplicates.length === 1 ? "group" : "groups"}</span>
+							<span class="text-sm text-muted-foreground">
+								{duplicates.length} duplicate {duplicates.length === 1 ? "group" : "groups"}
+							</span>
 							<div class="flex flex-col gap-3">
 								{#each duplicates as group, i (i)}
 									<DuplicateGroupCard {group} onresolved={() => onDuplicateResolved(i)} />
