@@ -10,8 +10,8 @@
 	import { Slider } from "$shadcn/slider/index.js";
 
 	// SCRIPTS
-	import { player, getQueueIndex, getQueuedTracks, togglePlay, seek, skipBack, skipNext, toggleLoop, toggleShuffle, setVolume, toggleMute } from "$ts/audio/audioManager.svelte";
-	import { formatDuration } from "$ts/util/helpers";
+	import { getQueuedTracks, togglePlay, seek, skipBack, skipNext, toggleLoop, toggleShuffle, setVolume, toggleMute } from "$ts/audio/audioManager.svelte";
+	import { player, getQueueIndex } from "$ts/audio/audioPlayer.svelte";
 
 	// VARIABLES
 	let seeking = $state(false);

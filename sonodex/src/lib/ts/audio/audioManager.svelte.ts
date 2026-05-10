@@ -20,9 +20,6 @@ import {
 } from "$ts/audio/audioHelper";
 import { spacedShuffle, smartShuffle } from "$ts/audio/audioShuffles";
 
-export { player, currentlyPlaying, getQueueIndex } from "$ts/audio/audioPlayer.svelte";
-export { applyEqToGraph } from "$ts/audio/audioGraph.svelte";
-
 let audio: HTMLAudioElement | null = null;
 
 function playerKey() { return `imago:player:${profileState.active?.uid ?? "default"}`; }

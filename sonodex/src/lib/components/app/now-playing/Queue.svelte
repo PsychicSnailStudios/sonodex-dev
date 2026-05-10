@@ -10,11 +10,11 @@
 	import {
 		clearQueue,
 		getQueuedTracks,
-		player,
 		reorderQueue,
 		insertIntoQueue,
 		removeFromQueue,
 	} from "$ts/audio/audioManager.svelte";
+	import { player } from "$ts/audio/audioPlayer.svelte";
 	import { dragState, endDrag } from "$ts/store/drag.svelte";
 	import { clearQueueSelection, queueSelection } from "$ts/store/queueSelection.svelte";
    import { getTrack } from "$ts/store/library.svelte";

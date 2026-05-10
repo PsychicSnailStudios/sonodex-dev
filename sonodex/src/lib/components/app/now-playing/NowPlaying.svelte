@@ -20,7 +20,7 @@
 
 	// SCRIPTS
 	import { setSelection } from "$ts/store/session.svelte";
-	import { currentlyPlaying, player } from "$ts/audio/audioManager.svelte";
+	import { currentlyPlaying, player } from "$ts/audio/audioPlayer.svelte";
 	import { getArtworkColor } from "$ts/util/helpers";
    import { parseArtistsToString } from "$ts/util/parsers";
 
