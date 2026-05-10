@@ -105,14 +105,14 @@ pub struct DuplicateGroup {
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct MetadataUpdate {
 	pub title: Option<String>,
-	pub artists: Option<ArtistEntry>,
-	pub album_artist: Option<Vec<ArtistEntry>>,
+	pub artists: Option<Vec<ArtistEntry>>,
+	pub album_artist: Option<ArtistEntry>,
 	pub albums: Option<Vec<TrackAlbumEntry>>,
 	pub year: Option<String>,
-	pub genres: Option<String>,
+	pub genres: Option<Vec<String>>,
 	pub bpm: Option<f32>,
 	pub rating: Option<f32>,
-	pub tags: Option<String>,
+	pub tags: Option<Vec<String>>,
 	pub key: Option<String>,
 	pub credits: Option<String>,
 	pub label: Option<String>,
@@ -487,19 +487,19 @@ pub fn update_track_metadata(conn: &Connection, id: i64, update: &MetadataUpdate
 		conn.execute("UPDATE tracks SET title = ?1 WHERE id = ?2", params![title, id])?;
 	}
 	if let Some(ref artists) = update.artists {
-		conn.execute("UPDATE tracks SET artists = ?1 WHERE id = ?2", params![artists, id])?;
+		conn.execute("UPDATE tracks SET artists = ?1 WHERE id = ?2", params![OptJson(Some(artists)), id])?;
 	}
 	if let Some(ref album_artist) = update.album_artist {
-		conn.execute("UPDATE tracks SET album_artist = ?1 WHERE id = ?2", params![album_artist, id])?;
+		conn.execute("UPDATE tracks SET album_artist = ?1 WHERE id = ?2", params![OptJson(Some(album_artist)), id])?;
 	}
 	if let Some(ref albums) = update.albums {
-		conn.execute("UPDATE tracks SET albums = ?1 WHERE id = ?2", params![albums, id])?;
+		conn.execute("UPDATE tracks SET albums = ?1 WHERE id = ?2", params![OptJson(Some(albums)), id])?;
 	}
 	if let Some(ref year) = update.year {
 		conn.execute("UPDATE tracks SET year = ?1 WHERE id = ?2", params![year, id])?;
 	}
 	if let Some(ref genres) = update.genres {
-		conn.execute("UPDATE tracks SET genres = ?1 WHERE id = ?2", params![genres, id])?;
+		conn.execute("UPDATE tracks SET genres = ?1 WHERE id = ?2", params![OptJson(Some(genres)), id])?;
 	}
 	if let Some(bpm) = update.bpm {
 		conn.execute("UPDATE tracks SET bpm = ?1 WHERE id = ?2", params![bpm, id])?;
@@ -508,7 +508,7 @@ pub fn update_track_metadata(conn: &Connection, id: i64, update: &MetadataUpdate
 		conn.execute("UPDATE tracks SET rating = ?1 WHERE id = ?2", params![rating, id])?;
 	}
 	if let Some(ref tags) = update.tags {
-		conn.execute("UPDATE tracks SET tags = ?1 WHERE id = ?2", params![tags, id])?;
+		conn.execute("UPDATE tracks SET tags = ?1 WHERE id = ?2", params![OptJson(Some(tags)), id])?;
 	}
 	if let Some(ref key) = update.key {
 		conn.execute("UPDATE tracks SET key = ?1 WHERE id = ?2", params![key, id])?;
@@ -528,7 +528,7 @@ pub fn update_track_metadata(conn: &Connection, id: i64, update: &MetadataUpdate
 		conn.execute("UPDATE tracks SET artwork_path = ?1 WHERE id = ?2", params![path, id])?;
 	}
 	if let Some(ref user_options) = update.user_options {
-		conn.execute("UPDATE tracks SET user_options = ?1 WHERE id = ?2", params![user_options, id])?;
+		conn.execute("UPDATE tracks SET user_options = ?1 WHERE id = ?2", params![OptJson(Some(user_options)), id])?;
 	}
 	if let Some(ref format) = update.format {
 		conn.execute("UPDATE tracks SET format = ?1 WHERE id = ?2", params![format, id])?;
@@ -540,10 +540,10 @@ pub fn update_track_metadata(conn: &Connection, id: i64, update: &MetadataUpdate
 		conn.execute("UPDATE tracks SET remote_path = ?1 WHERE id = ?2", params![remote_path, id])?;
 	}
 	if let Some(ref remote_data) = update.remote_data {
-		conn.execute("UPDATE tracks SET remote_data = ?1 WHERE id = ?2", params![remote_data, id])?;
+		conn.execute("UPDATE tracks SET remote_data = ?1 WHERE id = ?2", params![OptJson(Some(remote_data)), id])?;
 	}
 	if let Some(ref track_data) = update.track_data {
-		conn.execute("UPDATE tracks SET track_data = ?1 WHERE id = ?2", params![track_data, id])?;
+		conn.execute("UPDATE tracks SET track_data = ?1 WHERE id = ?2", params![OptJson(Some(track_data)), id])?;
 	}
 	Ok(())
 }
@@ -557,19 +557,19 @@ pub fn update_track_metadata_by_uid(
 		conn.execute("UPDATE tracks SET title = ?1 WHERE uid = ?2", params![title, uid])?;
 	}
 	if let Some(ref artists) = update.artists {
-		conn.execute("UPDATE tracks SET artists = ?1 WHERE uid = ?2", params![artists, uid])?;
+		conn.execute("UPDATE tracks SET artists = ?1 WHERE uid = ?2", params![OptJson(Some(artists)), uid])?;
 	}
 	if let Some(ref album_artist) = update.album_artist {
-		conn.execute("UPDATE tracks SET album_artist = ?1 WHERE uid = ?2", params![album_artist, uid])?;
+		conn.execute("UPDATE tracks SET album_artist = ?1 WHERE uid = ?2", params![OptJson(Some(album_artist)), uid])?;
 	}
 	if let Some(ref albums) = update.albums {
-		conn.execute("UPDATE tracks SET albums = ?1 WHERE uid = ?2", params![albums, uid])?;
+		conn.execute("UPDATE tracks SET albums = ?1 WHERE uid = ?2", params![OptJson(Some(albums)), uid])?;
 	}
 	if let Some(ref year) = update.year {
 		conn.execute("UPDATE tracks SET year = ?1 WHERE uid = ?2", params![year, uid])?;
 	}
 	if let Some(ref genres) = update.genres {
-		conn.execute("UPDATE tracks SET genres = ?1 WHERE uid = ?2", params![genres, uid])?;
+		conn.execute("UPDATE tracks SET genres = ?1 WHERE uid = ?2", params![OptJson(Some(genres)), uid])?;
 	}
 	if let Some(bpm) = update.bpm {
 		conn.execute("UPDATE tracks SET bpm = ?1 WHERE uid = ?2", params![bpm, uid])?;
@@ -578,7 +578,7 @@ pub fn update_track_metadata_by_uid(
 		conn.execute("UPDATE tracks SET rating = ?1 WHERE uid = ?2", params![rating, uid])?;
 	}
 	if let Some(ref tags) = update.tags {
-		conn.execute("UPDATE tracks SET tags = ?1 WHERE uid = ?2", params![tags, uid])?;
+		conn.execute("UPDATE tracks SET tags = ?1 WHERE uid = ?2", params![OptJson(Some(tags)), uid])?;
 	}
 	if let Some(ref key) = update.key {
 		conn.execute("UPDATE tracks SET key = ?1 WHERE uid = ?2", params![key, uid])?;
@@ -598,7 +598,7 @@ pub fn update_track_metadata_by_uid(
 		conn.execute("UPDATE tracks SET artwork_path = ?1 WHERE uid = ?2", params![path, uid])?;
 	}
 	if let Some(ref user_options) = update.user_options {
-		conn.execute("UPDATE tracks SET user_options = ?1 WHERE uid = ?2", params![user_options, uid])?;
+		conn.execute("UPDATE tracks SET user_options = ?1 WHERE uid = ?2", params![OptJson(Some(user_options)), uid])?;
 	}
 	if let Some(ref format) = update.format {
 		conn.execute("UPDATE tracks SET format = ?1 WHERE uid = ?2", params![format, uid])?;
@@ -610,10 +610,10 @@ pub fn update_track_metadata_by_uid(
 		conn.execute("UPDATE tracks SET remote_path = ?1 WHERE uid = ?2", params![remote_path, uid])?;
 	}
 	if let Some(ref remote_data) = update.remote_data {
-		conn.execute("UPDATE tracks SET remote_data = ?1 WHERE uid = ?2", params![remote_data, uid])?;
+		conn.execute("UPDATE tracks SET remote_data = ?1 WHERE uid = ?2", params![OptJson(Some(remote_data)), uid])?;
 	}
 	if let Some(ref track_data) = update.track_data {
-		conn.execute("UPDATE tracks SET track_data = ?1 WHERE uid = ?2", params![track_data, uid])?;
+		conn.execute("UPDATE tracks SET track_data = ?1 WHERE uid = ?2", params![OptJson(Some(track_data)), uid])?;
 	}
 	Ok(())
 }

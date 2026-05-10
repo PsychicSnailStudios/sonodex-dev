@@ -492,9 +492,8 @@ pub async fn spotify_import_playlist(
 
 			let artist_match = t
 				.artists
-				.as_deref()
-				.and_then(|s| serde_json::from_str::<Vec<String>>(s).ok())
-				.map(|v| v.iter().any(|a| a.to_lowercase() == sp_artist))
+				.as_ref()
+				.map(|v| v.iter().any(|a| a.name.to_lowercase() == sp_artist))
 				.unwrap_or(false);
 
 			title_match && artist_match
@@ -536,20 +535,13 @@ pub async fn spotify_import_playlist(
 				path: String::new(),
 				last_modified: 0,
 				title: Some(sp_track.name.clone()),
-				artists: Some(artists_json),
-				album_artist: sp_track.artists.first().map(|a| a.name.clone()),
-				albums: Some(
-					serde_json::to_string(&[serde_json::json!({
-						"uid": "",
-						"name": sp_track.album.as_ref().map(|a| a.name.as_str()).unwrap_or(""),
-						"track_number": sp_track.track_number
-					})])
-					.unwrap_or_else(|_| "[]".into()),
-				),
+				artists: Some(sp_track.artists.iter().map(|a| crate::db::ArtistEntry { uid: String::new(), name: a.name.clone() }).collect()),
+				album_artist: sp_track.artists.first().map(|a| crate::db::ArtistEntry { uid: String::new(), name: a.name.clone() }),
+				albums: Some(vec![crate::db::TrackAlbumEntry { uid: String::new(), name: sp_track.album.as_ref().map(|a| a.name.clone()).unwrap_or_default(), track: sp_track.track_number as i32, disc: 0 }]),
+				tags: Some(vec![]),
 				genres: None,
 				year,
 				rating: None,
-				tags: Some("[]".into()),
 				duration_ms: Some(sp_track.duration_ms as i64),
 				bpm: None,
 				key: None,

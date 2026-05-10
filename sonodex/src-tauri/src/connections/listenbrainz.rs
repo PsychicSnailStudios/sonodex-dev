@@ -85,16 +85,15 @@ pub async fn submit_listen(profile_uid: &str, track_uid: &str, timestamp: i64) -
 	let track_name = track.title.unwrap_or_default();
 	let artist_name = track
 		.artists
-		.as_deref()
-		.and_then(|s| serde_json::from_str::<Vec<String>>(s).ok())
-		.and_then(|v| v.into_iter().next())
+		.as_ref()
+		.and_then(|v| v.first())
+		.map(|a| a.name.clone())
 		.unwrap_or_default();
 	let release_name = track
 		.albums
-		.as_deref()
-		.and_then(|s| serde_json::from_str::<Vec<serde_json::Value>>(s).ok())
-		.and_then(|v| v.into_iter().next())
-		.and_then(|e| e["name"].as_str().map(|s| s.to_string()));
+		.as_ref()
+		.and_then(|v| v.first())
+		.map(|e| e.name.clone());
 
 	let body = SubmitListens {
 		listen_type: "single".to_string(),
@@ -139,16 +138,15 @@ pub async fn update_now_playing(profile_uid: &str, track_uid: &str) -> Result<()
 	let track_name = track.title.unwrap_or_default();
 	let artist_name = track
 		.artists
-		.as_deref()
-		.and_then(|s| serde_json::from_str::<Vec<String>>(s).ok())
-		.and_then(|v| v.into_iter().next())
+		.as_ref()
+		.and_then(|v| v.first())
+		.map(|a| a.name.clone())
 		.unwrap_or_default();
 	let release_name = track
 		.albums
-		.as_deref()
-		.and_then(|s| serde_json::from_str::<Vec<serde_json::Value>>(s).ok())
-		.and_then(|v| v.into_iter().next())
-		.and_then(|e| e["name"].as_str().map(|s| s.to_string()));
+		.as_ref()
+		.and_then(|v| v.first())
+		.map(|e| e.name.clone());
 
 	let body = SubmitListens {
 		listen_type: "playing_now".to_string(),

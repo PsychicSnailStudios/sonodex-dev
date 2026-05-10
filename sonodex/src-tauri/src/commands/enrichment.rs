@@ -29,7 +29,19 @@ fn load_enrich_settings(settings_conn: &rusqlite::Connection) -> EnrichSettings 
 	}
 }
 
-fn ensure_genre_tags(conn: &rusqlite::Connection, genres_json: &Option<String>) {
+fn ensure_genre_tags(conn: &rusqlite::Connection, genres: &Option<Vec<String>>) {
+	if let Some(ref names) = genres {
+		for name in names {
+			crate::db::tag_manager::ensure_tag(
+				conn,
+				name,
+				crate::db::tag_manager::TagKind::Genre,
+			);
+		}
+	}
+}
+
+fn ensure_genre_tags_str(conn: &rusqlite::Connection, genres_json: &Option<String>) {
 	if let Some(ref gj) = genres_json {
 		if let Ok(names) = serde_json::from_str::<Vec<String>>(gj) {
 			for name in names {
@@ -86,11 +98,16 @@ pub async fn enrich_track(
 
 	let update = MetadataUpdate {
 		title: result.title,
-		artists: result.artists,
-		album_artist: result.album_artist,
-		albums: result.albums,
+		artists: result.artists.as_deref()
+			.and_then(|s| serde_json::from_str::<Vec<String>>(s).ok())
+			.map(|names| names.into_iter().map(|n| crate::db::ArtistEntry { uid: String::new(), name: n }).collect()),
+		album_artist: result.album_artist.as_deref()
+			.map(|s| crate::db::ArtistEntry { uid: String::new(), name: s.to_string() }),
+		albums: result.albums.as_deref()
+			.and_then(|s| serde_json::from_str::<Vec<crate::db::TrackAlbumEntry>>(s).ok()),
 		year: result.year,
-		genres: result.genres,
+		genres: result.genres.as_deref()
+			.and_then(|s| serde_json::from_str::<Vec<String>>(s).ok()),
 		bpm: result.bpm,
 		key: result.key,
 		artwork_blob: result.artwork,
@@ -168,11 +185,16 @@ pub async fn enrich_all(app: AppHandle, state: State<'_, AppState>) -> Result<()
 			Ok(result) => {
 				let update = MetadataUpdate {
 					title: result.title,
-					artists: result.artists,
-					album_artist: result.album_artist,
-					albums: result.albums,
+					artists: result.artists.as_deref()
+						.and_then(|s| serde_json::from_str::<Vec<String>>(s).ok())
+						.map(|names| names.into_iter().map(|n| crate::db::ArtistEntry { uid: String::new(), name: n }).collect()),
+					album_artist: result.album_artist.as_deref()
+						.map(|s| crate::db::ArtistEntry { uid: String::new(), name: s.to_string() }),
+					albums: result.albums.as_deref()
+						.and_then(|s| serde_json::from_str::<Vec<crate::db::TrackAlbumEntry>>(s).ok()),
 					year: result.year,
-					genres: result.genres,
+					genres: result.genres.as_deref()
+						.and_then(|s| serde_json::from_str::<Vec<String>>(s).ok()),
 					bpm: result.bpm,
 					key: result.key,
 					artwork_blob: result.artwork,
@@ -264,7 +286,7 @@ pub async fn enrich_album(
 
 	match library_manager::open_source_conn_for_entity(&profile_uid, &uid, "albums") {
 		Ok((source_conn, lib)) => {
-			ensure_genre_tags(&source_conn, &update.genres);
+			ensure_genre_tags_str(&source_conn, &update.genres);
 			db::update_album_by_uid(&source_conn, &uid, &update).map_err(|e| e.to_string())?;
 
 			if let Some(ref art) = update.artwork_blob {
@@ -288,7 +310,7 @@ pub async fn enrich_album(
 		}
 		Err(_) => {
 			let conn = open_lib_conn(&profile_uid);
-			ensure_genre_tags(&conn, &update.genres);
+			ensure_genre_tags_str(&conn, &update.genres);
 			db::update_album_by_uid(&conn, &uid, &update).map_err(|e| e.to_string())?;
 		}
 	}
@@ -350,7 +372,7 @@ pub async fn enrich_all_albums(app: AppHandle, state: State<'_, AppState>) -> Re
 				emulate_type: None,
 			};
 			let conn = open_lib_conn(&profile_uid);
-			ensure_genre_tags(&conn, &update.genres);
+			ensure_genre_tags_str(&conn, &update.genres);
 			if db::update_album_by_uid(&conn, &album.uid, &update).is_err() {
 				errors += 1;
 			}
@@ -420,14 +442,14 @@ pub async fn enrich_artist(
 
 	match library_manager::open_source_conn_for_entity(&profile_uid, &uid, "artists") {
 		Ok((source_conn, lib)) => {
-			ensure_genre_tags(&source_conn, &update.genres);
+			ensure_genre_tags_str(&source_conn, &update.genres);
 			db::update_artist_by_uid(&source_conn, &uid, &update).map_err(|e| e.to_string())?;
 			library_manager::incremental_update(&profile_uid, &[lib.uid])
 				.map_err(|e| e.to_string())?;
 		}
 		Err(_) => {
 			let conn = open_lib_conn(&profile_uid);
-			ensure_genre_tags(&conn, &update.genres);
+			ensure_genre_tags_str(&conn, &update.genres);
 			db::update_artist_by_uid(&conn, &uid, &update).map_err(|e| e.to_string())?;
 		}
 	}
@@ -484,7 +506,7 @@ pub async fn enrich_all_artists(
 			banner_art_path: None,
 		};
 		let conn = open_lib_conn(&profile_uid);
-		ensure_genre_tags(&conn, &update.genres);
+		ensure_genre_tags_str(&conn, &update.genres);
 		if db::update_artist_by_uid(&conn, &artist.uid, &update).is_err() {
 			errors += 1;
 		}
@@ -541,15 +563,12 @@ pub async fn spotify_enrich_track_cmd(
 
 	let update = MetadataUpdate {
 		title: meta.title,
-		artists: meta
-			.artists
-			.as_ref()
-			.map(|v| serde_json::to_string(v).unwrap_or_default()),
+		artists: meta.artists.map(|names| {
+			names.into_iter().map(|n| crate::db::ArtistEntry { uid: String::new(), name: n }).collect()
+		}),
 		year: meta.year,
-		genres: meta
-			.genres
-			.as_ref()
-			.map(|v| serde_json::to_string(v).unwrap_or_default()),
+		genres: meta.genres.as_deref()
+			.and_then(|s| serde_json::from_str::<Vec<String>>(s).ok()),
 		..Default::default()
 	};
 
@@ -615,7 +634,7 @@ pub async fn spotify_enrich_album_cmd(
 
 	match library_manager::open_source_conn_for_entity(&profile_uid, &uid, "albums") {
 		Ok((source_conn, lib)) => {
-			ensure_genre_tags(&source_conn, &update.genres);
+			ensure_genre_tags_str(&source_conn, &update.genres);
 			db::album_manager::update_album_by_uid(&source_conn, &uid, &update)
 				.map_err(|e| e.to_string())?;
 			library_manager::incremental_update(&profile_uid, &[lib.uid])
@@ -623,7 +642,7 @@ pub async fn spotify_enrich_album_cmd(
 		}
 		Err(_) => {
 			let fallback = open_lib_conn(&profile_uid);
-			ensure_genre_tags(&fallback, &update.genres);
+			ensure_genre_tags_str(&fallback, &update.genres);
 			db::album_manager::update_album_by_uid(&fallback, &uid, &update)
 				.map_err(|e| e.to_string())?;
 		}
@@ -668,7 +687,7 @@ pub async fn spotify_enrich_artist_cmd(
 
 	match library_manager::open_source_conn_for_entity(&profile_uid, &uid, "artists") {
 		Ok((source_conn, lib)) => {
-			ensure_genre_tags(&source_conn, &update.genres);
+			ensure_genre_tags_str(&source_conn, &update.genres);
 			db::artist_manager::update_artist_by_uid(&source_conn, &uid, &update)
 				.map_err(|e| e.to_string())?;
 			library_manager::incremental_update(&profile_uid, &[lib.uid])
@@ -676,7 +695,7 @@ pub async fn spotify_enrich_artist_cmd(
 		}
 		Err(_) => {
 			let fallback = open_lib_conn(&profile_uid);
-			ensure_genre_tags(&fallback, &update.genres);
+			ensure_genre_tags_str(&fallback, &update.genres);
 			db::artist_manager::update_artist_by_uid(&fallback, &uid, &update)
 				.map_err(|e| e.to_string())?;
 		}

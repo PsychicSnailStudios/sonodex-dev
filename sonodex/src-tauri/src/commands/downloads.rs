@@ -148,17 +148,18 @@ pub async fn download_track_cmd(
 		None
 	};
 
-	let track_data = serde_json::to_string(&crate::db::TrackData {
+		let track_data_val = crate::db::TrackData {
 		format: Some(format.clone()),
 		bitrate,
-	}).unwrap_or_default();
+	};
 
 	let meta_update = db::MetadataUpdate {
 		format: Some(format),
 		bitrate,
-		track_data: Some(track_data),
+		track_data: Some(track_data_val),
 		..Default::default()
 	};
+
 
 	match library_manager::open_source_conn_for_entity(&profile_uid, &uid, "tracks") {
 		Ok((source_conn, lib)) => {

@@ -260,16 +260,13 @@ pub fn import_spotify_history_cmd(
 								&& artist_name.as_deref().map_or(true, |an| {
 									let an_lower = an.to_lowercase();
 									t.album_artist
-										.as_deref()
-										.map(|s| s.to_lowercase())
+										.as_ref()
+										.map(|a| a.name.to_lowercase())
 										== Some(an_lower.clone())
 										|| t.artists
-											.as_deref()
-											.and_then(|a| {
-												serde_json::from_str::<Vec<String>>(a).ok()
-											})
+											.as_ref()
 											.map_or(false, |v| {
-												v.iter().any(|s| s.to_lowercase() == an_lower)
+												v.iter().any(|a| a.name.to_lowercase() == an_lower)
 											})
 								})
 						})

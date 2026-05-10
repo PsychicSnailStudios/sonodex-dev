@@ -1158,16 +1158,14 @@ pub fn process_track(conn: &Connection, track: &Track) {
 			}
 
 			if !updated_album_entries.is_empty() {
-				if let Ok(patched_albums) = serde_json::to_string(&updated_album_entries) {
-					let _ = update_track_metadata_by_uid(
-						conn,
-						&track_uid,
-						&MetadataUpdate {
-							albums: Some(patched_albums),
-							..Default::default()
-						},
-					);
-				}
+				let _ = update_track_metadata_by_uid(
+					conn,
+					&track_uid,
+					&MetadataUpdate {
+						albums: Some(updated_album_entries),
+						..Default::default()
+					},
+				);
 			}
 		}
 	}
@@ -1202,32 +1200,28 @@ pub fn process_track(conn: &Connection, track: &Track) {
 				let uid = artist_uid_map.get(&a.name.to_lowercase()).cloned().unwrap_or_default();
 				crate::db::ArtistEntry { uid, name: a.name.clone() }
 			}).collect();
-			if let Ok(json) = serde_json::to_string(&patched) {
-				let _ = update_track_metadata_by_uid(
-					conn,
-					&track_uid,
-					&MetadataUpdate {
-						artists: Some(json),
-						..Default::default()
-					},
-				);
-			}
+			let _ = update_track_metadata_by_uid(
+				conn,
+				&track_uid,
+				&MetadataUpdate {
+					artists: Some(patched),
+					..Default::default()
+				},
+			);
 		}
 
 		// Patch artist UID back into the track's album_artist field
 		if let Some(ref aa) = track.album_artist {
 			let uid = artist_uid_map.get(&aa.name.to_lowercase()).cloned().unwrap_or_default();
 			let patched = crate::db::ArtistEntry { uid, name: aa.name.clone() };
-			if let Ok(json) = serde_json::to_string(&patched) {
-				let _ = update_track_metadata_by_uid(
-					conn,
-					&track_uid,
-					&MetadataUpdate {
-						album_artist: Some(json),
-						..Default::default()
-					},
-				);
-			}
+			let _ = update_track_metadata_by_uid(
+				conn,
+				&track_uid,
+				&MetadataUpdate {
+					album_artist: Some(patched),
+					..Default::default()
+				},
+			);
 		}
 
 		// Patch artist UIDs into any album records this track belongs to
@@ -1523,7 +1517,7 @@ pub fn scan_directory_with_progress(conn: &Connection, dir: &str, app: &AppHandl
 							}
 						}
 						if let Some(enriched_aa) = result.album_artist {
-							track.album_artist = Some(crate::db::ArtistEntryEntry { uid: String::new(), name: enriched_aa });
+							track.album_artist = Some(crate::db::ArtistEntry { uid: String::new(), name: enriched_aa });
 						}
 						if let Some(albums_str) = result.albums {
 							track.albums = serde_json::from_str(&albums_str).ok().or(track.albums);

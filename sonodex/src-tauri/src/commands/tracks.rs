@@ -7,19 +7,15 @@ use crate::state::AppState;
 use crate::{open_lib_conn, open_merged_conn, open_local_library_conn, open_settings_conn};
 use tauri::{AppHandle, Emitter, State};
 
-fn ensure_tag(conn: &rusqlite::Connection, tags_json: &Option<String>, genres_json: &Option<String>) {
-	if let Some(ref tj) = tags_json {
-		if let Ok(names) = serde_json::from_str::<Vec<String>>(tj) {
-			for name in names {
-				crate::db::tag_manager::ensure_tag(conn, &name, crate::db::tag_manager::TagKind::Tag);
-			}
+fn ensure_tag(conn: &rusqlite::Connection, tags: &Option<Vec<String>>, genres: &Option<Vec<String>>) {
+	if let Some(ref names) = tags {
+		for name in names {
+			crate::db::tag_manager::ensure_tag(conn, name, crate::db::tag_manager::TagKind::Tag);
 		}
 	}
-	if let Some(ref gj) = genres_json {
-		if let Ok(names) = serde_json::from_str::<Vec<String>>(gj) {
-			for name in names {
-				crate::db::tag_manager::ensure_tag(conn, &name, crate::db::tag_manager::TagKind::Genre);
-			}
+	if let Some(ref names) = genres {
+		for name in names {
+			crate::db::tag_manager::ensure_tag(conn, name, crate::db::tag_manager::TagKind::Genre);
 		}
 	}
 }
@@ -111,24 +107,19 @@ pub fn write_track_tags(
 	if let Some(title) = &update.title {
 		tag.set_title(title.clone());
 	}
-	if let Some(artists) = &update.artists {
-		let parsed: Vec<String> = serde_json::from_str(artists).unwrap_or_default();
-		tag.set_artist(parsed.join(", "));
+	if let Some(ref artists) = &update.artists {
+		let joined = artists.iter().map(|a| a.name.as_str()).collect::<Vec<_>>().join(", ");
+		tag.set_artist(joined);
 	}
-	if let Some(album_artist) = &update.album_artist {
+	if let Some(ref album_artist) = &update.album_artist {
 		tag.insert(lofty::tag::TagItem::new(
 			lofty::tag::ItemKey::AlbumArtist,
-			lofty::tag::ItemValue::Text(album_artist.clone()),
+			lofty::tag::ItemValue::Text(album_artist.name.clone()),
 		));
 	}
-	if let Some(albums) = &update.albums {
-		let parsed: Vec<serde_json::Value> = serde_json::from_str(albums).unwrap_or_default();
-		if let Some(name) = parsed
-			.first()
-			.and_then(|a| a.get("name"))
-			.and_then(|n| n.as_str())
-		{
-			tag.set_album(name.to_string());
+		if let Some(ref albums) = &update.albums {
+		if let Some(entry) = albums.first() {
+			tag.set_album(entry.name.clone());
 		}
 	}
 	if let Some(year) = &update.year {
@@ -136,9 +127,8 @@ pub fn write_track_tags(
 			tag.set_year(y);
 		}
 	}
-	if let Some(genres) = &update.genres {
-		let parsed: Vec<String> = serde_json::from_str(genres).unwrap_or_default();
-		tag.set_genre(parsed.join("/"));
+	if let Some(ref genres) = &update.genres {
+		tag.set_genre(genres.join("/"));
 	}
 	if let Some(bpm) = update.bpm {
 		tag.insert(lofty::tag::TagItem::new(
