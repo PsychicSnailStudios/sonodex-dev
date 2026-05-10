@@ -5,7 +5,7 @@
 	import { open } from "@tauri-apps/plugin-dialog";
 	import { invoke } from "@tauri-apps/api/core";
 	import { toast } from "svelte-sonner";
-	import { parseUidType } from "$ts/util/helpers";
+	import { parseUidType } from "$ts/util/parsers";
 	import { downloadTrack, downloadAlbum, downloadPlaylist } from "$ts/services/downloadManager";
 	import { getAlbum, getArtist, getPlaylist, getTrack, library } from "$ts/store/library.svelte";
 	import type { Track } from "$ts/util/types";

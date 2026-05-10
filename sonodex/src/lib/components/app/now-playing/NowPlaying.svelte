@@ -11,18 +11,18 @@
 	import { Button } from "$shadcn/button";
 
 	// CUSTOM COMPONENTS
-	import ArtworkDisplay from "$lib/components/app-ui/ArtworkDisplay.svelte";
-   import AddToPlaylist from "$lib/components/app-ui/TrackPlaylistEditButton.svelte";
-	import ScrollingText from "$lib/components/app-ui/text-display/ScrollingText.svelte";
+	import ArtworkDisplay from "$lib/components/custom/ArtworkDisplay.svelte";
+   import AddToPlaylist from "$lib/components/custom/TrackPlaylistEditButton.svelte";
+	import ScrollingText from "$lib/components/custom/text-display/ScrollingText.svelte";
 	import Queue from "$lib/components/app/now-playing/Queue.svelte";
 	import RecentlyPlayed from "$lib/components/app/now-playing/RecentlyPlayed.svelte";
-	import LyricsViewer from "$lib/components/app-ui/LyricsViewer.svelte";
+	import LyricsViewer from "$lib/components/custom/LyricsViewer.svelte";
 
 	// SCRIPTS
 	import { setSelection } from "$ts/store/session.svelte";
-	import { getArtistUidFromName } from "$ts/store/library.svelte";
 	import { currentlyPlaying, player } from "$ts/audio/audioManager.svelte";
-	import { getArtworkColor, parseArtists } from "$ts/util/helpers";
+	import { getArtworkColor } from "$ts/util/helpers";
+   import { parseArtistsToString } from "$ts/util/parsers";
 
 	// VARIABLES
 	let showQueue = $state(false);
@@ -75,9 +75,9 @@
 					
 				/>
 				<ScrollingText
-					text={parseArtists(currentlyPlaying.track?.artists ?? null)}
+					text={parseArtistsToString(currentlyPlaying.track?.artists ?? null)}
 					class="text-xs text-muted-foreground cursor-pointer hover:underline"
-					onclick={() => setSelection(getArtistUidFromName(currentlyPlaying.track?.album_artist!), "artist")}
+					onclick={() => setSelection(currentlyPlaying.track?.album_artist!.uid, "artist")}
 					hoverOnly
 				/>
 			</div>

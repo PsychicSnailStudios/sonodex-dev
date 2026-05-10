@@ -2,14 +2,20 @@ use rusqlite::{params, Connection, Result};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct Artist {
+    pub name: String,
+    pub uid: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Album {
 	pub id: Option<i64>,
 	pub uid: String,
 	pub format: Option<String>,
 	pub title: String,
 	pub rating: Option<f32>,
-	pub artists: Option<String>,
-	pub album_artist: Option<String>,
+	pub artists: Option<Vec<Artist>>,
+	pub album_artist: Option<Artist>,
 	pub release_date: Option<String>,
 	pub tags: Option<String>,
 	pub genres: Option<String>,

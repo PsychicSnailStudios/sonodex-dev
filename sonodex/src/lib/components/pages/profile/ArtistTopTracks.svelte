@@ -2,12 +2,12 @@
 	import { onMount } from "svelte";
 	import { invoke } from "@tauri-apps/api/core";
 
-	import ArtworkDisplay from "$lib/components/app-ui/ArtworkDisplay.svelte";
+	import ArtworkDisplay from "$lib/components/custom/ArtworkDisplay.svelte";
 
-	import { library } from "$ts/store/library.svelte";
+	import { getAlbum, getTrack, library } from "$ts/store/library.svelte";
 	import { setSelection } from "$ts/store/session.svelte";
-	import { parseArtists } from "$ts/util/helpers";
 	import type { Track, Album } from "$ts/util/types";
+    import { parseArtistsToString } from "$ts/util/parsers";
 
 	let { artistUid, artistName } = $props<{ artistUid: string; artistName: string }>();
 
@@ -138,7 +138,7 @@
 								onclick={() => setSelection(track.uid, "track")}
 								class="text-sm truncate text-left hover:underline font-medium"
 							>{track.title ?? "Unknown"}</button>
-							<span class="text-xs text-muted-foreground truncate">{parseArtists(track.artists)}</span>
+							<span class="text-xs text-muted-foreground truncate">{parseArtistsToString(track.artists)}</span>
 						</div>
 						<span class="relative text-xs text-muted-foreground tabular-nums shrink-0">
 							{plays} {plays === 1 ? "play" : "plays"}

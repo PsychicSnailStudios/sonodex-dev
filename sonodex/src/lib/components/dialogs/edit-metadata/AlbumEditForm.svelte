@@ -18,15 +18,15 @@
 
 	// CUSTOM COMPONENTS
 	import ArtworkEditor from "$lib/components/dialogs/edit-metadata/ArtworkEditor.svelte";
-	import TagSelector from "$lib/components/app-ui/tags/TagSelector.svelte";
+	import TagSelector from "$lib/components/custom/tags/TagSelector.svelte";
 
 	// SCRIPTS
 	import { closeEditModal } from "$ts/ui/editModal.svelte";
-	import { reloadLibrary } from "$ts/store/library.svelte";
+	import { getAlbum, reloadLibrary } from "$ts/store/library.svelte";
 	import { syncArtists, pruneArtists, renameArtistInLibrary, renameAlbumInTracks } from "$ts/library/entitySync";
 	import { warnEmptyFields } from "$ts/ui/dialogManager.svelte";
-	import { enrichAlbum } from "$ts/library/enrichment";
     import { tagStore } from "$ts/store/tagManager.svelte";
+    import { get } from "svelte/store";
 
 	// PROPS
 	let { uid } = $props<{ uid: string }>();
@@ -68,12 +68,12 @@
 
 	// APP FUNCTIONS
 	onMount(async () => {
-		const album = await invoke<any | null>("get_album", { uid });
+		const album = getAlbum(uid);
 		if (!album) return;
 
 		title = album.title ?? "";
 		originalTitle = title;
-		albumArtist = album.album_artist ?? "";
+		albumArtist = album.album_artist!.name.toString() ?? "";
 		originalAlbumArtist = albumArtist;
 		releaseDate = album.release_date ?? "";
 		format = album.format ?? "";

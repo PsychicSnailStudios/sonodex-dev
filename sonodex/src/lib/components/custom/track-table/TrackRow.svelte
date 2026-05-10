@@ -5,18 +5,18 @@
 	import Button from "$shadcn/button/button.svelte";
 
 	// CUSTOM COMPONENTS
-	import ArtworkDisplay from "$lib/components/app-ui/ArtworkDisplay.svelte";
-	import TrackTableEditButton from "$lib/components/app-ui/track-table/TrackRowEditButton.svelte";
-   import TrackRating from "$lib/components/app-ui/text-display/TrackRating.svelte";
-	import ArtistsList from "$lib/components/app-ui/text-display/ArtistsList.svelte";
+	import ArtworkDisplay from "$lib/components/custom/ArtworkDisplay.svelte";
+	import TrackTableEditButton from "$lib/components/custom/track-table/TrackRowEditButton.svelte";
+   import TrackRating from "$lib/components/custom/text-display/TrackRating.svelte";
+	import ArtistsList from "$lib/components/custom/text-display/ArtistsList.svelte";
 
 	// SCRIPTS
 	import { setSelection } from "$ts/store/session.svelte";
 	import { trackSelection, selectTrack } from "$ts/store/trackSelection.svelte";
 	import { startDrag, endDrag } from "$ts/store/drag.svelte";
 	import { player, playTrackByUid, togglePlay } from "$ts/audio/audioManager.svelte";
-	import { getAlbumUidFromName, getArtistUidFromName } from "$ts/store/library.svelte";
-	import { formatDuration, parseAlbum, parseArtists, parseTrackNumber } from "$ts/util/helpers";
+	import { formatDuration } from "$ts/util/helpers";
+	import { parseArtistsToString } from "$ts/util/parsers";
 	import type { Track } from "$ts/util/types";
 
 	// PROPS
@@ -99,7 +99,7 @@
 	}
 
 	function getTrackNumber(): string {
-		let num = parseTrackNumber(track.albums) ?? "#"
+		let num = track.albums[0].track ?? "#"
 
 		if (playlistUid) {
 			num = orderedUids.indexOf(track.uid) + 1
@@ -182,7 +182,7 @@
 					</span>
 				</div>
 				<div class="min-w-0 flex items-center">
-					<span role="button" tabindex="0" onclick={() => setSelection(getArtistUidFromName(track.album_artist ?? ""), "artist")} onkeydown={(e) => { if (e.key === 'Enter') setSelection(getArtistUidFromName(track.album_artist ?? ""), "artist"); }} class="text-xs text-muted-foreground truncate cursor-pointer hover:underline">
+					<span role="button" tabindex="0" onclick={() => setSelection(track.album_artist.uid, "artist")} onkeydown={(e) => { if (e.key === 'Enter') setSelection(track.album_artist.uid, "artist"); }} class="text-xs text-muted-foreground truncate cursor-pointer hover:underline">
 						<ArtistsList artists={track.artists} />
 					</span>
 				</div>
@@ -191,15 +191,15 @@
 	{/if}
 
 	{#if showArtist}
-		<span role="button" tabindex="0" onclick={() => setSelection(getAlbumUidFromName(track.album_artist.uid), "artist")} onkeydown={(e) => { if (e.key === 'Enter') setSelection(getAlbumUidFromName(track.album_artist.uid), "artist"); }} class="text-sm truncate cursor-pointer hover:underline">
+		<span role="button" tabindex="0" onclick={() => setSelection(track.album_artist.uid, "artist")} onkeydown={(e) => { if (e.key === 'Enter') setSelection(track.album_artist.uid, "artist"); }} class="text-sm truncate cursor-pointer hover:underline">
 			<ArtistsList artists={track.artists} />
 		</span>
 	{/if}
 
 	{#if showAlbum}
 		<div class="min-w-0 flex items-center pr-4">
-			<span role="button" tabindex="0" onclick={() => setSelection(getAlbumUidFromName(parseAlbum(track.albums)), "album")} onkeydown={(e) => { if (e.key === 'Enter') setSelection(getAlbumUidFromName(parseAlbum(track.albums)), "album"); }} class="text-sm truncate cursor-pointer hover:underline">
-				{parseAlbum(track.albums)}
+			<span role="button" tabindex="0" onclick={() => setSelection(track.albums[0].uid, "album")} onkeydown={(e) => { if (e.key === 'Enter') setSelection(track.albums[0].uid, "album"); }} class="text-sm truncate cursor-pointer hover:underline">
+				{track.albums[0].name ?? "Unknown Album"}
 			</span>
 		</div>
 	{/if}

@@ -2,8 +2,8 @@
 	import { Trash2, Check, FileX, GitMerge } from "lucide-svelte";
 	import * as Tooltip from "$shadcn/tooltip/index.js";
 	import { Button, buttonVariants } from "$shadcn/button/index.js";
-	import ArtworkDisplay from "$lib/components/app-ui/ArtworkDisplay.svelte";
-	import ArtistsList from "$lib/components/app-ui/text-display/ArtistsList.svelte";
+	import ArtworkDisplay from "$lib/components/custom/ArtworkDisplay.svelte";
+	import ArtistsList from "$lib/components/custom/text-display/ArtistsList.svelte";
 	import { formatDuration } from "$ts/util/helpers";
 	import { keepTrack, deleteTrackFile, mergeRemoteLocal } from "$ts/library/libraryManager";
 	import type { DuplicateGroup } from "$ts/util/types";

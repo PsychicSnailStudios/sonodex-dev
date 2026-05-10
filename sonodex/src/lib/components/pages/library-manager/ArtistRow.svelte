@@ -3,12 +3,13 @@
 	import * as Tooltip from "$shadcn/tooltip/index.js";
 	import { buttonVariants } from "$shadcn/button/index.js";
 	import { Checkbox } from "$shadcn/checkbox/index.js";
-	import ArtworkDisplay from "$lib/components/app-ui/ArtworkDisplay.svelte";
+	import ArtworkDisplay from "$lib/components/custom/ArtworkDisplay.svelte";
 	import { openEditModal } from "$ts/ui/editModal.svelte";
-	import { removeArtist, enrichArtist } from "$ts/library/libraryManager";
+	import { removeArtist } from "$ts/library/libraryManager";
 	import { setSelection } from "$ts/store/session.svelte";
 	import { library } from "$ts/store/library.svelte";
 	import type { Artist } from "$ts/util/types";
+	import { enrichArtist } from "$ts/library/enrichment";
 
 	let {
 		artist,

@@ -14,14 +14,14 @@
 
 	// CUSTOM COMPONENTS
 	import ArtworkEditor from "$lib/components/dialogs/edit-metadata/ArtworkEditor.svelte";
-	import TagSelector from "$lib/components/app-ui/tags/TagSelector.svelte";
+	import TagSelector from "$lib/components/custom/tags/TagSelector.svelte";
 
 	// SCRIPTS
 	import { closeEditModal } from "$ts/ui/editModal.svelte";
-	import { loadLibrary, library, reloadSingle, reloadLibrary, getArtist } from "$ts/store/library.svelte";
-	import { enrichArtist } from "$ts/library/enrichment";
+	import { reloadSingle, reloadLibrary, getArtist } from "$ts/store/library.svelte";
 	import { renameArtistInLibrary, mergeArtistAkas } from "$ts/library/entitySync";
 	import { warnEmptyFields } from "$ts/ui/dialogManager.svelte";
+    import { tagStore } from "$ts/store/tagManager.svelte";
 
 	// PROPS
 	let { uid } = $props<{ uid: string }>();

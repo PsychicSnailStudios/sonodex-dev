@@ -1,6 +1,6 @@
 <script lang="ts">
 	import * as ContextMenu from "$shadcn/context-menu/index.js";
-	import PlaylistRow from "$lib/components/app-ui/playlist/PlaylistRow.svelte";
+	import PlaylistRow from "$lib/components/pages/playlist/PlaylistRow.svelte";
 	import PlaylistContext from "$lib/components/context-menus/PlaylistContext.svelte";
 	import { dragState } from "$ts/store/drag.svelte";
 	import type { Playlist } from "$ts/util/types";

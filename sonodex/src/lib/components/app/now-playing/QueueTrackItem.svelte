@@ -3,14 +3,14 @@
 	import * as ContextMenu from "$shadcn/context-menu/index.js";
 
 	// CUSTOM COMPONENTS
-	import ArtworkDisplay from "$lib/components/app-ui/ArtworkDisplay.svelte";
+	import ArtworkDisplay from "$lib/components/custom/ArtworkDisplay.svelte";
 	import TrackContext from "$lib/components/context-menus/TrackContext.svelte";
 
 	// SCRIPTS
 	import { setSelection } from "$ts/store/session.svelte";
 	import { startDrag, endDrag } from "$ts/store/drag.svelte";
 	import { queueSelection, selectQueueItem } from "$ts/store/queueSelection.svelte";
-	import ArtistsList from "$lib/components/app-ui/text-display/ArtistsList.svelte";
+	import ArtistsList from "$lib/components/custom/text-display/ArtistsList.svelte";
 	import type { Track } from "$ts/util/types";
 
 	// PROPS

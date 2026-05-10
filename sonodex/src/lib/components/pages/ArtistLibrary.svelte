@@ -9,8 +9,8 @@
 	import Toggle from "$shadcn/toggle/toggle.svelte";
 
 	// CUSTOM COMPONENTS
-	import ArtworkDisplay from "$lib/components/app-ui/ArtworkDisplay.svelte";
-	import SearchBar from "$lib/components/app-ui/search/SearchBar.svelte";
+	import ArtworkDisplay from "$lib/components/custom/ArtworkDisplay.svelte";
+	import SearchBar from "$lib/components/custom/search/SearchBar.svelte";
 	import MediaGrid from "$lib/layouts/MediaGrid.svelte";
 
 	// SCRIPTS

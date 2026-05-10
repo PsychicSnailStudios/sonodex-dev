@@ -4,11 +4,10 @@
 	import * as ContextMenu from "$shadcn/context-menu/index.js";
 
 	// CUSTOM COMPONENTS
-	import TrackRow from "$lib/components/app-ui/track-table/TrackRow.svelte"
+	import TrackRow from "$lib/components/custom/track-table/TrackRow.svelte"
 	import TrackContext from "$lib/components/context-menus/TrackContext.svelte";
 
 	// SCRIPTS
-	import { parseAlbum, parseTrackNumber } from "$ts/util/helpers"
 	import { dragState, endDrag } from "$ts/store/drag.svelte"
 	import { generateViewId, trackSelection, setTrackSelectionContext, clearTrackSelection, copySelectedToClipboard } from "$ts/store/trackSelection.svelte"
 	import { removeTracksFromPlaylist, reorderPlaylistTracks, addTracksToPlaylist, parseTracks } from "$ts/audio/playlistManager.svelte"
@@ -44,12 +43,12 @@
 			return [...group].sort((a, b) => {
 				switch (sort.field) {
 					case "title":    return dir * (a.title ?? "").localeCompare(b.title ?? "")
-					case "album":    return dir * (parseAlbum(a.albums) ?? "").localeCompare(parseAlbum(b.albums) ?? "")
+					case "album":    return dir * (a.albums?.toString() ?? "").localeCompare(b.albums?.toString() ?? "")
 					case "year":     return dir * ((a.year ?? "").localeCompare(b.year ?? ""))
 					case "rating":   return dir * ((a.rating ?? -1) - (b.rating ?? -1))
 					case "duration": return dir * ((a.duration_ms ?? 0) - (b.duration_ms ?? 0))
 					case "label":    return dir * (a.label ?? "").localeCompare(b.label ?? "")
-					case "artist":   return dir * (a.album_artist ?? "").localeCompare(b.album_artist ?? "")
+					case "artist":   return dir * (a.album_artist!.name ?? "").localeCompare(b.album_artist!.name ?? "")
 					case "number":   return dir * sortByNumber(a, b)
 					default:         return 0
 				}
@@ -110,9 +109,9 @@
 	})
 
 	// FUNCTIONS
-	function sortByNumber(a, b) {
+	function sortByNumber(a: Track, b: Track) {
 		if (playlistUid) return 0
-		return (parseTrackNumber(a.albums) ?? 0) - (parseTrackNumber(b.albums) ?? 0)
+		return (a.albums![0].track ?? 0) - (b.albums![0].track ?? 0)
 	}
 
 	function handleTableClick(e: MouseEvent) {

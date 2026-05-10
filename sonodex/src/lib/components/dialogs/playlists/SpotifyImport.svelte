@@ -13,7 +13,7 @@
 	import { setSelection } from "$ts/store/session.svelte";
 	import { onMount } from "svelte";
 	import Fuse from "fuse.js";
-	import SearchBar from "$lib/components/app-ui/search/SearchBar.svelte";
+	import SearchBar from "$lib/components/custom/search/SearchBar.svelte";
 
 	let { open = $bindable(false) }: { open: boolean } = $props();
 

@@ -17,7 +17,7 @@
 	} from "$ts/audio/audioManager.svelte";
 	import { dragState, endDrag } from "$ts/store/drag.svelte";
 	import { clearQueueSelection, queueSelection } from "$ts/store/queueSelection.svelte";
-	import { library } from "$ts/store/library.svelte";
+   import { getTrack } from "$ts/store/library.svelte";
 
 	// VARIABLES
 	let upcomingTracks = $derived(getQueuedTracks());

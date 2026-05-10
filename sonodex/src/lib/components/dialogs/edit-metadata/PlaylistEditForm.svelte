@@ -17,7 +17,7 @@
 
 	// SCRIPTS
 	import { closeEditModal } from "$ts/ui/editModal.svelte";
-	import { loadLibrary, reloadLibrary } from "$ts/store/library.svelte";
+	import { getPlaylist, reloadLibrary, reloadSingle } from "$ts/store/library.svelte";
 	import { deletePlaylist } from "$ts/audio/playlistManager.svelte";
 
 	// PROPS
@@ -31,7 +31,7 @@
 
 	// APP FUNCTIONS
 	onMount(async () => {
-		const playlist = await invoke<any | null>("get_playlist", { uid });
+		const playlist = getPlaylist(uid);
 		if (!playlist) return;
 
 		title = playlist.title ?? "";
@@ -52,7 +52,7 @@
 			};
 
 			await invoke("update_playlist_entry", { uid, update });
-			await reloadLibrary("playlists");
+			await reloadSingle(uid);
 		} finally {
 			saving = false;
 			closeEditModal();

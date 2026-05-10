@@ -11,13 +11,13 @@
 	import { Input } from "$shadcn/input/index.js";
 	import Toggle from "$shadcn/toggle/toggle.svelte";
 
-	import AudioCard from "$lib/components/app-ui/cards/AudioCard.svelte";
-	import TrackTable from "$lib/components/app-ui/track-table/TrackTable.svelte";
-	import ArtworkDisplay from "$lib/components/app-ui/ArtworkDisplay.svelte";
-	import TrackTableSettings from "$lib/components/app-ui/track-table/TrackTableSettings.svelte";
+	import AudioCard from "$lib/components/custom/cards/AudioCard.svelte";
+	import TrackTable from "$lib/components/custom/track-table/TrackTable.svelte";
+	import ArtworkDisplay from "$lib/components/custom/ArtworkDisplay.svelte";
+	import TrackTableSettings from "$lib/components/custom/track-table/TrackTableSettings.svelte";
 	import { SortState } from "$ts/util/sortConfig.svelte"
 	import { ArrowDownAZ, ArrowUpAZ, ArrowUpDown, ChevronUp, ChevronDown, LayoutGrid, List } from "lucide-svelte";
-	import { parseArtists } from "$ts/util/helpers";
+	import { parseArtistsToString } from "$ts/util/parsers";
 	import * as DropdownMenu from "$shadcn/dropdown-menu/index.js";
 	import { Button } from "$shadcn/button/index.js";
 	
@@ -50,7 +50,7 @@
 					const q = search.toLowerCase();
 					const title = t.title?.toLowerCase() ?? "";
 					const artists = t.artists?.toLowerCase() ?? "";
-					const album_artist = t.album_artist?.toLowerCase() ?? "";
+					const album_artist = t.album_artist?.name.toLowerCase() ?? "";
 					const albums = t.albums?.toLowerCase() ?? "";
 					return title.includes(q) || artists.includes(q) || album_artist.includes(q) || albums.includes(q);
 			  })
@@ -228,7 +228,7 @@
 						<button onclick={() => setSelection(album.uid, "album")} class="pl-2 text-sm truncate text-left">
 							<p class="text-sm font-medium">{album.title}</p>
 						</button>
-						<p class="text-sm">{parseArtists(album.artists)}</p>
+						<p class="text-sm">{parseArtistsToString(album.artists)}</p>
 						<p class="text-sm">{album.release_date}</p>
 					</div>
 					{/each}

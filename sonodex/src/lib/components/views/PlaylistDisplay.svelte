@@ -4,18 +4,18 @@
 	import { Button } from "$shadcn/button/index.js";
 	import { ScrollArea } from "$shadcn/scroll-area/index.js";
 
-	import TrackTableSettings from "$lib/components/app-ui/track-table/TrackTableSettings.svelte";
-	import ArtworkDisplay from "$lib/components/app-ui/ArtworkDisplay.svelte";
-	import TrackTable from "$lib/components/app-ui/track-table/TrackTable.svelte";
-	import DefultPlaylistArt from "$lib/components/app-ui/playlist/DefultPlaylistArt.svelte";
-	import NavButtons from "$lib/components/app-ui/NavButtons.svelte";
-	import SearchBar from "$lib/components/app-ui/search/SearchBar.svelte";
-	import DownloadButton from "$lib/components/app-ui/DownloadButton.svelte";
+	import TrackTableSettings from "$lib/components/custom/track-table/TrackTableSettings.svelte";
+	import ArtworkDisplay from "$lib/components/custom/ArtworkDisplay.svelte";
+	import TrackTable from "$lib/components/custom/track-table/TrackTable.svelte";
+	import DefultPlaylistArt from "$lib/components/pages/playlist/DefultPlaylistArt.svelte";
+	import NavButtons from "$lib/components/custom/NavButtons.svelte";
+	import SearchBar from "$lib/components/custom/search/SearchBar.svelte";
+	import DownloadButton from "$lib/components/custom/DownloadButton.svelte";
 
 	import { selection } from "$ts/store/session.svelte";
 	import { getTrackArrayFromUID, library } from "$ts/store/library.svelte";
 	import { openEditModal } from "$ts/ui/editModal.svelte";
-	import { getArtworkColor, getArtworkColorFromPath, parseArtists, totalDuration } from "$ts/util/helpers";
+	import { getArtworkColor, getArtworkColorFromPath, totalDuration } from "$ts/util/helpers";
 	import { queueTracksByObject } from "$ts/audio/audioManager.svelte";
 	import { dragState, endDrag } from "$ts/store/drag.svelte";
 	import { createPersistedViewState } from "$ts/store/session.svelte";
@@ -24,6 +24,7 @@
 
 	import type { Track } from "$ts/util/types";
    import { addTracksToPlaylist } from "$ts/audio/playlistManager.svelte";
+    import { parseArtistsToString } from "$ts/util/parsers";
 
 	let search = $state("");
 	let playlist = $derived(library.playlists.find(p => p.uid === selection.uid) ?? null);
@@ -164,7 +165,7 @@
 									<ArtworkDisplay uid={track.uid} size={30} type="track" />
 									<div class="min-w-0 grid">
 										<span class="text-sm font-medium truncate">{track.title}</span>
-										<span class="text-xs text-muted-foreground truncate">{parseArtists(track.artists)}</span>
+										<span class="text-xs text-muted-foreground truncate">{parseArtistsToString(track.artists)}</span>
 									</div>
 									<span></span>
 									<button onclick={() => { addTracksToPlaylist(playlist, track) }}><CirclePlus size={20} /></button>

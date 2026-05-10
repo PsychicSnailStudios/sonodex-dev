@@ -3,12 +3,12 @@
 	import * as Tooltip from "$shadcn/tooltip/index.js";
 	import { buttonVariants } from "$shadcn/button/index.js";
 	import { Checkbox } from "$shadcn/checkbox/index.js";
-	import ArtworkDisplay from "$lib/components/app-ui/ArtworkDisplay.svelte";
+	import ArtworkDisplay from "$lib/components/custom/ArtworkDisplay.svelte";
 	import { openEditModal } from "$ts/ui/editModal.svelte";
-	import { removeAlbum, enrichAlbum } from "$ts/library/libraryManager";
+	import { removeAlbum } from "$ts/library/libraryManager";
 	import { setSelection } from "$ts/store/session.svelte";
-	import { getArtistUidFromName } from "$ts/store/library.svelte";
 	import type { Album } from "$ts/util/types";
+    import { enrichAlbum } from "$ts/library/enrichment";
 
 	let {
 		album,
@@ -38,12 +38,6 @@
 		try {
 			return album.tracks ? JSON.parse(album.tracks as string).length : 0;
 		} catch { return 0; }
-	});
-
-	const artistList = $derived.by<string[]>(() => {
-		try {
-			return album.artists ? JSON.parse(album.artists as string) : [];
-		} catch { return []; }
 	});
 
 	function handleRowClick(e: MouseEvent) {
@@ -82,18 +76,18 @@
 					{album.title}
 				</button>
 				<div class="text-xs text-muted-foreground truncate">
-					{#if artistList.length > 0}
-						{#each artistList as artist, i}
+					{#if album.artists.length > 0}
+						{#each album.artists as artist, i}
 							<button
-								onclick={(e) => { e.stopPropagation(); setSelection(getArtistUidFromName(artist), "artist"); }}
+								onclick={(e) => { e.stopPropagation(); setSelection(artist.uid, "artist"); }}
 								class="text-xs cursor-pointer hover:underline"
 							>
-								{artist}{i < artistList.length - 1 ? "," : ""}
+								{artist}{i < album.artists.length - 1 ? "," : ""}
 							</button>
 						{/each}
 					{:else if album.album_artist}
 						<button
-							onclick={(e) => { e.stopPropagation(); setSelection(getArtistUidFromName(album.album_artist!), "artist"); }}
+							onclick={(e) => { e.stopPropagation(); setSelection(album.album_artist!.uid, "artist"); }}
 							class="text-xs cursor-pointer hover:underline"
 						>
 							{album.album_artist}

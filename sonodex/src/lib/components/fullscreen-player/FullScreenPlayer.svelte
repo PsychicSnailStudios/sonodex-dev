@@ -8,13 +8,13 @@
 	import { Button } from "$shadcn/button";
 
 	// CUSTOM COMPONENTS
-	import ArtworkDisplay from "$lib/components/app-ui/ArtworkDisplay.svelte";
-   import AddToPlaylist from "$lib/components/app-ui/TrackPlaylistEditButton.svelte";
-	import ScrollingText from "$lib/components/app-ui/text-display/ScrollingText.svelte";
+	import ArtworkDisplay from "$lib/components/custom/ArtworkDisplay.svelte";
+   import AddToPlaylist from "$lib/components/custom/TrackPlaylistEditButton.svelte";
+	import ScrollingText from "$lib/components/custom/text-display/ScrollingText.svelte";
 
 	// SCRIPTS
 	import { currentlyPlaying, player } from "$ts/audio/audioManager.svelte";
-	import { getArtworkColor, parseArtists } from "$ts/util/helpers";
+	import { getArtworkColor } from "$ts/util/helpers";
 
 	// VARIABLES
 	let color = $state("rgb(30, 30, 30)");

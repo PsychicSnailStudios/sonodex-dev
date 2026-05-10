@@ -1,4 +1,4 @@
-import type { Track, TrackAlbumEntry, PlaylistTrackEntry, AudioCatagories, UserOptions } from "$ts/util/types";
+import type { Track, TrackAlbumEntry, PlaylistTrackEntry, AudioCatagories, UserOptions, Artist, ArtistEntry } from "$ts/util/types";
 
 export function parseUidType(uid: string): AudioCatagories {
 	if (uid.startsWith("t-")) return "track";
@@ -8,39 +8,12 @@ export function parseUidType(uid: string): AudioCatagories {
 	return "unknown";
 }
 
-export function parseArtists(artists: string | null): string {
-	if (!artists) return "Unknown Artist";
-	try {
-		const parsed = JSON.parse(artists);
-		return Array.isArray(parsed) ? parsed.join(", ") : "Unknown Artist";
-	} catch {
-		return "Unknown Artist";
-	}
-}
+export function parseArtistsToString(artists: ArtistEntry[] | null): string {
+	if (!artists || artists.length === 0) return "Unknown Artist";
 
-export function parseAlbumEntries(albums: string | null): TrackAlbumEntry[] {
-	if (!albums) return [];
-	try {
-		const parsed = JSON.parse(albums);
-		return Array.isArray(parsed) ? parsed : [];
-	} catch {
-		return [];
-	}
-}
-
-export function parseAlbum(albums: string): string {
-	const entries = parseAlbumEntries(albums);
-	return entries.length > 0 ? entries[0].name : "—";
-}
-
-export function parseTrackNumber(albums: string): number | null {
-	if (!albums) return null;
-	const entries = parseAlbumEntries(albums);
-	if (entries.length > 0) {
-		const n = entries[0].track_number;
-		return typeof n === "number" ? n : null;
-	}
-	return null;
+	return artists
+		.map(artist => artist.name || "Unknown Artist")
+		.join(", ");
 }
 
 export function parseTags(tags: string | null): string[] {
@@ -51,15 +24,5 @@ export function parseTags(tags: string | null): string[] {
 		return parsed;
 	} catch {
 		return [];
-	}
-}
-
-export function parseUserOptions(raw: string | null | undefined): UserOptions {
-	const defaults: UserOptions = { linkedShuffle: null, trimStart: null, trimEnd: null };
-	if (!raw) return defaults;
-	try {
-		return { ...defaults, ...JSON.parse(raw) };
-	} catch {
-		return defaults;
 	}
 }

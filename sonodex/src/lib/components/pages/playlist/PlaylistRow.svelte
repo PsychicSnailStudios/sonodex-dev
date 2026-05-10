@@ -1,8 +1,6 @@
 <script lang="ts">
 	import { Play } from "lucide-svelte";
 	import Button from "$shadcn/button/button.svelte";
-	import ArtworkDisplay from "$lib/components/app-ui/ArtworkDisplay.svelte";
-	import DefultPlaylistArt from "$lib/components/app-ui/playlist/DefultPlaylistArt.svelte";
 
 	import { setSelection } from "$ts/store/session.svelte";
 	import { queueTracksByObject } from "$ts/audio/audioManager.svelte";

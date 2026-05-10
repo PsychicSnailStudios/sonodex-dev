@@ -18,7 +18,7 @@
 
 	// CUSTOM COMPONENTS
 	import ArtworkEditor from "./ArtworkEditor.svelte";
-	import IconInput from "$lib/components/app-ui/IconInput.svelte";
+	import IconInput from "$lib/components/custom/IconInput.svelte";
 
 	// SCRIPTS
 	import { closeEditModal } from "$ts/ui/editModal.svelte";
@@ -33,10 +33,10 @@
 	} from "$ts/library/entitySync";
 	import { warnEmptyFields } from "$ts/ui/dialogManager.svelte";
 	import { enrichTrack, fetchLyrics } from "$ts/library/enrichment";
-	import TagSelector from "$lib/components/app-ui/tags/TagSelector.svelte";
+	import TagSelector from "$lib/components/custom/tags/TagSelector.svelte";
 
 	import type { TrackAlbumEntry } from "$ts/util/types";
-    import { get } from "svelte/store";
+    import { tagStore } from "$ts/store/tagManager.svelte";
 
 	// PROPS
 	let { uid } = $props<{ uid: string }>();
@@ -72,7 +72,7 @@
 
 		hasLyrics = lyrics != null;
 		title = track.title ?? "";
-		albumArtist = track.album_artist ?? "";
+		albumArtist = track.album_artist!.name.toString() ?? "";
 		originalAlbumArtist = albumArtist;
 		year = track.year ?? "";
 		bpm = track.bpm != null ? String(track.bpm) : "";

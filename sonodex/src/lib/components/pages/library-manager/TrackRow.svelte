@@ -2,10 +2,8 @@
 	import { Pencil, Trash, FolderInput, Paperclip, CloudDownload, FolderOpen, Loader2 } from "lucide-svelte";
 	import * as Tooltip from "$shadcn/tooltip/index.js";
 	import { buttonVariants } from "$shadcn/button/index.js";
-	import ArtworkDisplay from "$lib/components/app-ui/ArtworkDisplay.svelte";
-	import ArtistsList from "$lib/components/app-ui/text-display/ArtistsList.svelte";
-	import { getAlbumUidFromName, library } from "$ts/store/library.svelte";
-	import { parseAlbumEntries } from "$ts/util/helpers";
+	import ArtworkDisplay from "$lib/components/custom/ArtworkDisplay.svelte";
+	import ArtistsList from "$lib/components/custom/text-display/ArtistsList.svelte";
 	import { setSelection } from "$ts/store/session.svelte";
 	import { openEditModal } from "$ts/ui/editModal.svelte";
 	import { enrichTrack } from "$ts/library/enrichment";
@@ -15,7 +13,7 @@
 		openTrackInExplorer,
 	} from "$ts/library/libraryManager";
 	import type { Track } from "$ts/util/types";
-	import ScrollingText from "$lib/components/app-ui/text-display/ScrollingText.svelte";
+	import ScrollingText from "$lib/components/custom/text-display/ScrollingText.svelte";
 	import { Checkbox } from "$shadcn/checkbox/index.js";
 
 	let {
@@ -30,7 +28,7 @@
 		onShiftClick?: () => void;
 	} = $props();
 
-	const albumList = $derived(parseAlbumEntries(track.albums));
+	const albumList = $derived(track.albums);
 
 	let enriching = $state(false);
 
@@ -62,6 +60,8 @@
 			if (v !== selected) onToggle?.();
 		}}
 	/>
+	<!-- svelte-ignore a11y_click_events_have_key_events -->
+	<!-- svelte-ignore a11y_interactive_supports_focus -->
 	<div
 		class="flex gap-2 p-2 border-2 rounded-md justify-between items-center flex-1 cursor-pointer"
 		class:border-primary={selected}
@@ -94,7 +94,7 @@
 						{" · "}
 						{#each albumList as album, i}
 							<button
-								onclick={(e) => { e.stopPropagation(); setSelection(getAlbumUidFromName(album.name), "album"); }}
+								onclick={(e) => { e.stopPropagation(); setSelection(album.uid, "album"); }}
 								class="text-xs cursor-pointer hover:underline"
 							>
 								{album.name}{i < albumList.length - 1 ? "," : ""}

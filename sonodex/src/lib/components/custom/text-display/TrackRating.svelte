@@ -1,12 +1,11 @@
 <script lang="ts">
-	import { onMount } from "svelte";
 	import { invoke } from "@tauri-apps/api/core";
 
 	import { Star } from 'lucide-svelte';
 	import * as DropdownMenu from "$shadcn/dropdown-menu/index.js";
 	import { Input } from "$shadcn/input";
 	import { Toggle } from "$shadcn/toggle/index.js";
-    import { reloadLibrary } from "$ts/store/library.svelte";
+   import { reloadSingle } from "$ts/store/library.svelte";
 
 	let { uid, rating, tags }: { uid: string; rating: number | null, tags: string[] } = $props();
 
@@ -67,7 +66,7 @@
 			saving = false;
 		}
 
-		await reloadLibrary("tracks");
+		await reloadSingle(uid);
 	}
 
 	function onkeydown(e: KeyboardEvent) {

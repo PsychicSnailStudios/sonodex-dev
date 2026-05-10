@@ -2,14 +2,14 @@
 	import { onMount } from "svelte";
 	import { invoke } from "@tauri-apps/api/core";
 
-	import ArtworkDisplay from "$lib/components/app-ui/ArtworkDisplay.svelte";
+	import ArtworkDisplay from "$lib/components/custom/ArtworkDisplay.svelte";
 	import { ScrollArea } from "$shadcn/scroll-area/index.js";
 	import { Button } from "$shadcn/button/index.js";
 
-	import { library, getArtistUidFromName } from "$ts/store/library.svelte";
+	import { getAlbum, getArtist, getTrack, library } from "$ts/store/library.svelte";
 	import { setSelection } from "$ts/store/session.svelte";
-	import { parseArtists } from "$ts/util/helpers";
 	import type { Track, Album, Artist } from "$ts/util/types";
+    import { parseArtistsToString } from "$ts/util/parsers";
 
 	type Scrobble = {
 		uid: string;
@@ -475,9 +475,9 @@
 										class="text-sm truncate text-left hover:underline font-medium"
 									>{track.title ?? "Unknown"}</button>
 									<button
-										onclick={() => setSelection(getArtistUidFromName(track.album_artist ?? "") ?? "", "artist")}
+										onclick={() => setSelection(track.album_artist.uid, "artist")}
 										class="text-xs text-muted-foreground truncate text-left hover:underline"
-									>{parseArtists(track.artists)}</button>
+									>{parseArtistsToString(track.artists)}</button>
 								</div>
 								<div class="relative flex flex-col items-end gap-0.5 shrink-0">
 									<span class="text-xs font-semibold tabular-nums">{plays} <span class="font-normal text-muted-foreground">{plays === 1 ? "play" : "plays"}</span></span>

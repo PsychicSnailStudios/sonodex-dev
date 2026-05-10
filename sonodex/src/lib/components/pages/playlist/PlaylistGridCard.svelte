@@ -1,8 +1,8 @@
 <script lang="ts">
 	import * as ContextMenu from "$shadcn/context-menu/index.js";
-	import AudioCard from "$lib/components/app-ui/cards/AudioCard.svelte";
+	import AudioCard from "$lib/components/custom/cards/AudioCard.svelte";
 	import PlaylistContext from "$lib/components/context-menus/PlaylistContext.svelte";
-   import DefultPlaylistArt from "$lib/components/app-ui/playlist/DefultPlaylistArt.svelte";
+   import DefultPlaylistArt from "$lib/components/pages/playlist/DefultPlaylistArt.svelte";
 	
 	import { getTrackArrayFromUID } from "$ts/store/library.svelte";
    import type { Playlist } from "$ts/util/types";

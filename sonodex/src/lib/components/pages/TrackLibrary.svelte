@@ -1,9 +1,9 @@
 <script lang="ts">
 	import { ScrollArea } from "$shadcn/scroll-area/index.js";
 
-	import TrackTable from "$lib/components/app-ui/track-table/TrackTable.svelte";
-	import TrackTableSettings from "$lib/components/app-ui/track-table/TrackTableButtons.svelte";
-	import SearchBar from "$lib/components/app-ui/search/SearchBar.svelte";
+	import TrackTable from "$lib/components/custom/track-table/TrackTable.svelte";
+	import TrackTableSettings from "$lib/components/custom/track-table/TrackTableButtons.svelte";
+	import SearchBar from "$lib/components/custom/search/SearchBar.svelte";
 
 	import { createPersistedViewState } from "$ts/store/session.svelte";
 	import { library } from "$ts/store/library.svelte";

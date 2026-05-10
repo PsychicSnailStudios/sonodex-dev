@@ -10,7 +10,7 @@
 	import { ScrollArea } from "$shadcn/scroll-area/index.js";
 	import { Button, buttonVariants } from "$shadcn/button/index.js";
 
-	import SearchBar from "$lib/components/app-ui/search/SearchBar.svelte";
+	import SearchBar from "$lib/components/custom/search/SearchBar.svelte";
 	import TrackRow from "$lib/components/pages/library-manager/TrackRow.svelte";
 	import AlbumRow from "$lib/components/pages/library-manager/AlbumRow.svelte";
 	import ArtistRow from "$lib/components/pages/library-manager/ArtistRow.svelte";
@@ -32,7 +32,7 @@
 	import type { DuplicateGroup } from "$ts/util/types";
 	import { scanState } from "$ts/store/session.svelte";
 	import { enrichAllAlbums, enrichAllArtists, enrichAllTracks } from "$ts/library/enrichment";
-	import { parseAlbum, parseArtists } from "$ts/util/helpers";
+    import { parseArtistsToString } from "$ts/util/parsers";
 
 	// ─── Search ───────────────────────────────────────────────────────────────────
 	let trackSearch = $state("");
@@ -69,9 +69,9 @@
 		tracksFuseInstance = new Fuse(library.tracks, {
 			keys: [
 				{ name: "title",        weight: 0.5,  getFn: (t) => t.title ?? ""                   },
-				{ name: "artists",      weight: 0.25, getFn: (t) => parseArtists(t.artists ?? "[]") },
-				{ name: "album_artist", weight: 0.15, getFn: (t) => t.album_artist ?? ""            },
-				{ name: "albums",       weight: 0.1,  getFn: (t) => parseAlbum(t.albums ?? "[]")    },
+				{ name: "artists",      weight: 0.25, getFn: (t) => parseArtistsToString(t.artists) },
+				{ name: "album_artist", weight: 0.15, getFn: (t) => t.album_artist.name ?? ""            },
+				{ name: "albums",       weight: 0.1,  getFn: (t) => t.albums?.toString() ?? ""            },
 				{ name: "tags",         weight: 0.05, getFn: (t) => t.tags ?? ""                    },
 				{ name: "genres",       weight: 0.05, getFn: (t) => t.genres ?? ""                  },
 			],
@@ -107,8 +107,8 @@
 		albumFuseInstance = new Fuse(library.albums, {
 			keys: [
 				{ name: "title",        weight: 0.5,  getFn: (t) => t.title ?? ""                   },
-				{ name: "artists",      weight: 0.25, getFn: (t) => parseArtists(t.artists ?? "[]") },
-				{ name: "album_artist", weight: 0.15, getFn: (t) => t.album_artist ?? ""            },
+				{ name: "artists",      weight: 0.25, getFn: (t) => parseArtistsToString(t.artists ?? "[]") },
+				{ name: "album_artist", weight: 0.15, getFn: (t) => t.album_artist.name.toString() ?? ""            },
 				{ name: "year",         weight: 0.1,  getFn: (t) => t.release_date ?? ""            },
 				{ name: "tags",         weight: 0.05, getFn: (t) => t.tags ?? ""                    },
 				{ name: "genres",       weight: 0.05, getFn: (t) => t.genres ?? ""                  },

@@ -5,17 +5,17 @@
 	import { ScrollArea } from "$shadcn/scroll-area/index.js";
 	import { Button } from "$shadcn/button/index.js";
 
-	import AudioCard from "$lib/components/app-ui/cards/AudioCard.svelte";
-	import ArtworkDisplay from "$lib/components/app-ui/ArtworkDisplay.svelte";
-	import SearchBar from "$lib/components/app-ui/search/SearchBar.svelte";
+	import AudioCard from "$lib/components/custom/cards/AudioCard.svelte";
+	import ArtworkDisplay from "$lib/components/custom/ArtworkDisplay.svelte";
+	import SearchBar from "$lib/components/custom/search/SearchBar.svelte";
 	import MediaGrid from "$lib/layouts/MediaGrid.svelte";
 
-	import { parseArtists } from "$ts/util/helpers";
 	import { library } from "$ts/store/library.svelte";
 	import { searchAlbums } from "$ts/store/fuseStore.svelte";
 	import { setSelection } from "$ts/store/session.svelte";
 	import { createPersistedViewState } from "$ts/store/session.svelte";
 	import type { SortField } from "$ts/util/sortConfig.svelte";
+    import { parseArtistsToString } from "$ts/util/parsers";
 
 	let search = $state("");
 
@@ -33,7 +33,7 @@
 			if (view.sort.field === "name" as SortField) {
 				cmp = a.title.localeCompare(b.title);
 			} else if (view.sort.field === "artist" as SortField) {
-				cmp = (a.album_artist ?? "").localeCompare(b.album_artist ?? "");
+				cmp = (a.album_artist?.name ?? "").localeCompare(b.album_artist?.name ?? "");
 			} else if (view.sort.field === "year" as SortField) {
 				cmp = (a.release_date ?? "").localeCompare(b.release_date ?? "");
 			}
@@ -140,7 +140,7 @@
 						<button onclick={() => setSelection(album.uid, "album")} class="pl-2 text-sm truncate text-left">
 							<p class="text-sm font-medium">{album.title}</p>
 						</button>
-						<p class="text-sm">{parseArtists(album.artists)}</p>
+						<p class="text-sm">{parseArtistsToString(album.artists)}</p>
 						<p class="text-sm">{album.release_date}</p>
 					</div>
 				{/each}

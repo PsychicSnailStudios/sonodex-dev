@@ -11,6 +11,31 @@ export type PlaylistTrackEntry = {
 	order: number;
 };
 
+export type ArtistEntry = {
+    name: String,
+    uid: String,
+}
+
+export type AlbumEntry = {
+    name: String,
+    uid: String,
+	 track: number,
+	 disc: number,
+}
+
+export type UserOptions = {
+   shuffle_link: String,
+	start_trim_ms: number,
+	end_trim_ms: number,
+	skip_conditions: String,
+	shuffle_priority: number,
+}
+
+export type TrackData = {
+	format: String,
+	bitrate: number,
+}
+
 export type Track = {
 	id: number;
 	uid: string;
@@ -18,8 +43,8 @@ export type Track = {
 	remote_path: string | null;
 	last_modified: number;
 	title: string | null;
-	artists: string | null;
-	album_artist: string | null;
+	artists: ArtistEntry[] | null;
+	album_artist: ArtistEntry | null;
 	albums: TrackAlbumEntry[] | null;
 	genres: string | null;
 	year: string | null;
@@ -28,13 +53,13 @@ export type Track = {
 	duration_ms: number | null;
 	bpm: number | null;
 	key: string | null;
-	user_options: string | null;
+	user_options: UserOptions | null;
 	credits: string | null;
 	label: string | null;
 	format: string | null;
 	bitrate: number | null;
-	remote_data: string | null;
-	track_data: string | null;
+	remote_data: TrackData | null;
+	track_data: TrackData | null;
 	artwork_thumb: string | null;
 	source_lib_uid: string | null;
 	is_local_override: boolean | null;
@@ -46,8 +71,8 @@ export type Album = {
 	format: string | null;
 	title: string;
 	rating: number | null;
-	artists: string | null;
-	album_artist: string | null;
+	artists: ArtistEntry[] | null;
+	album_artist: ArtistEntry | null;
 	release_date: string | null;
 	tags: string | null;
 	genres: string | null;
@@ -109,11 +134,6 @@ export type Lyrics = {
 
 export type AudioCatagories = "track" | "album" | "artist" | "playlist" | "unknown";
 
-export type UserOptions = {
-	linkedShuffle: string | null;
-	trimStart:     number | null;
-	trimEnd:       number | null;
-};
 
 export type ParsedTrack = {
 	title: string;

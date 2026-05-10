@@ -4,23 +4,24 @@
 	import { ScrollArea } from "$shadcn/scroll-area/index.js";
 	import Button from "$shadcn/button/button.svelte";
 
-	import TrackTableSettings from "$lib/components/app-ui/track-table/TrackTableSettings.svelte";
-	import ArtworkDisplay from "$lib/components/app-ui/ArtworkDisplay.svelte";
-	import TrackTable from "$lib/components/app-ui/track-table/TrackTable.svelte";
-	import AudioCard from "$lib/components/app-ui/cards/AudioCard.svelte";
-	import NavButtons from "$lib/components/app-ui/NavButtons.svelte";
-	import TagList from "$lib/components/app-ui/tags/TagList.svelte";
-	import DownloadButton from "$lib/components/app-ui/DownloadButton.svelte";
+	import TrackTableSettings from "$lib/components/custom/track-table/TrackTableSettings.svelte";
+	import ArtworkDisplay from "$lib/components/custom/ArtworkDisplay.svelte";
+	import TrackTable from "$lib/components/custom/track-table/TrackTable.svelte";
+	import AudioCard from "$lib/components/custom/cards/AudioCard.svelte";
+	import NavButtons from "$lib/components/custom/NavButtons.svelte";
+	import TagList from "$lib/components/custom/tags/TagList.svelte";
+	import DownloadButton from "$lib/components/custom/DownloadButton.svelte";
 
 	import { selection, setSelection } from "$ts/store/session.svelte";
-	import { getArtistUidFromName, getTrackArrayFromUID, library } from "$ts/store/library.svelte";
+	import { getTrackArrayFromUID, library } from "$ts/store/library.svelte";
 	import { queueTracksByObject } from "$ts/audio/audioManager.svelte";
 	import { openEditModal } from "$ts/ui/editModal.svelte";
-	import { getArtworkColor, parseTags, totalDuration } from "$ts/util/helpers";
+	import { getArtworkColor, totalDuration } from "$ts/util/helpers";
 	import { createPersistedViewState } from "$ts/store/session.svelte";
 	import { artworkCache } from "$ts/library/artworkLoader";
 
 	import type { Album, Track } from "$ts/util/types";
+    import { parseTags } from "$ts/util/parsers";
 
 	const view = createPersistedViewState("album", {
 		sortField: "number",
@@ -84,7 +85,7 @@
 				<h2 class="text-2xl font-bold">{album.title}</h2>
 				<div class="flex gap-3 text-sm text-muted-foreground flex-wrap">
 					{#if album.album_artist}
-						<span role="button" tabindex="0" onclick={() => setSelection(getArtistUidFromName(album.album_artist), "artist")} onkeydown={(e) => { if (e.key === 'Enter') setSelection(getArtistUidFromName(album.album_artist)); }} class="text-sm truncate cursor-pointer hover:underline">
+						<span role="button" tabindex="0" onclick={() => setSelection(album.album_artist.name, "artist")} onkeydown={(e) => { if (e.key === 'Enter') setSelection(album.album_artist.name, "artist"); }} class="text-sm truncate cursor-pointer hover:underline">
 							{album.album_artist}
 						</span>
 					{/if}

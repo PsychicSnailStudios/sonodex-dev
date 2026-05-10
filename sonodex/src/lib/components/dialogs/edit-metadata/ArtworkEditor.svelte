@@ -8,7 +8,7 @@
 	import Button from "$shadcn/button/button.svelte";
 
 	// CUSTOM COMPONENTS
-	import ArtworkDisplay from "$lib/components/app-ui/ArtworkDisplay.svelte";
+	import ArtworkDisplay from "$lib/components/custom/ArtworkDisplay.svelte";
 
 	// PROPS
 	let {

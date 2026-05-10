@@ -8,7 +8,7 @@
 	import { Toggle } from "$shadcn/toggle/index.js";
 
 	// CUSTOM COMPONENTS
-	import SortDropdown from "$lib/components/app-ui/track-table/SortDropdown.svelte";
+	import SortDropdown from "$lib/components/custom/track-table/SortDropdown.svelte";
 
 	// SCRIPTS
 	import { SortState } from "$ts/util/sortConfig.svelte";

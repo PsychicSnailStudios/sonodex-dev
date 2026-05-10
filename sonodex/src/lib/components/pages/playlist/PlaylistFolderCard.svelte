@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { Folder } from "lucide-svelte";
-	import ArtworkDisplay from "$lib/components/app-ui/ArtworkDisplay.svelte";
-	import DefultPlaylistArt from "$lib/components/app-ui/playlist/DefultPlaylistArt.svelte";
+	import ArtworkDisplay from "$lib/components/custom/ArtworkDisplay.svelte";
+	import DefultPlaylistArt from "$lib/components/pages/playlist/DefultPlaylistArt.svelte";
 
 	import { getTrackArrayFromUID } from "$ts/store/library.svelte";
 

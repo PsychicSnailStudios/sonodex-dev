@@ -5,21 +5,22 @@
 	import ScrollArea from "$shadcn/scroll-area/scroll-area.svelte";
 	import { Button } from "$shadcn/button/index.js";
 
-	import ArtworkDisplay from "$lib/components/app-ui/ArtworkDisplay.svelte";
-	import NavButtons from "$lib/components/app-ui/NavButtons.svelte";
-	import TrackPlaylistEditButton from "$lib/components/app-ui/TrackPlaylistEditButton.svelte";
-	import TrackRating from "$lib/components/app-ui/text-display/TrackRating.svelte";
-	import TagList from "$lib/components/app-ui/tags/TagList.svelte";
-	import ArtistsList from "$lib/components/app-ui/text-display/ArtistsList.svelte";
-	import LyricsViewer from "$lib/components/app-ui/LyricsViewer.svelte";
-	import DownloadButton from "$lib/components/app-ui/DownloadButton.svelte";
+	import ArtworkDisplay from "$lib/components/custom/ArtworkDisplay.svelte";
+	import NavButtons from "$lib/components/custom/NavButtons.svelte";
+	import TrackPlaylistEditButton from "$lib/components/custom/TrackPlaylistEditButton.svelte";
+	import TrackRating from "$lib/components/custom/text-display/TrackRating.svelte";
+	import TagList from "$lib/components/custom/tags/TagList.svelte";
+	import ArtistsList from "$lib/components/custom/text-display/ArtistsList.svelte";
+	import LyricsViewer from "$lib/components/custom/LyricsViewer.svelte";
+	import DownloadButton from "$lib/components/custom/DownloadButton.svelte";
 
-	import { getAlbumUidFromName, getArtistUidFromName, getLyrics, library } from "$ts/store/library.svelte";
+	import { library } from "$ts/store/library.svelte";
 	import { currentTrackTab, selection, setSelection } from "$ts/store/session.svelte";
 	import { openEditModal } from "$ts/ui/editModal.svelte";
-	import { formatDuration, getArtworkColor, parseAlbumEntries, parseTags } from "$ts/util/helpers";
+	import { formatDuration, getArtworkColor } from "$ts/util/helpers";
 	import { playTrackByObject } from "$ts/audio/audioManager.svelte";
 	import { artworkCache } from "$ts/library/artworkLoader";
+    import { parseTags } from "$ts/util/parsers";
 
 	let track = $derived(library.tracks.find(t => t.uid === selection.uid) ?? null);
 	let fetchingLyrics = $state(false);
@@ -45,7 +46,7 @@
 		featuredArtists.map(name => ({ name, uid: getArtistUidFromName(name) }))
 	);
 
-	let artistUID = $derived(getArtistUidFromName(track?.album_artist ?? "Unknown Artist"));
+	let artistUID = $derived((track?.album_artist.name ?? "Unknown Artist"));
 
 	$effect(() => {
 		const uid = selection.uid;
@@ -80,9 +81,9 @@
 						<span>|</span>
 						<div>
 							{#if track.albums}
-							{@const albumList = parseAlbumEntries(track.albums)}
+							{@const albumList = track.albums}
 							{#each albumList as album, i}
-								<button onclick={() => setSelection(getAlbumUidFromName(album.name), "album")} class="text-sm truncate cursor-pointer hover:underline">
+								<button onclick={() => setSelection(album.uid, "album")} class="text-sm truncate cursor-pointer hover:underline">
 									{album.name}{i < albumList.length - 1 ? "," : ""}
 								</button>
 							{/each}

@@ -5,13 +5,12 @@
 	
 	// CUSTOM COMPONENTS
 	import { Play } from "lucide-svelte";
-	import ArtworkDisplay from "$lib/components/app-ui/ArtworkDisplay.svelte";
-	import DefultPlaylistArt from "$lib/components/app-ui/playlist/DefultPlaylistArt.svelte";
+	import ArtworkDisplay from "$lib/components/custom/ArtworkDisplay.svelte";
 
 	// SCRIPTS
 	import { setSelection } from "$ts/store/session.svelte";
 	import { playTrackByUid, queueTracksByObject } from "$ts/audio/audioManager.svelte";
-   import { getTrackArrayFromUID, getPlaylistTracks } from "$ts/store/library.svelte";
+   import { getTrackArrayFromUID } from "$ts/store/library.svelte";
 	import type { AudioCatagories } from "$ts/util/types";
 	
 	// PROPS
@@ -23,7 +22,7 @@
 		if (type === "track") {
 			playTrackByUid(artworkUid);
 		} else if (type === "playlist") {
-			queueTracksByObject(getPlaylistTracks(artworkUid), true);
+			queueTracksByObject(getTrackArrayFromUID(artworkUid), true);
 		}
 		else {
 			queueTracksByObject(getTrackArrayFromUID(artworkUid), true);

@@ -6,9 +6,6 @@
 
 	import TrackPlaylistContent from "$lib/components/context-menus/AddTrackToPlaylist.svelte";
 
-	// CUSTOM COMPONENTS
-   import TrackPlaylistEditButton from "$lib/components/app-ui/TrackPlaylistEditButton.svelte";
-
 	// SCRIPTS
    import { setSelection } from "$ts/store/session.svelte";
 	import { addTrackToQueue, removeFromQueue } from "$ts/audio/audioManager.svelte";

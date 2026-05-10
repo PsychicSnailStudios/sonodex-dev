@@ -3,15 +3,6 @@
 	// COMPONENTS
 	import * as ContextMenu from "$shadcn/context-menu/index.js";
 
-	// CUSTOM COMPONENTS
-   import TrackPlaylistEditButton from "$lib/components/app-ui/TrackPlaylistEditButton.svelte";
-
-	// SCRIPTS
-   import { setSelection } from "$ts/store/session.svelte";
-   import { addTrackToQueue } from "$ts/audio/audioManager.svelte";
-   import { openEditModal } from "$ts/ui/editModal.svelte";
-   import { copySelectedNameToClipboard } from "$ts/store/trackSelection.svelte";
-
 	// PROPS
 	let {
 		path,

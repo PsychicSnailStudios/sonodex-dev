@@ -8,18 +8,18 @@
 	import { Button } from "$shadcn/button/index.js";
 	import ScrollArea from "$shadcn/scroll-area/scroll-area.svelte";
 
-	import ArtworkDisplay from "$lib/components/app-ui/ArtworkDisplay.svelte";
-	import AudioCard from "$lib/components/app-ui/cards/AudioCard.svelte";
-	import NavButtons from "$lib/components/app-ui/NavButtons.svelte";
+	import ArtworkDisplay from "$lib/components/custom/ArtworkDisplay.svelte";
+	import AudioCard from "$lib/components/custom/cards/AudioCard.svelte";
+	import NavButtons from "$lib/components/custom/NavButtons.svelte";
 	import ArtistTopTracks from "$lib/components/pages/profile/ArtistTopTracks.svelte";
-	import TagList from "$lib/components/app-ui/tags/TagList.svelte";
+	import TagList from "$lib/components/custom/tags/TagList.svelte";
 
 	import { selection } from "$ts/store/session.svelte";
 	import { getAlbum, getArtist, getPlaylist, getTrack, library } from "$ts/store/library.svelte";
 	import { openEditModal } from "$ts/ui/editModal.svelte";
-	import { parseTags } from "$ts/util/helpers";
 	import { currentArtistTab } from "$ts/store/session.svelte";
 	import type { Artist, Album } from "$ts/util/types";
+    import { parseTags } from "$ts/util/parsers";
 
 	let bannerUrl = $state<string | null>(null);
 

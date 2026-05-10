@@ -2,15 +2,44 @@ use rusqlite::{params, Connection, Result};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct Artist {
+    pub name: String,
+    pub uid: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct Album {
+    pub name: String,
+    pub uid: String,
+	 pub track: i32,
+	 pub disc: i32,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct UserOptions {
+   pub shuffle_link: String,
+	pub start_trim_ms: Option<i64>,
+	pub end_trim_ms: Option<i64>,
+	pub skip_conditions: Option<String>,
+	pub shuffle_priority: Option<i64>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct TrackData {
+	pub format: Option<String>,
+	pub bitrate: Option<i64>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Track {
 	pub id: Option<i64>,
 	pub uid: String,
 	pub path: String,
 	pub last_modified: i64,
 	pub title: Option<String>,
-	pub artists: Option<String>,
-	pub album_artist: Option<String>,
-	pub albums: Option<String>,
+	pub artists: Option<Vec<Artist>>,
+	pub album_artist: Option<Artist>,
+	pub albums: Option<Vec<Album>>,
 	pub genres: Option<String>,
 	pub year: Option<String>,
 	pub rating: Option<f32>,
@@ -27,8 +56,8 @@ pub struct Track {
 	pub format: Option<String>,
 	pub bitrate: Option<i64>,
 	pub remote_path: Option<String>,
-	pub remote_data: Option<String>,
-	pub track_data: Option<String>,
+	pub remote_data: Option<TrackData>,
+	pub track_data: Option<TrackData>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

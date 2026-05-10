@@ -7,15 +7,15 @@
 	import { Button } from "$shadcn/button/index.js";
 
 	// CUSTOM COMPONENTS
-	import PlaylistSortBar from "$lib/components/app-ui/playlist/PlaylistSortBar.svelte";
-	import PlaylistFolderCard from "$lib/components/app-ui/playlist/PlaylistFolderCard.svelte";
-	import PlaylistGridCard from "$lib/components/app-ui/playlist/PlaylistGridCard.svelte";
-	import PlaylistCompactRow from "$lib/components/app-ui/playlist/PlaylistCompactRow.svelte";
+	import PlaylistSortBar from "$lib/components/pages/playlist/PlaylistSortBar.svelte";
+	import PlaylistFolderCard from "$lib/components/pages/playlist/PlaylistFolderCard.svelte";
+	import PlaylistGridCard from "$lib/components/pages/playlist/PlaylistGridCard.svelte";
+	import PlaylistCompactRow from "$lib/components/pages/playlist/PlaylistCompactRow.svelte";
 	import FolderContext from "$lib/components/context-menus/FolderContext.svelte";
 	import CreateNewPlaylist from "$lib/components/dialogs/playlists/CreateNewPlaylist.svelte";
 	import CreateNewFolder from "$lib/components/dialogs/playlists/CreateNewFolder.svelte";
 	import ImportPlaylist from "$lib/components/dialogs/playlists/ImportPlaylist.svelte";
-	import SearchBar from "$lib/components/app-ui/search/SearchBar.svelte";
+	import SearchBar from "$lib/components/custom/search/SearchBar.svelte";
 	import MediaGrid from "$lib/layouts/MediaGrid.svelte";
    import PlaylistViewContext from "$lib/components/context-menus/PlaylistViewContext.svelte";
 
@@ -515,6 +515,7 @@
 								/>
 							{/each}
 		
+							<!-- svelte-ignore a11y_no_static_element_interactions -->
 							<div
 								class="min-h-16 mt-2 rounded-md transition-colors"
 								class:border-2={dragState.active}
@@ -545,6 +546,7 @@
 												{#if isReorderTarget && compactFolderDrop?.side === "after" && draggingFolderPath !== row.path}
 													<div class="absolute left-0 right-0 -bottom-px h-0.5 bg-primary rounded-full z-10 pointer-events-none"></div>
 												{/if}
+												<!-- svelte-ignore a11y_no_static_element_interactions -->
 												<div
 													draggable="true"
 													class="flex items-center gap-1 py-1.5 rounded-md hover:bg-muted/50 transition-all cursor-grab"

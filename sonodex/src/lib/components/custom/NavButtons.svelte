@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { CircleArrowLeft, CircleArrowRight, CircleX } from "lucide-svelte";
-   import Button from "$shadcn/button/button.svelte";
+   import Button, { type ButtonProps } from "$shadcn/button/button.svelte";
 	
    import { canGoBack, canGoForward, clearSelection, moveSelection } from "$ts/store/session.svelte";
 
