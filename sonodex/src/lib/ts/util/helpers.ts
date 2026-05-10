@@ -1,70 +1,5 @@
-import type { Track, TrackAlbumEntry, PlaylistTrackEntry, AudioCatagories } from "$ts/util/types";
+import type { Track, UserOptions } from "$ts/util/types";
 import { convertFileSrc } from "@tauri-apps/api/core";
-
-export function parseUidType(uid: string): AudioCatagories {
-	if (uid.startsWith("t-")) return "track";
-	if (uid.startsWith("ar-")) return "artist";
-	if (uid.startsWith("a-")) return "album";
-	if (uid.startsWith("p-")) return "playlist";
-	return "unknown";
-}
-
-export function parseArtists(artists: string | null): string {
-	if (!artists) return "Unknown Artist";
-	try {
-		const parsed = JSON.parse(artists);
-		return Array.isArray(parsed) ? parsed.join(", ") : "Unknown Artist";
-	} catch {
-		return "Unknown Artist";
-	}
-}
-
-export function parseAlbumEntries(albums: string | null): TrackAlbumEntry[] {
-	if (!albums) return [];
-	try {
-		const parsed = JSON.parse(albums);
-		return Array.isArray(parsed) ? parsed : [];
-	} catch {
-		return [];
-	}
-}
-
-export function parseAlbum(albums: string | null): string {
-	const entries = parseAlbumEntries(albums);
-	return entries.length > 0 ? entries[0].name : "—";
-}
-
-export function parseTrackNumber(albums: string | null | undefined): number | null {
-	if (!albums) return null;
-	const entries = parseAlbumEntries(albums);
-	if (entries.length > 0) {
-		const n = entries[0].track_number;
-		return typeof n === "number" ? n : null;
-	}
-	return null;
-}
-
-export function parsePlaylistTracks(tracks: string | null): PlaylistTrackEntry[] {
-	if (!tracks) return [];
-	try {
-		const parsed = JSON.parse(tracks);
-		if (!Array.isArray(parsed)) return [];
-		return parsed.slice().sort((a, b) => a.order - b.order);
-	} catch {
-		return [];
-	}
-}
-
-export function parseTags(tags: string | null): string[] {
-	if (!tags) return [];
-	try {
-		const parsed = JSON.parse(tags);
-		if (!Array.isArray(parsed)) return [];
-		return parsed;
-	} catch {
-		return [];
-	}
-}
 
 export function formatRating(rating: number | null): string {
 	if (rating === null) return "—";
@@ -136,4 +71,13 @@ export async function getArtworkColorFromPath(path: string, opacity = 1): Promis
 
 export function clamp(num: number, min: number, max: number): number {
   return num <= min ? min : num >= max ? max : num;
+}
+
+export function serializeUserOptions(opts: UserOptions): string {
+	return JSON.stringify(opts);
+}
+
+export function isReadOnly(entity: { source_lib_uid: string | null; is_local_override: boolean | null }): boolean {
+	if (!entity.source_lib_uid) return false;
+	return !entity.is_local_override;
 }

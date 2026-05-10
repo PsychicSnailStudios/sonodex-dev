@@ -21,9 +21,10 @@
 	import TagSelector from "$lib/components/app-ui/tags/TagSelector.svelte";
 
 	// SCRIPTS
-	import { closeEditModal } from "$ts/store/editModal.svelte";
+	import { closeEditModal } from "$ts/ui/editModal.svelte";
 	import { reloadLibrary } from "$ts/store/library.svelte";
-	import { syncArtists, pruneArtists, renameArtistInLibrary, renameAlbumInTracks, warnEmptyFields } from "$ts/library/dbManager";
+	import { syncArtists, pruneArtists, renameArtistInLibrary, renameAlbumInTracks } from "$ts/library/entitySync";
+	import { warnEmptyFields } from "$ts/ui/dialogManager.svelte";
 	import { enrichAlbum } from "$ts/library/enrichment";
     import { tagStore } from "$ts/store/tagManager.svelte";
 

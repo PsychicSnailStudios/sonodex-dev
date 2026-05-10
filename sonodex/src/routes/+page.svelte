@@ -9,26 +9,26 @@
 	import NowPlaying from "$lib/components/app/now-playing/NowPlaying.svelte";
 	import AppNavigation from "$lib/components/app/AppNavigation.svelte";
 
-	import HomeView from "$lib/components/views/Profile.svelte";
-	import PlaylistsView from "$lib/components/views/PlaylistsLibrary.svelte";
-	import MusicView from "$lib/components/views/MusicLibrary.svelte";
-	import TracksView from "$lib/components/views/TrackLibrary.svelte";
-	import AlbumsView from "$lib/components/views/AlbumLibrary.svelte";
-	import ArtistsView from "$lib/components/views/ArtistLibrary.svelte";
-	import Settings from "$lib/components/views/Settings.svelte";
-	import LibraryManager from "$lib/components/views/LibraryManager.svelte";
+	import HomeView from "$lib/components/pages/Profile.svelte";
+	import PlaylistsView from "$lib/components/pages/PlaylistsLibrary.svelte";
+	import MusicView from "$lib/components/pages/MusicLibrary.svelte";
+	import TracksView from "$lib/components/pages/TrackLibrary.svelte";
+	import AlbumsView from "$lib/components/pages/AlbumLibrary.svelte";
+	import ArtistsView from "$lib/components/pages/ArtistLibrary.svelte";
+	import Settings from "$lib/components/pages/Settings.svelte";
+	import LibraryManager from "$lib/components/pages/LibraryManager.svelte";
 
-	import AlbumDisplay from "$lib/components/displays/AlbumDisplay.svelte";
-	import ArtistDisplay from "$lib/components/displays/ArtistDisplay.svelte";
-	import PlaylistDisplay from "$lib/components/displays/PlaylistDisplay.svelte";
-	import TrackDisplay from "$lib/components/displays/TrackDisplay.svelte";
+	import AlbumDisplay from "$lib/components/views/AlbumDisplay.svelte";
+	import ArtistDisplay from "$lib/components/views/ArtistDisplay.svelte";
+	import PlaylistDisplay from "$lib/components/views/PlaylistDisplay.svelte";
+	import TrackDisplay from "$lib/components/views/TrackDisplay.svelte";
 
 	import ProfileSetup from "$lib/components/dialogs/profile/ProfileSetup.svelte";
 	import UpdateDialog from "$lib/components/dialogs/UpdateDialog.svelte";
 
 	import { loadLibrary } from "$ts/store/library.svelte";
-	import { selection, scanState, activeView, loadSessionState, saveSessionState } from "$ts/store/state_session.svelte";
-	import { dragState } from "$ts/store/state_drag.svelte";
+	import { selection, scanState, activeView, loadSessionState, saveSessionState } from "$ts/store/session.svelte";
+	import { dragState } from "$ts/store/drag.svelte";
 	import { togglePlay, skipBack, skipNext, loadPlayerState, savePlayerState } from "$ts/audio/audioManager.svelte";
 	import { checkForUpdate } from "$lib/updater.svelte";
 	import { loadProfiles, profileState } from "$ts/store/profiles.svelte";

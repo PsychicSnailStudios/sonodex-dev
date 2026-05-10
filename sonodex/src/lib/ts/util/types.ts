@@ -174,29 +174,3 @@ export type MergeResult = {
 	rebuilt: boolean;
 	libraries_processed: number;
 };
-
-// cascade_delete values for LibraryDeletePreference
-export const CASCADE_SINGLE = 0;
-export const CASCADE_ALL = 1;
-export const CASCADE_ASK = 2;
-
-export function parseUserOptions(raw: string | null | undefined): UserOptions {
-	const defaults: UserOptions = { linkedShuffle: null, trimStart: null, trimEnd: null };
-	if (!raw) return defaults;
-	try {
-		return { ...defaults, ...JSON.parse(raw) };
-	} catch {
-		return defaults;
-	}
-}
-
-export function serializeUserOptions(opts: UserOptions): string {
-	return JSON.stringify(opts);
-}
-
-// ─── Helpers for merged record source resolution ──────────────────────────────
-
-export function isReadOnly(entity: { source_lib_uid: string | null; is_local_override: boolean | null }): boolean {
-	if (!entity.source_lib_uid) return false;
-	return !entity.is_local_override;
-}

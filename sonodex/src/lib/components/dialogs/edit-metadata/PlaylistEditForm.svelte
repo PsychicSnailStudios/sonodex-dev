@@ -16,7 +16,7 @@
 	import ArtworkEditor from "./ArtworkEditor.svelte";
 
 	// SCRIPTS
-	import { closeEditModal } from "$ts/store/editModal.svelte";
+	import { closeEditModal } from "$ts/ui/editModal.svelte";
 	import { loadLibrary, reloadLibrary } from "$ts/store/library.svelte";
 	import { deletePlaylist } from "$ts/audio/playlistManager.svelte";
 

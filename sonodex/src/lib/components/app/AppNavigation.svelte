@@ -5,8 +5,8 @@
 	import { Button } from "$shadcn/button/index.js";
 
 	// SCRIPTS
-	import { dragState } from "$ts/store/state_drag.svelte";
-	import { activeView, setView } from "$ts/store/state_session.svelte";
+	import { dragState } from "$ts/store/drag.svelte";
+	import { activeView, setView } from "$ts/store/session.svelte";
 
 
 	// VARIABLES

@@ -1,4 +1,4 @@
-const STORAGE_KEY = "sonodex:playlist-order";
+const STORAGE_KEY = "imago:playlist-order";
 
 type OrderStore = {
 	playlists: Record<string, string[]>;

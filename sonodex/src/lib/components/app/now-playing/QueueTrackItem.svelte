@@ -7,10 +7,10 @@
 	import TrackContext from "$lib/components/context-menus/TrackContext.svelte";
 
 	// SCRIPTS
-	import { setSelection } from "$ts/store/state_session.svelte";
-	import { startDrag, endDrag } from "$ts/store/state_drag.svelte";
+	import { setSelection } from "$ts/store/session.svelte";
+	import { startDrag, endDrag } from "$ts/store/drag.svelte";
 	import { queueSelection, selectQueueItem } from "$ts/store/queueSelection.svelte";
-	import ArtistsList from "$lib/components/app-ui/ArtistsList.svelte";
+	import ArtistsList from "$lib/components/app-ui/text-display/ArtistsList.svelte";
 	import type { Track } from "$ts/util/types";
 
 	// PROPS

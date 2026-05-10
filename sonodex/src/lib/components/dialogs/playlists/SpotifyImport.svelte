@@ -10,7 +10,7 @@
 		type SpotifyPlaylistSummary,
 	} from "$ts/services/spotify";
 	import { reloadLibrary } from "$ts/store/library.svelte";
-	import { setSelection } from "$ts/store/state_session.svelte";
+	import { setSelection } from "$ts/store/session.svelte";
 	import { onMount } from "svelte";
 	import Fuse from "fuse.js";
 	import SearchBar from "$lib/components/app-ui/search/SearchBar.svelte";

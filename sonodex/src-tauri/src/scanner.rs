@@ -438,21 +438,60 @@ fn parse_folder_path(path: &Path) -> FilenameMetadata {
 	}
 }
 
-/// Checks whether an incoming track is a remote/local counterpart of an existing track.
-/// Returns the uid of the existing track if a match is found, None otherwise.
-/// Match criteria: same title (case-insensitive) + same album_artist/first artist + duration within 1000ms.
+/// Extract artist name strings from the new {uid, name} JSON format.
+/// Falls back gracefully if the field is plain strings (during transition).
+fn parse_artist_names_from_json(json: &str) -> Vec<String> {
+	if let Ok(arr) = serde_json::from_str::<Vec<serde_json::Value>>(json) {
+		arr.into_iter()
+			.filter_map(|v| {
+				v.get("name")
+					.and_then(|n| n.as_str())
+					.map(|s| s.to_string())
+					.filter(|s| !s.is_empty())
+			})
+			.collect()
+	} else {
+		Vec::new()
+	}
+}
+
+/// Extract a single artist name from the {uid, name} album_artist JSON object.
+fn parse_album_artist_name(json: &str) -> Option<String> {
+	serde_json::from_str::<serde_json::Value>(json)
+		.ok()
+		.and_then(|v| v.get("name").and_then(|n| n.as_str()).map(|s| s.to_string()))
+		.filter(|s| !s.is_empty())
+}
+
+/// Build a JSON array of artist objects with empty UIDs: [{uid:"",name:"..."}, ...]
+fn make_artists_json(names: &[String]) -> String {
+	let arr: Vec<serde_json::Value> = names
+		.iter()
+		.map(|n| serde_json::json!({ "uid": "", "name": n }))
+		.collect();
+	serde_json::to_string(&arr).unwrap_or_else(|_| "[]".to_string())
+}
+
+/// Build a single artist object JSON with an empty UID: {uid:"",name:"..."}
+fn make_album_artist_json(name: &str) -> String {
+	serde_json::to_string(&serde_json::json!({ "uid": "", "name": name }))
+		.unwrap_or_else(|_| "{}".to_string())
+}
+
 pub fn find_remote_local_counterpart(conn: &Connection, incoming: &Track) -> Option<String> {
 	let incoming_title = incoming.title.as_deref()?.to_lowercase();
 
+	// Extract artist name from the new {uid, name} format
 	let incoming_artist_owned: Option<String> = incoming
 		.album_artist
-		.as_ref()
+		.as_deref()
+		.and_then(|s| parse_album_artist_name(s))
 		.map(|s| s.to_lowercase())
 		.or_else(|| {
 			incoming.artists.as_deref().and_then(|a| {
-				serde_json::from_str::<Vec<String>>(a)
-					.ok()
-					.and_then(|v| v.into_iter().next())
+				parse_artist_names_from_json(a)
+					.into_iter()
+					.next()
 					.map(|s| s.to_lowercase())
 			})
 		});
@@ -504,12 +543,13 @@ pub fn find_remote_local_counterpart(conn: &Connection, incoming: &Track) -> Opt
 
 		let existing_artist: Option<String> = album_artist
 			.as_deref()
+			.and_then(|s| parse_album_artist_name(s))
 			.map(|s| s.to_lowercase())
 			.or_else(|| {
 				artists.as_deref().and_then(|a| {
-					serde_json::from_str::<Vec<String>>(a)
-						.ok()
-						.and_then(|v| v.into_iter().next())
+					parse_artist_names_from_json(a)
+						.into_iter()
+						.next()
 						.map(|s| s.to_lowercase())
 				})
 			});
@@ -522,8 +562,6 @@ pub fn find_remote_local_counterpart(conn: &Connection, incoming: &Track) -> Opt
 	None
 }
 
-/// Patches the path fields of an existing track with those from an incoming counterpart,
-/// only filling in fields that are currently empty.
 pub fn merge_paths_into_existing(conn: &Connection, existing_uid: &str, incoming: &Track) {
 	let row: Option<(Option<String>, Option<String>)> = conn
 		.query_row(
@@ -796,11 +834,13 @@ pub fn read_track_with_settings(
 		}
 	}
 
-	let album_artist =
-		tag_album_artist.or_else(|| resolved_artists.as_ref().and_then(|v| v.first().cloned()));
+	// Resolve album_artist name (plain string at this stage)
+	let album_artist_name: Option<String> = tag_album_artist
+		.or_else(|| resolved_artists.as_ref().and_then(|v| v.first().cloned()));
 
+	// Ensure album_artist appears first in the artists list
 	let mut resolved_artists = resolved_artists;
-	if let Some(ref aa) = album_artist {
+	if let Some(ref aa) = album_artist_name {
 		if let Some(ref mut list) = resolved_artists {
 			let aa_lower = aa.to_lowercase();
 			if let Some(pos) = list.iter().position(|a| a.to_lowercase() == aa_lower) {
@@ -814,9 +854,15 @@ pub fn read_track_with_settings(
 		}
 	}
 
+	// Build artists as [{uid:"",name:"..."}, ...] — UIDs patched in by process_track
 	let artists = resolved_artists
 		.as_ref()
-		.map(|v| serde_json::to_string(v).unwrap_or_else(|_| "[]".to_string()));
+		.map(|names| make_artists_json(names));
+
+	// Build album_artist as {uid:"",name:"..."} — UID patched in by process_track
+	let album_artist = album_artist_name
+		.as_deref()
+		.map(|name| make_album_artist_json(name));
 
 	let tag_album_val = tag_album.filter(|s| !s.trim().is_empty());
 	let filename_album_val = filename_meta.album.filter(|s| !s.trim().is_empty());
@@ -953,7 +999,7 @@ pub fn read_track_with_settings(
 fn find_or_create_album(
 	conn: &Connection,
 	title: &str,
-	album_artist: Option<&str>,
+	album_artist_name: Option<&str>,
 	year: Option<&str>,
 	genres: Option<&str>,
 	artwork_blob: Option<Vec<u8>>,
@@ -965,11 +1011,15 @@ fn find_or_create_album(
 	let existing = get_all_albums(conn).ok()?;
 
 	let title_lower = title.to_lowercase();
-	let artist_lower = album_artist.map(|a| a.to_lowercase());
+	let artist_lower = album_artist_name.map(|a| a.to_lowercase());
 
 	if let Some(album) = existing.iter().find(|a| {
 		a.title.to_lowercase() == title_lower
-			&& a.album_artist.as_deref().map(|s| s.to_lowercase()) == artist_lower
+			&& a.album_artist
+				.as_deref()
+				.and_then(|s| parse_album_artist_name(s))
+				.map(|s| s.to_lowercase())
+				== artist_lower
 	}) {
 		let album_id = album.id?;
 		let uid = album.uid.clone();
@@ -1030,15 +1080,19 @@ fn find_or_create_album(
 	})])
 	.unwrap_or_else(|_| "[]".to_string());
 
+	// album_artist stored as {uid:"",name:"..."} — UID patched by process_track
+	let album_artist_json = album_artist_name.map(|n| make_album_artist_json(n));
+	// artists stored as [{uid:"",name:"..."}] — UID patched by process_track
+	let artists_json = album_artist_name.map(|n| make_artists_json(&[n.to_string()]));
+
 	let album = Album {
 		id: None,
 		uid: uid.clone(),
 		format: None,
 		title: title.to_string(),
 		rating: None,
-		artists: album_artist
-			.map(|a| serde_json::to_string(&vec![a]).unwrap_or_else(|_| "[]".to_string())),
-		album_artist: album_artist.map(|s| s.to_string()),
+		artists: artists_json,
+		album_artist: album_artist_json,
 		release_date: year.map(|s| s.to_string()),
 		tags: None,
 		genres: genres.map(|s| s.to_string()),
@@ -1097,8 +1151,6 @@ fn find_or_create_artist(conn: &Connection, name: &str) -> Option<(i64, String)>
 	Some((created_artist.id?, uid))
 }
 
-// process_track is called after upsert_track succeeds.
-// conn must be open to the specific library db being scanned (not merged.db).
 pub fn process_track(conn: &Connection, track: &Track) {
 	let track_uid = track.uid.clone();
 	let track_title = track.title.as_deref();
@@ -1115,20 +1167,29 @@ pub fn process_track(conn: &Connection, track: &Track) {
 		.map(|v| v == "true")
 		.unwrap_or(true);
 
+	// Collect artist name → uid mappings as we create/find them, so we can
+	// patch UIDs back into the track and album records in one pass.
+	let mut artist_uid_map: std::collections::HashMap<String, String> = std::collections::HashMap::new();
+
 	if create_albums {
 		if let Some(albums_json) = &track.albums {
 			if let Ok(albums_arr) = serde_json::from_str::<Vec<serde_json::Value>>(albums_json) {
 				let mut updated_album_entries: Vec<serde_json::Value> = Vec::new();
 
+				// Extract the album_artist name for album lookups
+				let album_artist_name: Option<String> = track
+					.album_artist
+					.as_deref()
+					.and_then(|s| parse_album_artist_name(s));
+
 				for album_entry in &albums_arr {
-					if let Some(album_name) = album_entry["name"].as_str().filter(|s| !s.is_empty())
-					{
+					if let Some(album_name) = album_entry["name"].as_str().filter(|s| !s.is_empty()) {
 						let track_number = album_entry["track_number"].as_u64().map(|n| n as u32);
 
 						if let Some((_album_id, album_uid)) = find_or_create_album(
 							conn,
 							album_name,
-							track.album_artist.as_deref(),
+							album_artist_name.as_deref(),
 							track.year.as_deref(),
 							track.genres.as_deref(),
 							track.artwork_blob.clone(),
@@ -1153,26 +1214,8 @@ pub fn process_track(conn: &Connection, track: &Track) {
 							conn,
 							&track_uid,
 							&MetadataUpdate {
-								title: None,
-								artists: None,
-								album_artist: None,
 								albums: Some(patched_albums),
-								year: None,
-								genres: None,
-								bpm: None,
-								rating: None,
-								tags: None,
-								key: None,
-								user_options: None,
-								credits: None,
-								label: None,
-								artwork_blob: None,
-								artwork_path: None,
-								format: None,
-								bitrate: None,
-								remote_path: None,
-								remote_data: None,
-								track_data: None,
+								..Default::default()
 							},
 						);
 					}
@@ -1182,27 +1225,138 @@ pub fn process_track(conn: &Connection, track: &Track) {
 	}
 
 	if create_artists {
+		// Collect all artist names to create/find records for
+		let mut all_names: Vec<String> = Vec::new();
+
 		if let Some(artists_json) = &track.artists {
-			if let Ok(artist_names) = serde_json::from_str::<Vec<String>>(artists_json) {
-				for name in artist_names {
-					if !name.is_empty() {
-						find_or_create_artist(conn, &name);
+			for name in parse_artist_names_from_json(artists_json) {
+				if !all_names.iter().any(|n: &String| n.to_lowercase() == name.to_lowercase()) {
+					all_names.push(name);
+				}
+			}
+		}
+		if let Some(album_artist_name) = track.album_artist.as_deref().and_then(|s| parse_album_artist_name(s)) {
+			if !all_names.iter().any(|n: &String| n.to_lowercase() == album_artist_name.to_lowercase()) {
+				all_names.push(album_artist_name);
+			}
+		}
+
+		// Create/find each artist and build the name→uid map
+		for name in &all_names {
+			if !name.is_empty() {
+				if let Some((_, uid)) = find_or_create_artist(conn, name) {
+					artist_uid_map.insert(name.to_lowercase(), uid);
+				}
+			}
+		}
+
+		// Patch artist UIDs back into the track's artists field
+		if let Some(artists_json) = &track.artists {
+			if let Ok(mut arr) = serde_json::from_str::<Vec<serde_json::Value>>(artists_json) {
+				for entry in arr.iter_mut() {
+					if let Some(name) = entry.get("name").and_then(|n| n.as_str()) {
+						if let Some(uid) = artist_uid_map.get(&name.to_lowercase()) {
+							entry["uid"] = serde_json::Value::String(uid.clone());
+						}
+					}
+				}
+				let patched = serde_json::to_string(&arr).unwrap_or_else(|_| artists_json.clone());
+				let _ = update_track_metadata_by_uid(
+					conn,
+					&track_uid,
+					&MetadataUpdate {
+						artists: Some(patched),
+						..Default::default()
+					},
+				);
+			}
+		}
+
+		// Patch artist UID back into the track's album_artist field
+		if let Some(album_artist_json) = &track.album_artist {
+			if let Ok(mut obj) = serde_json::from_str::<serde_json::Value>(album_artist_json) {
+				if let Some(name) = obj.get("name").and_then(|n| n.as_str()) {
+					if let Some(uid) = artist_uid_map.get(&name.to_lowercase()) {
+						obj["uid"] = serde_json::Value::String(uid.clone());
+						let patched = serde_json::to_string(&obj).unwrap_or_else(|_| album_artist_json.clone());
+						let _ = update_track_metadata_by_uid(
+							conn,
+							&track_uid,
+							&MetadataUpdate {
+								album_artist: Some(patched),
+								..Default::default()
+							},
+						);
 					}
 				}
 			}
 		}
-		if let Some(album_artist) = &track.album_artist {
-			if !album_artist.is_empty() {
-				find_or_create_artist(conn, album_artist);
+
+		// Patch artist UIDs into any album records this track belongs to
+		if let Some(albums_json) = &track.albums {
+			if let Ok(album_entries) = serde_json::from_str::<Vec<serde_json::Value>>(albums_json) {
+				for album_entry in &album_entries {
+					if let Some(album_uid) = album_entry["uid"].as_str().filter(|s| !s.is_empty()) {
+						// Patch album.artists
+						let albums_all = get_all_albums(conn).unwrap_or_default();
+						if let Some(album) = albums_all.iter().find(|a| a.uid == album_uid) {
+							let mut needs_update = false;
+							let mut update = AlbumUpdate {
+								format: None,
+								title: None,
+								rating: None,
+								artists: None,
+								album_artist: None,
+								release_date: None,
+								tags: None,
+								genres: None,
+								tracks: None,
+								credits: None,
+								label: None,
+								artwork_blob: None,
+								artwork_path: None,
+								emulate_type: None,
+							};
+
+							if let Some(artists_json) = &album.artists {
+								if let Ok(mut arr) = serde_json::from_str::<Vec<serde_json::Value>>(artists_json) {
+									for entry in arr.iter_mut() {
+										if let Some(name) = entry.get("name").and_then(|n| n.as_str()) {
+											if let Some(uid) = artist_uid_map.get(&name.to_lowercase()) {
+												entry["uid"] = serde_json::Value::String(uid.clone());
+											}
+										}
+									}
+									update.artists = Some(serde_json::to_string(&arr).unwrap_or_else(|_| artists_json.clone()));
+									needs_update = true;
+								}
+							}
+
+							if let Some(album_artist_json) = &album.album_artist {
+								if let Ok(mut obj) = serde_json::from_str::<serde_json::Value>(album_artist_json) {
+									if let Some(name) = obj.get("name").and_then(|n| n.as_str()) {
+										if let Some(uid) = artist_uid_map.get(&name.to_lowercase()) {
+											obj["uid"] = serde_json::Value::String(uid.clone());
+											update.album_artist = Some(serde_json::to_string(&obj).unwrap_or_else(|_| album_artist_json.clone()));
+											needs_update = true;
+										}
+									}
+								}
+							}
+
+							if needs_update {
+								if let Some(album_id) = album.id {
+									let _ = update_album(conn, album_id, &update);
+								}
+							}
+						}
+					}
+				}
 			}
 		}
 	}
 }
 
-// scan_directory_with_progress now takes an explicit lib_conn that points to the
-// target library db. The caller is responsible for opening the correct db.
-// settings are still read via the ATTACHed settings schema on lib_conn.
-// After the scan completes, the caller should trigger an incremental merge update.
 pub fn scan_directory_with_progress(conn: &Connection, dir: &str, app: &AppHandle) {
 	let priority_title = get_setting(conn, "filename_priority_title")
 		.ok()
@@ -1416,11 +1570,21 @@ pub fn scan_directory_with_progress(conn: &Connection, dir: &str, app: &AppHandl
 				if let (Some(ref settings), Some(ref client), Some(ref rt)) =
 					(&enrich_settings, &http_client, &rt)
 				{
+					// Extract plain name strings for the enrichment API call
+					let artists_plain: Option<String> = track.artists.as_deref().map(|j| {
+						let names = parse_artist_names_from_json(j);
+						serde_json::to_string(&names).unwrap_or_else(|_| "[]".to_string())
+					});
+					let album_artist_plain: Option<String> = track
+						.album_artist
+						.as_deref()
+						.and_then(|s| parse_album_artist_name(s));
+
 					let track_input = crate::enrichment::TrackInput {
 						id: 0,
 						title: track.title.clone(),
-						artists: track.artists.clone(),
-						album_artist: track.album_artist.clone(),
+						artists: artists_plain,
+						album_artist: album_artist_plain,
 						albums: track.albums.clone(),
 						year: track.year.clone(),
 						genres: track.genres.clone(),
@@ -1436,8 +1600,15 @@ pub fn scan_directory_with_progress(conn: &Connection, dir: &str, app: &AppHandl
 						None,
 					)) {
 						track.title = result.title.or(track.title);
-						track.artists = result.artists.or(track.artists);
-						track.album_artist = result.album_artist.or(track.album_artist);
+						// Re-wrap enriched artist strings back into {uid:"",name:...} format
+						if let Some(enriched_artists) = result.artists {
+							if let Ok(names) = serde_json::from_str::<Vec<String>>(&enriched_artists) {
+								track.artists = Some(make_artists_json(&names));
+							}
+						}
+						if let Some(enriched_aa) = result.album_artist {
+							track.album_artist = Some(make_album_artist_json(&enriched_aa));
+						}
 						track.albums = result.albums.or(track.albums);
 						track.year = result.year.or(track.year);
 						track.genres = result.genres.or(track.genres);
@@ -1512,12 +1683,11 @@ pub fn scan_directory_with_progress(conn: &Connection, dir: &str, app: &AppHandl
 						let title = track.title.as_deref().unwrap_or("").to_string();
 						let artist = track
 							.album_artist
-							.clone()
+							.as_deref()
+							.and_then(|s| parse_album_artist_name(s))
 							.or_else(|| {
 								track.artists.as_deref().and_then(|a| {
-									serde_json::from_str::<Vec<String>>(a)
-										.ok()
-										.and_then(|v| v.into_iter().next())
+									parse_artist_names_from_json(a).into_iter().next()
 								})
 							})
 							.unwrap_or_default();
@@ -1583,13 +1753,15 @@ pub fn scan_directory_with_progress(conn: &Connection, dir: &str, app: &AppHandl
 			let albums = crate::db::get_all_albums(conn).unwrap_or_default();
 			for album_uid in &scanned_album_uids {
 				if let Some(album) = albums.iter().find(|a| &a.uid == album_uid) {
-					let artist = album.album_artist.clone().or_else(|| {
-						album.artists.as_deref().and_then(|a| {
-							serde_json::from_str::<Vec<String>>(a)
-								.ok()
-								.and_then(|v| v.into_iter().next())
-						})
-					});
+					let artist = album
+						.album_artist
+						.as_deref()
+						.and_then(|s| parse_album_artist_name(s))
+						.or_else(|| {
+							album.artists.as_deref().and_then(|a| {
+								parse_artist_names_from_json(a).into_iter().next()
+							})
+						});
 
 					if let Some(artist) = artist {
 						let result = rt.block_on(crate::enrichment::enrich_album_async(

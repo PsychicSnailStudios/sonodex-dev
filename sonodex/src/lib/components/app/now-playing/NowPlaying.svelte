@@ -13,13 +13,13 @@
 	// CUSTOM COMPONENTS
 	import ArtworkDisplay from "$lib/components/app-ui/ArtworkDisplay.svelte";
    import AddToPlaylist from "$lib/components/app-ui/TrackPlaylistEditButton.svelte";
-	import ScrollingText from "$lib/components/app-ui/ScrollingText.svelte";
+	import ScrollingText from "$lib/components/app-ui/text-display/ScrollingText.svelte";
 	import Queue from "$lib/components/app/now-playing/Queue.svelte";
 	import RecentlyPlayed from "$lib/components/app/now-playing/RecentlyPlayed.svelte";
 	import LyricsViewer from "$lib/components/app-ui/LyricsViewer.svelte";
 
 	// SCRIPTS
-	import { setSelection } from "$ts/store/state_session.svelte";
+	import { setSelection } from "$ts/store/session.svelte";
 	import { getArtistUidFromName } from "$ts/store/library.svelte";
 	import { currentlyPlaying, player } from "$ts/audio/audioManager.svelte";
 	import { getArtworkColor, parseArtists } from "$ts/util/helpers";

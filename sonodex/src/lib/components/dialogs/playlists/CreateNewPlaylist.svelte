@@ -8,7 +8,7 @@
 	
 	import { createPlaylist } from "$ts/audio/playlistManager.svelte";
 	import { profileState } from "$ts/store/profiles.svelte";
-   import { setSelection } from "$ts/store/state_session.svelte";
+   import { setSelection } from "$ts/store/session.svelte";
 
 	let { open = $bindable(false), folder = null } = $props<{ open: boolean; folder?: string | null }>();
 

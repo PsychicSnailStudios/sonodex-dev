@@ -17,14 +17,15 @@
 	import TagSelector from "$lib/components/app-ui/tags/TagSelector.svelte";
 
 	// SCRIPTS
-	import { closeEditModal } from "$ts/store/editModal.svelte";
-	import { loadLibrary, library, reloadSingle, reloadLibrary } from "$ts/store/library.svelte";
+	import { closeEditModal } from "$ts/ui/editModal.svelte";
+	import { loadLibrary, library, reloadSingle, reloadLibrary, getArtist } from "$ts/store/library.svelte";
 	import { enrichArtist } from "$ts/library/enrichment";
-	import { renameArtistInLibrary, mergeArtistAkas, warnEmptyFields } from "$ts/library/dbManager";
+	import { renameArtistInLibrary, mergeArtistAkas } from "$ts/library/entitySync";
+	import { warnEmptyFields } from "$ts/ui/dialogManager.svelte";
 
 	// PROPS
 	let { uid } = $props<{ uid: string }>();
-	let artist = $derived(library.artists.find(a => a.uid === uid) ?? null);
+	let artist = $derived(getArtist(uid) ?? null);
 
 	// VARIABLES
 	let name = $state("");

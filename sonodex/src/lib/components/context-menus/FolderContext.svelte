@@ -3,7 +3,7 @@
 
 	import { nestFolder, moveFolderToRoot, deleteFolder, deleteFolderAndContents } from "$ts/drag/dragdrop_folders";
 	import { library } from "$ts/store/library.svelte";
-	import type { PlaylistSortField } from "$ts/library/playlistLibrary.svelte";
+	import type { PlaylistSortField } from "$ts/ui/playlistFolderTree.svelte";
 
 	let {
 		path,

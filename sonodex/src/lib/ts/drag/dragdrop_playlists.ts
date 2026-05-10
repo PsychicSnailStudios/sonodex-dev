@@ -1,11 +1,11 @@
 import { invoke } from "@tauri-apps/api/core";
 import { library } from "$ts/store/library.svelte";
-import { setHoveredPlaylist, setDragActive, setDragPayload, endDrag } from "$ts/store/state_drag.svelte";
+import { setHoveredPlaylist, setDragActive, setDragPayload, endDrag } from "$ts/store/drag.svelte";
 import { addTracksToPlaylist } from "$ts/audio/playlistManager.svelte";
-import { getDirectPlaylists } from "$ts/library/playlistLibrary.svelte";
+import { getDirectPlaylists } from "$ts/ui/playlistFolderTree.svelte";
 import { playlistOrder } from "$ts/store/playlistOrderStore.svelte";
 import type { Playlist } from "$ts/util/types";
-import type { PlaylistSortField } from "$ts/library/playlistLibrary.svelte";
+import type { PlaylistSortField } from "$ts/ui/playlistFolderTree.svelte";
 
 export function startPlaylistDrag(e: DragEvent, uid: string) {
 	if (e.dataTransfer) {

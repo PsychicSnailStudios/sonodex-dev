@@ -1,43 +1,15 @@
 import { invoke } from "@tauri-apps/api/core";
-import { library, getArtistUidFromName } from "$ts/store/library.svelte";
-import type { Track } from "$ts/util/types";
+import { getArtistUidFromName } from "$ts/store/library.svelte";
+import { getTracksFirstAlbumName } from "$ts/util/albumHelpers";
 import { player } from "$ts/audio/audioManager.svelte";
-import { offlineMode } from "$ts/store/state_session.svelte";
+import { offlineMode } from "$ts/store/session.svelte";
+import type { Track } from "$ts/util/types";
 
 let activeScrobbleUid: string | null = null;
 let activeTrackUid: string | null = null;
 let activeTrackStartTime: number = 0;
 let didSeek = false;
 let didPause = false;
-
-function resolveArtistUid(track: Track): string {
-	try {
-		const artists: string[] = JSON.parse(track.artists ?? "[]");
-		const name = artists[0];
-		if (!name) return "";
-		return getArtistUidFromName(name) ?? "";
-	} catch {
-		return "";
-	}
-}
-
-function firstArtistName(track: Track): string {
-	try {
-		const artists: string[] = JSON.parse(track.artists ?? "[]");
-		return artists[0] ?? "";
-	} catch {
-		return "";
-	}
-}
-
-function firstAlbumName(track: Track): string {
-	try {
-		const albums: { name: string }[] = JSON.parse(track.albums as unknown as string ?? "[]");
-		return albums[0]?.name ?? "";
-	} catch {
-		return "";
-	}
-}
 
 export async function scrobbleStart(
 	track: Track,
@@ -55,7 +27,8 @@ export async function scrobbleStart(
 	activeTrackStartTime = Math.floor(Date.now() / 1000);
 
 	try {
-		const artistUid = resolveArtistUid(track);
+		const artistUid = getArtistUidFromName(track.album_artist ?? "");
+		
 		activeScrobbleUid = await invoke<string>("log_scrobble", {
 			trackUid: track.uid,
 			artistUid,
@@ -64,8 +37,8 @@ export async function scrobbleStart(
 			offline: offlineMode.offline,
 			playingLocal,
 			trackName: track.title ?? null,
-			trackArtist: firstArtistName(track) || null,
-			trackAlbum: firstAlbumName(track) || null,
+			trackArtist: track.album_artist || null,
+			trackAlbum: getTracksFirstAlbumName(track) || null,
 		});
 	} catch (e) {
 		console.error("scrobbleStart failed", e);

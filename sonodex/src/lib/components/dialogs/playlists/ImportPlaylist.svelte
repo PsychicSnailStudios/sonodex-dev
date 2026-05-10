@@ -10,7 +10,7 @@
 
 	// SCRIPTS
 	import { library, loadLibrary, reloadLibrary } from "$ts/store/library.svelte";
-	import { createStubTrack } from "$ts/library/dbManager";
+	import { createStubTrack } from "$ts/library/entitySync";
 	import { profileState } from "$ts/store/profiles.svelte";
 	import { createPlaylist } from "$ts/audio/playlistManager.svelte";
 	import type { Track, ParsedTrack, ImportState } from "$ts/util/types";

@@ -14,7 +14,7 @@
   import { ModeWatcher } from "mode-watcher";
 
   import WarningDialog from "$lib/components/dialogs/WarnDialog.svelte";
-	import { dialogState, confirmDialog, cancelDialog } from "$ts/store/dialogManager.svelte";
+	import { dialogState, confirmDialog, cancelDialog } from "$ts/ui/dialogManager.svelte";
 
   import circleLoader from '$lib/assets/circle-loader.json';
   import wavLoader from '$lib/assets/wav-loader.json';

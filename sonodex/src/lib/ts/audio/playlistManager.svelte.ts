@@ -1,8 +1,9 @@
-import { library } from "$ts/store/library.svelte";
-import type { Playlist, Track } from "$ts/util/types";
+import { getPlaylist, getTrack, reloadLibrary } from "$ts/store/library.svelte";
 import { invoke } from "@tauri-apps/api/core";
-import { showWarning } from "$ts/store/dialogManager.svelte";
+import { showWarning } from "$ts/ui/dialogManager.svelte";
 
+import type { Playlist, Track } from "$ts/util/types";
+import { get } from "svelte/store";
 type TrackEntry = { uid: string; name: string; order: number }
 
 export function parseTracks(raw: unknown): TrackEntry[] {
@@ -10,10 +11,6 @@ export function parseTracks(raw: unknown): TrackEntry[] {
 	if (typeof raw === "string") return JSON.parse(raw)
 	if (Array.isArray(raw)) return raw
 	return []
-}
-
-async function refreshPlaylists() {
-	library.playlists = await invoke("get_playlists")
 }
 
 export async function addTrackToPlaylist(playlist: Playlist, track: Track) {
@@ -28,11 +25,11 @@ export async function addTrackToPlaylist(playlist: Playlist, track: Track) {
 		update: { tracks: JSON.stringify(updated) },
 	})
 
-	await refreshPlaylists()
+	await reloadLibrary("playlists")
 }
 
 export async function addTracksToPlaylist(playlistUid: string, trackUids: string[]) {
-	const playlist = library.playlists.find((p) => p.uid === playlistUid)
+	const playlist = getPlaylist(playlistUid)
 	if (!playlist) return
 
 	const current = parseTracks(playlist.tracks)
@@ -43,7 +40,7 @@ export async function addTracksToPlaylist(playlistUid: string, trackUids: string
 	let maxOrder = current.reduce((m, t) => Math.max(m, t.order ?? 0), 0)
 
 	const newEntries: TrackEntry[] = toAdd.map((uid) => {
-		const track = library.tracks.find((t) => t.uid === uid)
+		const track = getTrack(uid)
 		maxOrder += 1
 		return { uid, name: track?.title ?? "Unknown Title", order: maxOrder }
 	})
@@ -53,7 +50,7 @@ export async function addTracksToPlaylist(playlistUid: string, trackUids: string
 		update: { tracks: JSON.stringify([...current, ...newEntries]) },
 	})
 
-	await refreshPlaylists()
+	await reloadLibrary("playlists")
 }
 
 export async function removeTrackFromPlaylist(playlist: Playlist, track: Track) {
@@ -65,11 +62,11 @@ export async function removeTrackFromPlaylist(playlist: Playlist, track: Track) 
 		update: { tracks: JSON.stringify(updated) },
 	})
 
-	await refreshPlaylists()
+	await reloadLibrary("playlists")
 }
 
 export async function removeTracksFromPlaylist(playlistUid: string, trackUids: string[]) {
-	const playlist = library.playlists.find((p) => p.uid === playlistUid)
+	const playlist = getPlaylist(playlistUid)
 	if (!playlist) return
 
 	const toRemove = new Set(trackUids)
@@ -80,11 +77,11 @@ export async function removeTracksFromPlaylist(playlistUid: string, trackUids: s
 		update: { tracks: JSON.stringify(updated) },
 	})
 
-	await refreshPlaylists()
+	await reloadLibrary("playlists")
 }
 
 export async function reorderPlaylistTracks(playlistUid: string, orderedUids: string[]) {
-	const playlist = library.playlists.find((p) => p.uid === playlistUid)
+	const playlist = getPlaylist(playlistUid)
 	if (!playlist) return
 
 	const current = parseTracks(playlist.tracks)
@@ -103,7 +100,7 @@ export async function reorderPlaylistTracks(playlistUid: string, orderedUids: st
 		update: { tracks: JSON.stringify(updated) },
 	})
 
-	await refreshPlaylists()
+	await reloadLibrary("playlists")
 }
 
 export async function createPlaylist(
@@ -126,7 +123,7 @@ export async function createPlaylist(
 		},
 	})
 
-	await refreshPlaylists()
+	await reloadLibrary("playlists")
 	return uid;
 }
 
@@ -136,5 +133,5 @@ export async function deletePlaylist(playlistUid: string) {
 	if (!confirmed) return false;
 
 	await invoke("delete_playlist_entry", { uid: playlistUid })
-	await refreshPlaylists()
+	await reloadLibrary("playlists")
 }

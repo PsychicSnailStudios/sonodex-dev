@@ -1,6 +1,6 @@
 import { library } from "$ts/store/library.svelte";
 import { writeText } from "@tauri-apps/plugin-clipboard-manager";
-import type { Track } from "../util/types";
+import type { Track } from "$ts/util/types";
 
 type SelectionContext = "library" | "playlist";
 

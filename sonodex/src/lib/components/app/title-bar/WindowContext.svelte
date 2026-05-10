@@ -6,7 +6,7 @@
 	import * as DropdownMenu from "$shadcn/dropdown-menu/index.js";
 	
 	// SCRIPTS
-   import { setView } from "$ts/store/state_session.svelte";
+   import { setView } from "$ts/store/session.svelte";
 	
 	// VARIABLES
   

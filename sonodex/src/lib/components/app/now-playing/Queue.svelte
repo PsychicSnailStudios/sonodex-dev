@@ -15,7 +15,7 @@
 		insertIntoQueue,
 		removeFromQueue,
 	} from "$ts/audio/audioManager.svelte";
-	import { dragState, endDrag } from "$ts/store/state_drag.svelte";
+	import { dragState, endDrag } from "$ts/store/drag.svelte";
 	import { clearQueueSelection, queueSelection } from "$ts/store/queueSelection.svelte";
 	import { library } from "$ts/store/library.svelte";
 
@@ -128,7 +128,7 @@
 
 	function resolveUidsToTracks(uids: string[]) {
 		return uids
-			.map(uid => library.tracks.find(t => t.uid === uid))
+			.map(uid => getTrack(uid))
 			.filter((t): t is NonNullable<typeof t> => t !== undefined);
 	}
 </script>

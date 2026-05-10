@@ -24,7 +24,7 @@
 		verifyProfilePassword,
 		verifyRecoveryKey,
 	} from "$ts/store/profiles.svelte";
-	import { saveSessionState } from "$ts/store/state_session.svelte";
+	import { saveSessionState } from "$ts/store/session.svelte";
 	import { savePlayerState } from "$ts/audio/audioManager.svelte";
 	
 	// VARIABLES

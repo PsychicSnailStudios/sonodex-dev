@@ -10,7 +10,7 @@
 	import PlaylistEditForm from "$lib/components/dialogs/edit-metadata/PlaylistEditForm.svelte";
 
 	// SCRIPTS
-	import { editModal, closeEditModal } from "$ts/store/editModal.svelte";
+	import { editModal, closeEditModal } from "$ts/ui/editModal.svelte";
 
 	// VARIABLES
 	const titles: Record<string, string> = {

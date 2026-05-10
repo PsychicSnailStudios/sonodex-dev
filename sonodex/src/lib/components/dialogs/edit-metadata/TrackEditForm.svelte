@@ -21,8 +21,8 @@
 	import IconInput from "$lib/components/app-ui/IconInput.svelte";
 
 	// SCRIPTS
-	import { closeEditModal } from "$ts/store/editModal.svelte";
-	import { reloadLibrary } from "$ts/store/library.svelte";
+	import { closeEditModal } from "$ts/ui/editModal.svelte";
+	import { getTrack, reloadLibrary } from "$ts/store/library.svelte";
 	import {
 		syncAlbums,
 		removeTrackFromOldAlbums,
@@ -30,12 +30,13 @@
 		pruneArtists,
 		renameArtistInLibrary,
 		renameAlbumInTracks,
-		warnEmptyFields,
-	} from "$ts/library/dbManager";
+	} from "$ts/library/entitySync";
+	import { warnEmptyFields } from "$ts/ui/dialogManager.svelte";
 	import { enrichTrack, fetchLyrics } from "$ts/library/enrichment";
 	import TagSelector from "$lib/components/app-ui/tags/TagSelector.svelte";
 
 	import type { TrackAlbumEntry } from "$ts/util/types";
+    import { get } from "svelte/store";
 
 	// PROPS
 	let { uid } = $props<{ uid: string }>();
@@ -65,9 +66,8 @@
 	let isFavoritePressed = $derived(tagList.includes("favorite"));
 
 	onMount(async () => {
-		const tracks = await invoke<any[]>("get_tracks");
 		const lyrics = await invoke("get_track_lyrics", { uid });
-		const track = tracks.find((t) => t.uid === uid);
+		const track = getTrack(uid);
 		if (!track) return;
 
 		hasLyrics = lyrics != null;
