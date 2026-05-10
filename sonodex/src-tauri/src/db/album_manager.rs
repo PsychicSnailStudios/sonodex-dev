@@ -1,11 +1,6 @@
 use rusqlite::{params, Connection, Result};
 use serde::{Deserialize, Serialize};
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct Artist {
-    pub name: String,
-    pub uid: String,
-}
+use crate::db::track_manager::{OptJson, ArtistEntry};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Album {
@@ -14,11 +9,11 @@ pub struct Album {
 	pub format: Option<String>,
 	pub title: String,
 	pub rating: Option<f32>,
-	pub artists: Option<Vec<Artist>>,
-	pub album_artist: Option<Artist>,
+	pub artists: Option<Vec<ArtistEntry>>,
+	pub album_artist: Option<ArtistEntry>,
 	pub release_date: Option<String>,
-	pub tags: Option<String>,
-	pub genres: Option<String>,
+	pub tags: Option<Vec<String>>,
+	pub genres: Option<Vec<String>>,
 	pub tracks: Option<String>,
 	pub credits: Option<String>,
 	pub label: Option<String>,
@@ -52,8 +47,8 @@ pub fn create_album(conn: &Connection, album: &Album) -> Result<()> {
 		 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16)",
 		params![
 			album.uid, album.format, album.title, album.rating,
-			album.artists, album.album_artist, album.release_date,
-			album.tags, album.genres, album.tracks,
+			OptJson(album.artists.as_ref()), OptJson(album.album_artist.as_ref()), album.release_date,
+			OptJson(album.tags.as_ref()), OptJson(album.genres.as_ref()), album.tracks,
 			album.credits, album.label,
 			album.artwork_blob, album.artwork_thumb, album.artwork_path,
 			album.emulate_type
@@ -75,11 +70,11 @@ pub fn get_all_albums(conn: &Connection) -> Result<Vec<Album>> {
 				format: row.get(2)?,
 				title: row.get(3)?,
 				rating: row.get(4)?,
-				artists: row.get(5)?,
-				album_artist: row.get(6)?,
+				artists: row.get::<_, OptJson<Vec<ArtistEntry>>>(5)?.0,
+				album_artist: row.get::<_, OptJson<ArtistEntry>>(6)?.0,
 				release_date: row.get(7)?,
-				tags: row.get(8)?,
-				genres: row.get(9)?,
+				tags: row.get::<_, OptJson<Vec<String>>>(8)?.0,
+				genres: row.get::<_, OptJson<Vec<String>>>(9)?.0,
 				tracks: row.get(10)?,
 				credits: row.get(11)?,
 				label: row.get(12)?,
@@ -106,11 +101,11 @@ pub fn get_album_by_id(conn: &Connection, id: i64) -> Result<Option<Album>> {
 			format: row.get(2)?,
 			title: row.get(3)?,
 			rating: row.get(4)?,
-			artists: row.get(5)?,
-			album_artist: row.get(6)?,
+			artists: row.get::<_, OptJson<Vec<ArtistEntry>>>(5)?.0,
+			album_artist: row.get::<_, OptJson<ArtistEntry>>(6)?.0,
 			release_date: row.get(7)?,
-			tags: row.get(8)?,
-			genres: row.get(9)?,
+			tags: row.get::<_, OptJson<Vec<String>>>(8)?.0,
+			genres: row.get::<_, OptJson<Vec<String>>>(9)?.0,
 			tracks: row.get(10)?,
 			credits: row.get(11)?,
 			label: row.get(12)?,
@@ -137,11 +132,11 @@ pub fn get_album_by_uid(conn: &Connection, uid: &str) -> Result<Option<Album>> {
 			format: row.get(2)?,
 			title: row.get(3)?,
 			rating: row.get(4)?,
-			artists: row.get(5)?,
-			album_artist: row.get(6)?,
+			artists: row.get::<_, OptJson<Vec<ArtistEntry>>>(5)?.0,
+			album_artist: row.get::<_, OptJson<ArtistEntry>>(6)?.0,
 			release_date: row.get(7)?,
-			tags: row.get(8)?,
-			genres: row.get(9)?,
+			tags: row.get::<_, OptJson<Vec<String>>>(8)?.0,
+			genres: row.get::<_, OptJson<Vec<String>>>(9)?.0,
 			tracks: row.get(10)?,
 			credits: row.get(11)?,
 			label: row.get(12)?,

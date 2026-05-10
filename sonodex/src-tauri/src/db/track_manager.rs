@@ -1,23 +1,60 @@
+use std::vec;
+
 use rusqlite::{params, Connection, Result};
+use rusqlite::types::{FromSql, FromSqlError, FromSqlResult, ToSql, ToSqlOutput, ValueRef};
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct Artist {
-    pub name: String,
-    pub uid: String,
+use crate::db::Album;
+
+pub struct OptJson<T>(pub Option<T>);
+
+impl<T: serde::de::DeserializeOwned> FromSql for OptJson<T> {
+	fn column_result(value: ValueRef<'_>) -> FromSqlResult<Self> {
+		match value {
+			ValueRef::Null => Ok(OptJson(None)),
+			ValueRef::Text(s) => {
+				let s = std::str::from_utf8(s).map_err(|e| FromSqlError::Other(Box::new(e)))?;
+				serde_json::from_str(s).map(|v| OptJson(Some(v))).map_err(|e| FromSqlError::Other(Box::new(e)))
+			}
+			ValueRef::Blob(b) => {
+				let s = std::str::from_utf8(b).map_err(|e| FromSqlError::Other(Box::new(e)))?;
+				serde_json::from_str(s).map(|v| OptJson(Some(v))).map_err(|e| FromSqlError::Other(Box::new(e)))
+			}
+			_ => Err(FromSqlError::InvalidType),
+		}
+	}
+}
+
+impl<T: Serialize> ToSql for OptJson<T> {
+	fn to_sql(&self) -> rusqlite::Result<ToSqlOutput<'_>> {
+		match &self.0 {
+			None => Ok(ToSqlOutput::Owned(rusqlite::types::Value::Null)),
+			Some(v) => {
+				let s = serde_json::to_string(v)
+					.map_err(|e| rusqlite::Error::ToSqlConversionFailure(Box::new(e)))?;
+				Ok(ToSqlOutput::Owned(rusqlite::types::Value::Text(s)))
+			}
+		}
+	}
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct Album {
-    pub name: String,
-    pub uid: String,
-	 pub track: i32,
-	 pub disc: i32,
+pub struct ArtistEntry {
+	pub name: String,
+	pub uid: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct TrackAlbumEntry {
+	pub name: String,
+	pub uid: String,
+	pub track: i32,
+	pub disc: i32,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct UserOptions {
-   pub shuffle_link: String,
+	pub shuffle_link: String,
 	pub start_trim_ms: Option<i64>,
 	pub end_trim_ms: Option<i64>,
 	pub skip_conditions: Option<String>,
@@ -37,13 +74,13 @@ pub struct Track {
 	pub path: String,
 	pub last_modified: i64,
 	pub title: Option<String>,
-	pub artists: Option<Vec<Artist>>,
-	pub album_artist: Option<Artist>,
-	pub albums: Option<Vec<Album>>,
-	pub genres: Option<String>,
+	pub artists: Option<Vec<ArtistEntry>>,
+	pub album_artist: Option<ArtistEntry>,
+	pub albums: Option<Vec<TrackAlbumEntry>>,
+	pub genres: Option<Vec<String>>,
 	pub year: Option<String>,
 	pub rating: Option<f32>,
-	pub tags: Option<String>,
+	pub tags: Option<Vec<String>>,
 	pub duration_ms: Option<i64>,
 	pub bpm: Option<f32>,
 	pub key: Option<String>,
@@ -52,7 +89,7 @@ pub struct Track {
 	pub artwork_blob: Option<Vec<u8>>,
 	pub artwork_thumb: Option<String>,
 	pub artwork_path: Option<String>,
-	pub user_options: Option<String>,
+	pub user_options: Option<UserOptions>,
 	pub format: Option<String>,
 	pub bitrate: Option<i64>,
 	pub remote_path: Option<String>,
@@ -68,9 +105,9 @@ pub struct DuplicateGroup {
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct MetadataUpdate {
 	pub title: Option<String>,
-	pub artists: Option<String>,
-	pub album_artist: Option<String>,
-	pub albums: Option<String>,
+	pub artists: Option<ArtistEntry>,
+	pub album_artist: Option<Vec<ArtistEntry>>,
+	pub albums: Option<Vec<TrackAlbumEntry>>,
 	pub year: Option<String>,
 	pub genres: Option<String>,
 	pub bpm: Option<f32>,
@@ -82,12 +119,12 @@ pub struct MetadataUpdate {
 	#[serde(skip)]
 	pub artwork_blob: Option<Vec<u8>>,
 	pub artwork_path: Option<String>,
-	pub user_options: Option<String>,
+	pub user_options: Option<UserOptions>,
 	pub format: Option<String>,
 	pub bitrate: Option<i64>,
 	pub remote_path: Option<String>,
-	pub remote_data: Option<String>,
-	pub track_data: Option<String>,
+	pub remote_data: Option<TrackData>,
+	pub track_data: Option<TrackData>,
 }
 
 pub fn upsert_track(conn: &Connection, track: &Track) -> Result<()> {
@@ -162,10 +199,10 @@ pub fn upsert_track(conn: &Connection, track: &Track) -> Result<()> {
 				track.path,
 				track.last_modified,
 				track.title,
-				track.artists,
-				track.album_artist,
-				track.albums,
-				track.genres,
+				OptJson(track.artists.as_ref()),
+				OptJson(track.album_artist.as_ref()),
+				OptJson(track.albums.as_ref()),
+				OptJson(track.genres.as_ref()),
 				track.year,
 				track.rating,
 				track.duration_ms,
@@ -176,12 +213,12 @@ pub fn upsert_track(conn: &Connection, track: &Track) -> Result<()> {
 				track.artwork_blob,
 				track.artwork_thumb,
 				track.artwork_path,
-				track.user_options,
+				OptJson(track.user_options.as_ref()),
 				track.format,
 				track.bitrate,
 				track.remote_path,
-				track.remote_data,
-				track.track_data,
+				OptJson(track.remote_data.as_ref()),
+				OptJson(track.track_data.as_ref()),
 			],
 		)?;
 	} else {
@@ -215,10 +252,10 @@ pub fn upsert_track(conn: &Connection, track: &Track) -> Result<()> {
 				track.path,
 				track.last_modified,
 				track.title,
-				track.artists,
-				track.album_artist,
-				track.albums,
-				track.genres,
+				OptJson(track.artists.as_ref()),
+				OptJson(track.album_artist.as_ref()),
+				OptJson(track.albums.as_ref()),
+				OptJson(track.genres.as_ref()),
 				track.year,
 				track.rating,
 				track.duration_ms,
@@ -229,12 +266,12 @@ pub fn upsert_track(conn: &Connection, track: &Track) -> Result<()> {
 				track.artwork_blob,
 				track.artwork_thumb,
 				track.artwork_path,
-				track.user_options,
+				OptJson(track.user_options.as_ref()),
 				track.format,
 				track.bitrate,
 				track.remote_path,
-				track.remote_data,
-				track.track_data,
+				OptJson(track.remote_data.as_ref()),
+				OptJson(track.track_data.as_ref()),
 			],
 		)?;
 	}
@@ -270,13 +307,13 @@ pub fn get_all_tracks(conn: &Connection) -> Result<Vec<Track>> {
 				path: row.get(2)?,
 				last_modified: row.get(3)?,
 				title: row.get(4)?,
-				artists: row.get(5)?,
-				album_artist: row.get(6)?,
-				albums: row.get(7)?,
-				genres: row.get(8)?,
+				artists: row.get::<_, OptJson<Vec<ArtistEntry>>>(5)?.0,
+				album_artist: row.get::<_, OptJson<ArtistEntry>>(6)?.0,
+				albums: row.get::<_, OptJson<Vec<TrackAlbumEntry>>>(7)?.0,
+				genres: row.get::<_, OptJson<Vec<String>>>(8)?.0,
 				year: row.get(9)?,
 				rating: row.get(10)?,
-				tags: row.get(11)?,
+				tags: row.get::<_, OptJson<Vec<String>>>(11)?.0,
 				duration_ms: row.get(12)?,
 				bpm: row.get(13)?,
 				key: row.get(14)?,
@@ -287,10 +324,10 @@ pub fn get_all_tracks(conn: &Connection) -> Result<Vec<Track>> {
 				artwork_blob: None,
 				artwork_path: row.get(19)?,
 				artwork_thumb: row.get(20)?,
-				user_options: row.get(21)?,
+				user_options: row.get::<_, OptJson<UserOptions>>(21)?.0,
 				remote_path: row.get(22)?,
-				remote_data: row.get(23)?,
-				track_data: row.get(24)?,
+				remote_data: row.get::<_, OptJson<TrackData>>(23)?.0,
+				track_data: row.get::<_, OptJson<TrackData>>(24)?.0,
 			})
 		})?
 		.collect::<Result<Vec<_>>>()?;
@@ -310,13 +347,13 @@ pub fn get_track_by_uid(conn: &Connection, uid: &str) -> Result<Option<Track>> {
 			path: row.get(2)?,
 			last_modified: row.get(3)?,
 			title: row.get(4)?,
-			artists: row.get(5)?,
-			album_artist: row.get(6)?,
-			albums: row.get(7)?,
-			genres: row.get(8)?,
+			artists: row.get::<_, OptJson<Vec<ArtistEntry>>>(5)?.0,
+			album_artist: row.get::<_, OptJson<ArtistEntry>>(6)?.0,
+			albums: row.get::<_, OptJson<Vec<TrackAlbumEntry>>>(7)?.0,
+			genres: row.get::<_, OptJson<Vec<String>>>(8)?.0,
 			year: row.get(9)?,
 			rating: row.get(10)?,
-			tags: row.get(11)?,
+			tags: row.get::<_, OptJson<Vec<String>>>(11)?.0,
 			duration_ms: row.get(12)?,
 			bpm: row.get(13)?,
 			key: row.get(14)?,
@@ -327,10 +364,10 @@ pub fn get_track_by_uid(conn: &Connection, uid: &str) -> Result<Option<Track>> {
 			artwork_blob: None,
 			artwork_path: row.get(19)?,
 			artwork_thumb: row.get(20)?,
-			user_options: row.get(21)?,
+			user_options: row.get::<_, OptJson<UserOptions>>(21)?.0,
 			remote_path: row.get(22)?,
-			remote_data: row.get(23)?,
-			track_data: row.get(24)?,
+			remote_data: row.get::<_, OptJson<TrackData>>(23)?.0,
+			track_data: row.get::<_, OptJson<TrackData>>(24)?.0,
 		}))
 	} else {
 		Ok(None)
@@ -390,13 +427,13 @@ pub fn find_duplicates(conn: &Connection) -> Result<Vec<DuplicateGroup>> {
 				path: row.get(2)?,
 				last_modified: row.get(3)?,
 				title: row.get(4)?,
-				artists: row.get(5)?,
-				album_artist: row.get(6)?,
-				albums: row.get(7)?,
-				genres: row.get(8)?,
+				artists: row.get::<_, OptJson<Vec<ArtistEntry>>>(5)?.0,
+				album_artist: row.get::<_, OptJson<ArtistEntry>>(6)?.0,
+				albums: row.get::<_, OptJson<Vec<TrackAlbumEntry>>>(7)?.0,
+				genres: row.get::<_, OptJson<Vec<String>>>(8)?.0,
 				year: row.get(9)?,
 				rating: row.get(10)?,
-				tags: row.get(11)?,
+				tags: row.get::<_, OptJson<Vec<String>>>(11)?.0,
 				duration_ms: row.get(12)?,
 				bpm: row.get(13)?,
 				key: row.get(14)?,
@@ -407,10 +444,10 @@ pub fn find_duplicates(conn: &Connection) -> Result<Vec<DuplicateGroup>> {
 				artwork_blob: None,
 				artwork_path: row.get(19)?,
 				artwork_thumb: row.get(20)?,
-				user_options: row.get(21)?,
+				user_options: row.get::<_, OptJson<UserOptions>>(21)?.0,
 				remote_path: row.get(22)?,
-				remote_data: row.get(23)?,
-				track_data: row.get(24)?,
+				remote_data: row.get::<_, OptJson<TrackData>>(23)?.0,
+				track_data: row.get::<_, OptJson<TrackData>>(24)?.0,
 			})
 		})?
 		.collect::<Result<Vec<_>>>()?;
@@ -425,8 +462,8 @@ pub fn find_duplicates(conn: &Connection) -> Result<Vec<DuplicateGroup>> {
 			let b = &all_tracks[j];
 			let same_title = a.title.as_deref().map(|s| s.to_lowercase())
 				== b.title.as_deref().map(|s| s.to_lowercase());
-			let same_artist = a.album_artist.as_deref().map(|s| s.to_lowercase())
-				== b.album_artist.as_deref().map(|s| s.to_lowercase());
+			let same_artist = a.album_artist.as_ref().map(|ar| ar.name.to_lowercase())
+				== b.album_artist.as_ref().map(|ar| ar.name.to_lowercase());
 			let duration_close = match (a.duration_ms, b.duration_ms) {
 				(Some(da), Some(db)) => (da - db).abs() <= 1000,
 				_ => false,
