@@ -5,6 +5,13 @@ use crate::{open_lib_conn, open_merged_conn};
 use tauri::{AppHandle, Emitter, State};
 
 #[tauri::command]
+pub fn get_all_lyrics(state: State<AppState>) -> Result<Vec<Lyrics>, String> {
+	let profile_uid = state.get_uid();
+	let conn = open_merged_conn(&profile_uid);
+	db::lyrics_manager::get_all_lyrics(&conn).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 pub fn get_track_lyrics(state: State<AppState>, uid: String) -> Result<Option<Lyrics>, String> {
 	let profile_uid = state.get_uid();
 	let conn = open_merged_conn(&profile_uid);
@@ -62,6 +69,7 @@ pub async fn fetch_track_lyrics(
 					&source_conn,
 					&Lyrics {
 						id: None,
+						track_uid: String::new(),
 						track_id,
 						source: lyrics.source,
 						plain: lyrics.plain,
@@ -83,6 +91,7 @@ pub async fn fetch_track_lyrics(
 					&conn,
 					&Lyrics {
 						id: None,
+						track_uid: String::new(),
 						track_id,
 						source: lyrics.source,
 						plain: lyrics.plain,

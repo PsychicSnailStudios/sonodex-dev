@@ -8,6 +8,7 @@ pub struct Scrobble {
 	pub timestamp: i64,
 	pub track_uid: String,
 	pub artist_uid: String,
+	pub album_uid: Option<String>,
 	pub duration_played: i64,
 	pub did_seek: bool,
 	pub did_pause: bool,
@@ -51,7 +52,8 @@ pub fn init_analytics_db(conn: &Connection) -> Result<()> {
 			playing_local INTEGER,
 			track_name TEXT,
 			track_artist TEXT,
-			track_album TEXT
+			track_album TEXT,
+			album_uid TEXT
 		);
 		CREATE INDEX IF NOT EXISTS idx_scrobbles_uid ON scrobbles (uid);
 		CREATE INDEX IF NOT EXISTS idx_scrobbles_track_uid ON scrobbles (track_uid);
@@ -70,6 +72,7 @@ pub fn init_analytics_db(conn: &Connection) -> Result<()> {
 		("track_name", "TEXT"),
 		("track_artist", "TEXT"),
 		("track_album", "TEXT"),
+		("album_uid", "TEXT"),
 	];
 	for (col, ty) in &columns {
 		let _ = conn.execute(
@@ -86,8 +89,8 @@ pub fn log_scrobble(conn: &Connection, scrobble: &Scrobble) -> Result<()> {
 		"INSERT INTO scrobbles (
 			uid, timestamp, track_uid, artist_uid, duration_played, did_seek, did_pause,
 			reason_start, reason_end, shuffle, skipped, offline, playing_local,
-			track_name, track_artist, track_album
-		) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16)
+			track_name, track_artist, track_album, album_uid
+		) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17)
 		ON CONFLICT(uid) DO NOTHING",
 		params![
 			scrobble.uid,
@@ -106,6 +109,7 @@ pub fn log_scrobble(conn: &Connection, scrobble: &Scrobble) -> Result<()> {
 			scrobble.track_name,
 			scrobble.track_artist,
 			scrobble.track_album,
+			scrobble.album_uid,
 		],
 	)?;
 	Ok(())
@@ -129,13 +133,14 @@ fn row_to_scrobble(row: &rusqlite::Row) -> rusqlite::Result<Scrobble> {
 		track_name: row.get(13)?,
 		track_artist: row.get(14)?,
 		track_album: row.get(15)?,
+		album_uid: row.get(16)?,
 	})
 }
 
 const SELECT_COLS: &str =
 	"uid, timestamp, track_uid, artist_uid, duration_played, did_seek, did_pause,
 	reason_start, reason_end, shuffle, skipped, offline, playing_local,
-	track_name, track_artist, track_album";
+	track_name, track_artist, track_album, album_uid";
 
 pub fn get_all_scrobbles(conn: &Connection) -> Result<Vec<Scrobble>> {
 	let mut stmt = conn.prepare(&format!(

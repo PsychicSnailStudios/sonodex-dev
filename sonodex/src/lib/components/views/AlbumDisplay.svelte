@@ -1,161 +1,147 @@
 <script lang="ts">
-	import { untrack } from "svelte";
-	import { invoke } from "@tauri-apps/api/core";
-
 	import { Pencil } from "lucide-svelte";
 
-	import * as Tabs from "$shadcn/tabs/index.js";
-	import { Button } from "$shadcn/button/index.js";
-	import ScrollArea from "$shadcn/scroll-area/scroll-area.svelte";
+	import { ScrollArea } from "$shadcn/scroll-area/index.js";
+	import Button from "$shadcn/button/button.svelte";
 
+	import TrackTableSettings from "$lib/components/custom/track-table/TrackTableSettings.svelte";
 	import ArtworkDisplay from "$lib/components/custom/ArtworkDisplay.svelte";
+	import TrackTable from "$lib/components/custom/track-table/TrackTable.svelte";
 	import AudioCard from "$lib/components/custom/cards/AudioCard.svelte";
 	import NavButtons from "$lib/components/custom/NavButtons.svelte";
-	import ArtistTopTracks from "$lib/components/pages/profile/ArtistTopTracks.svelte";
 	import TagList from "$lib/components/custom/tags/TagList.svelte";
+	import DownloadButton from "$lib/components/custom/DownloadButton.svelte";
 
-	import { selection } from "$ts/store/session.svelte";
-	import { getAlbum, getArtist, getPlaylist, getTrack, library } from "$ts/store/library.svelte";
+	import { selection, setSelection } from "$ts/store/session.svelte";
+	import { getAlbum, getTrackArrayFromUID, library } from "$ts/store/library.svelte";
+	import { queueTracksByObject } from "$ts/audio/audioManager.svelte";
 	import { openEditModal } from "$ts/ui/editModal.svelte";
-	import { currentArtistTab } from "$ts/store/session.svelte";
-	import type { Artist, Album } from "$ts/util/types";
+	import { getArtworkColor, totalDuration } from "$ts/util/helpers";
+	import { createPersistedViewState } from "$ts/store/session.svelte";
+	import { artworkCache } from "$ts/library/artworkLoader";
+
+	import type { Album, Track } from "$ts/util/types";
     import { parseTags } from "$ts/util/parsers";
 
-	let bannerUrl = $state<string | null>(null);
-
-	let artist = $derived.by(() => {
-		const uid = selection.uid;
-		if (!uid) return null;
-		return getArtist(uid) ?? null;
+	const view = createPersistedViewState("album", {
+		sortField: "number",
+		sortDir: "asc",
+		colPreset: "album",
 	});
 
-	let genres = $derived(artist?.genres ? parseTags(artist.genres) : null);
-	let tags = $derived(artist?.tags ? parseTags(artist.tags) : null);
+	let album = $derived(getAlbum(selection.uid) ?? null);
+	let genres = $derived(album?.genres ? parseTags(album.genres) : null);
+	let tags = $derived(album?.tags ? parseTags(album.tags) : null);
+
+	let color = $state("rgb(30, 30, 30)");
+
+	let tracks: Track[] = $derived.by(() => {
+		if (!album) return [];
+		return getTrackArrayFromUID(album.uid, view.sort);
+	});
 
 	let artistAlbums: Album[] = $derived.by(() => {
-		if (!artist) return [];
-
-		const akaNames: string[] = artist.aka ? (JSON.parse(artist.aka) as string[]).map(n => n.toLowerCase()) : [];
-		const allNames = new Set([artist.name.toLowerCase(), ...akaNames]);
-
-		const albumUidsWithArtist = new Set<string>();
-		for (const t of library.tracks) {
-			if (!t.artists) continue;
-			if (!t.artists.some(a => allNames.has(a.name.toLowerCase()))) continue;
-			if (!t.albums) continue;
-			for (const a of t.albums) albumUidsWithArtist.add(a.uid);
-		}
-
-		return library.albums.filter(album => {
-			if (album.album_artist && allNames.has(album.album_artist.name.toLowerCase())) return true;
-			return albumUidsWithArtist.has(album.uid);
-		});
+		if (!album?.album_artist) return [];
+		return library.albums.filter(a =>
+			a.album_artist?.name.toLowerCase() === album?.album_artist?.name.toLowerCase()
+		);
 	});
 
 	$effect(() => {
 		const uid = selection.uid;
 		if (!uid) return;
-
-		untrack(() => {
-			if (bannerUrl) {
-				URL.revokeObjectURL(bannerUrl);
-				bannerUrl = null;
-			}
-		});
-
-		if (!artist) return;
-		if (artist.banner_art_path) return;
-
-		invoke<number[] | null>("get_artist_banner_art", { uid }).then((bytes) => {
-			if (bytes && bytes.length > 0) {
-				untrack(() => {
-					if (bannerUrl) URL.revokeObjectURL(bannerUrl);
-				});
-				const blob = new Blob([new Uint8Array(bytes)], { type: "image/jpeg" });
-				bannerUrl = URL.createObjectURL(blob);
-			}
-		});
+		color = "var(--muted)";
+		const cached = artworkCache.get(`album:${uid}`);
+		if (cached) {
+			fetch(cached).then(r => r.arrayBuffer()).then(buf => {
+				getArtworkColor(Array.from(new Uint8Array(buf)), 0.3).then(c => color = c);
+			}).catch(() => {});
+		}
 	});
+
+	function trackIsGhost(t: Track): boolean {
+		const hasLocal = t.path && t.path !== "" && t.path !== t.uid;
+		const hasRemote = (t as any).remote_path && (t as any).remote_path.length > 0;
+		return !hasLocal && !hasRemote;
+	}
+
+	let allGhosts = $derived(
+		tracks.length > 0 && tracks.every(t => trackIsGhost(t))
+	);
 </script>
 
-<div class="flex flex-col gap-4 border-2 h-full w-full overflow-hidden rounded-md">
+<div class="flex flex-col gap-4 p-4 border-2 h-full w-full overflow-hidden rounded-md" style="background: linear-gradient(180deg, {color} 0%, transparent 80%)">
 
-	{#if artist}
-		<div class="relative">
-			<NavButtons class="absolute top-4 left-4"/>
-
-			{#if artist.banner_art_path || bannerUrl}
-				<img src={artist.banner_art_path ?? bannerUrl} alt="" class="w-full h-32 object-cover rounded-t-md" />
-			{:else}
-				<div class="w-full h-32 bg-muted rounded-t-md"></div>
-			{/if}
-
-			<div class="absolute bottom-0 translate-y-1/2 left-4">
-				<ArtworkDisplay uid={artist.uid} size={80} type="artist" />
-			</div>
-		</div>
-
-		<div class="flex flex-col gap-2 px-4 pt-10">
-			<div class="flex items-center gap-3">
-				<h2 class="text-2xl font-bold">{artist.name}</h2>
-				<div class="flex gap-2">
-					<Button variant="default">Play All</Button>
-					<Button variant="outline">Shuffle</Button>
-					<Button variant="ghost" onclick={() => openEditModal({ type: "artist", uid: artist!.uid })}><Pencil/></Button>
-				</div>
-			</div>
-		</div>
-
-		<Tabs.Root bind:value={currentArtistTab.id} class="flex flex-col min-h-0 flex-1 px-4">
-			<Tabs.List>
-				<Tabs.Trigger value="home">Home</Tabs.Trigger>
-				<Tabs.Trigger value="discography">Discography</Tabs.Trigger>
-				<Tabs.Trigger value="about">About</Tabs.Trigger>
-			</Tabs.List>
-
-			<Tabs.Content value="home" class="flex-1 overflow-y-auto">
-				<h3 class="text-sm font-semibold mb-2 mt-2">TAGS & GENRES</h3>
-				<TagList uid={artist.uid} tags={genres!} canEdit={false} />
-				<TagList uid={artist.uid} tags={tags!} canEdit={false} />
-
-				<h3 class="text-sm font-semibold mb-2 mt-2 pt-4">TOP SONGS</h3>
-				<ArtistTopTracks artistUid={artist.uid} artistName={artist.name} />
-			</Tabs.Content>
-
-			<Tabs.Content value="discography" class="flex-1 overflow-y-auto">
-				<div class="flex flex-col gap-2 h-full w-full">
-					<ScrollArea class="min-h-0 min-w-0">
-						<div class="grid gap-2 mt-2 pr-4" style="grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));">
-							{#each artistAlbums as album}
-								<AudioCard title={album.title} subTitle={album.album_artist?.name.toString() ?? "Unknown Artist"} artworkUid={album.uid} type="album" />
-							{/each}
-						</div>
-					</ScrollArea>
-				</div>
-			</Tabs.Content>
-
-			<Tabs.Content value="about" class="flex-1 overflow-y-auto">
-				{#if artist.aka}
-				<h3 class="text-sm font-semibold mb-2 mt-2">AKA</h3>
-					{@const akaList = JSON.parse(artist.aka) as string[]}
-					<div class="flex flex-row gap-1 flex-wrap">
-						{#each akaList as aka, i}
-							<p class="text-sm leading-relaxed">{aka}{i < akaList.length - 1 ? "," : ""}</p>
-						{/each}
-					</div>
-				{/if}
-				
-				<h3 class="text-sm font-semibold mb-2 mt-2 pt-4">BIO</h3>
-				{#if artist.about}
-					<p class="text-sm leading-relaxed mt-2">{artist.about}</p>
-				{:else}
-					<p class="text-muted-foreground text-sm mt-2">No biography available.</p>
-				{/if}
-			</Tabs.Content>
-		</Tabs.Root>
-	{:else}
+	<ScrollArea class="min-h-0 min-w-0 h-full">
+	<div class="flex flex-col gap-4 pb-4 pr-4">
 		<NavButtons />
-		<span class="text-muted-foreground text-sm p-4">Loading...</span>
-	{/if}
+			
+		{#if album}
+		<div class="flex gap-4 items-end">
+			<ArtworkDisplay uid={album.uid} size={160} type="album" />
+
+			<div class="flex flex-col gap-1">
+				<span class="text-xs text-muted-foreground">{album.format ? album.format : "Album"}</span>
+				<h2 class="text-2xl font-bold">{album.title}</h2>
+				<div class="flex gap-3 text-sm text-muted-foreground flex-wrap">
+					{#if album.album_artist}
+						<span role="button" tabindex="0" onclick={() => setSelection(album.album_artist!.uid.toString())} onkeydown={(e) => { if (e.key === 'Enter') setSelection(album.album_artist!.uid.toString()); }} class="text-sm truncate cursor-pointer hover:underline">
+							{album.album_artist.name}
+						</span>
+					{/if}
+					{#if album.release_date}
+						<span>|</span>
+						<span>{album.release_date}</span>
+					{/if}
+					<span>|</span>
+					<span>{tracks.length} {tracks.length === 1 ? "song" : "songs"}</span>
+					{#if tracks.length > 0}
+						<span>|</span>
+						<span>{totalDuration(tracks)}</span>
+					{/if}
+				</div>
+
+				<TagList uid={album.uid} tags={genres!} canEdit={false} />
+				<TagList uid={album.uid} tags={tags!} canEdit={true} />
+			</div>
+		</div>
+
+		<div class="flex gap-2 justify-between items-center flex-wrap p-2 rounded-md"
+			  style="background: {color};">
+			<div>
+				<Button variant="default" disabled={allGhosts} onclick={() => queueTracksByObject(tracks, true)}>{ tracks.length === 1 ? "Play" : "Play All"}</Button>
+				{#if tracks.length > 1}
+					<Button variant="outline" disabled={allGhosts} onclick={() => queueTracksByObject(tracks, true, true)}>Shuffle</Button>
+				{/if}
+			</div>
+			<div class="flex gap-1 items-center">
+				<DownloadButton uid={album.uid} variant="ghost" />
+				<Button variant="ghost" onclick={() => openEditModal({ type: "album", uid: album!.uid })}><Pencil /></Button>
+				<TrackTableSettings cols={view.cols} sort={view.sort} compact={view.compact} onCompactChange={(v) => view.compact = v} />
+			</div>
+		</div>
+
+		<TrackTable tracks={tracks} columns={view.cols} sort={view.sort} compact={view.compact} albumUid={album.uid} emulateType={album.emulate_type} />
+
+		{#if album.label}
+			<span class="text-muted-foreground text-sm">{album.label}</span>
+		{/if}
+
+		<div class="flex flex-col gap-2 w-full pt-4">
+			<h4>More by {album.album_artist?.name}</h4>
+			<ScrollArea orientation="horizontal" class="min-h-0 min-w-0">
+				<div class="grid gap-2 pb-4" style="grid-auto-columns: 150px; grid-auto-flow: column;">
+					{#each artistAlbums as album}
+						<AudioCard title={album.title} subTitle={album.album_artist?.name.toString() ?? ""} artworkUid={album.uid} type="album" />
+					{/each}
+				</div>
+			</ScrollArea>
+		</div>
+		{:else}
+			<span class="text-muted-foreground text-sm">Loading...</span>
+		{/if}
+
+	</div>
+	</ScrollArea>
 
 </div>

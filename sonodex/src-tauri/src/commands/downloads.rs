@@ -151,6 +151,7 @@ pub async fn download_track_cmd(
 	let track_data_json = serde_json::to_string(&crate::db::TrackData {
 		format: Some(format.clone()),
 		bitrate,
+		is_ghost: Some(false),
 	})
 	.ok();
 

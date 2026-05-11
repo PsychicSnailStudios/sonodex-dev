@@ -77,6 +77,7 @@ export async function loadLibrary() {
 	library.albums = await invoke("get_albums");
 	library.artists = await invoke("get_artists");
 	library.playlists = await invoke("get_playlists");
+	library.lyrics = await invoke("get_all_lyrics");
 	await loadTags();
 
 	buildAllMaps();
@@ -114,10 +115,7 @@ export async function reloadLibrary(type: "tracks" | "all" | "tags" | "albums" |
 			prefetchArtwork(library.playlists.map(p => p.uid), "playlist");
 			break;
 		case "lyrics":
-			const allLyrics = await Promise.all(
-				library.tracks.map(t => invoke<Lyrics | null>("get_track_lyrics", { uid: t.uid }))
-			);
-			library.lyrics = allLyrics.filter((l): l is Lyrics => l !== null);
+			library.lyrics = await invoke("get_all_lyrics");
 			buildLyricsMap();
 			break;
 		case "tags":

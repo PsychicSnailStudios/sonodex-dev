@@ -303,6 +303,7 @@ pub fn run() {
 			commands::lyrics::get_track_lyrics,
 			commands::lyrics::fetch_track_lyrics,
 			commands::lyrics::delete_track_lyrics,
+			commands::lyrics::get_all_lyrics,
 			// Scrobbles
 			commands::scrobbles::get_scrobbles,
 			commands::scrobbles::get_scrobbles_for_track,

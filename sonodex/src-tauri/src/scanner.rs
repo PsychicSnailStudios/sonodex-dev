@@ -15,7 +15,7 @@ use walkdir::WalkDir;
 
 const SUPPORTED_EXTENSIONS: &[&str] = &["mp3", "flac", "m4a", "aac", "wav", "aiff", "ogg"];
 
-const ARTIST_TAG_DELIMITERS: &[&str] = &[" / ", "; ", ", ", ","];
+const ARTIST_TAG_DELIMITERS: &[&str] = &[" / ", "; ", ", ", ",", " feat. ", " ft. ", " featuring "];
 const ARTIST_FILENAME_DELIMITERS: &[&str] = &[" / ", "; ", " feat. ", " ft. ", " featuring "];
 const GENRE_DELIMITERS: &[&str] = &[" / ", "; ", ", "];
 
@@ -943,6 +943,7 @@ pub fn read_track_with_settings(
 		track_data: Some(crate::db::TrackData {
 			format: format.clone(),
 			bitrate,
+			is_ghost: None,
 		}),
 	})
 }
@@ -1612,6 +1613,7 @@ pub fn scan_directory_with_progress(conn: &Connection, dir: &str, app: &AppHandl
 										conn,
 										&crate::db::Lyrics {
 											id: None,
+											track_uid: String::new(),
 											track_id: id,
 											source: lyrics.source,
 											plain: lyrics.plain,

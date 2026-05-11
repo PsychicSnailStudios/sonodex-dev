@@ -1,5 +1,4 @@
 import { invoke } from "@tauri-apps/api/core";
-import { getTracksFirstAlbumName } from "$ts/util/albumHelpers";
 import { player } from "$ts/audio/audioPlayer.svelte";
 import { offlineMode } from "$ts/store/session.svelte";
 import type { Track } from "$ts/util/types";
@@ -26,8 +25,9 @@ export async function scrobbleStart(
 	activeTrackStartTime = Math.floor(Date.now() / 1000);
 
 	try {
-		const artistUid = track.album_artist!.uid ?? "";
-		
+		const artistUid = track.album_artist?.uid ?? "";
+		const artistName = track.album_artist?.name ?? track.artists?.[0]?.name ?? null;
+
 		activeScrobbleUid = await invoke<string>("log_scrobble", {
 			trackUid: track.uid,
 			artistUid,
@@ -36,8 +36,9 @@ export async function scrobbleStart(
 			offline: offlineMode.offline,
 			playingLocal,
 			trackName: track.title ?? null,
-			trackArtist: track.album_artist || null,
-			trackAlbum: getTracksFirstAlbumName(track) || null,
+			trackArtist: artistName,
+			trackAlbum: track.albums?.[0]?.name || null,
+			albumUid: track.albums?.[0]?.uid || null,
 		});
 	} catch (e) {
 		console.error("scrobbleStart failed", e);

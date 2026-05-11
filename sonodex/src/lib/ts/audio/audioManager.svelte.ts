@@ -136,8 +136,8 @@ async function playTrack(track: Track) {
 	const hasLocal = isLocalPath(track.path);
 	const hasRemote = !!(track.remote_path && track.remote_path.length > 0);
 
-	const localBr = track.track_data!.bitrate ?? track.bitrate ?? 0;
-	const remoteBr = track.remote_data!.bitrate ?? 0;
+	const localBr = (track.track_data ? track.track_data.bitrate : null) ?? track.bitrate ?? 0;
+	const remoteBr = (track.remote_data ? track.remote_data.bitrate : null) ?? 0;
 
 	const preferLocal = hasLocal && (!hasRemote || localBr >= remoteBr);
 

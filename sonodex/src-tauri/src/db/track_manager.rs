@@ -61,6 +61,7 @@ pub struct UserOptions {
 pub struct TrackData {
 	pub format: Option<String>,
 	pub bitrate: Option<i64>,
+	pub is_ghost: Option<bool>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

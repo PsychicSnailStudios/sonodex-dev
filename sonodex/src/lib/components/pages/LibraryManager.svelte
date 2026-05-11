@@ -1,8 +1,5 @@
 <script lang="ts">
 	import { Trash, CloudDownload, FolderInput, Loader2 } from "lucide-svelte";
-	import { invoke } from "@tauri-apps/api/core";
-	import { listen } from "@tauri-apps/api/event";
-	import { onMount } from "svelte";
 
 	import * as Tabs from "$shadcn/tabs/index.js";
 	import * as Tooltip from "$shadcn/tooltip/index.js";
@@ -20,7 +17,6 @@
 	import LibraryDatabaseManager from "$lib/components/pages/library-manager/LibraryDatabaseManager.svelte";
 	import BlocklistDialog from "$lib/components/dialogs/BlocklistDialog.svelte";
 
-	import Fuse from "fuse.js";
 	import {
 		removeTracksFromLibrary,
 		removeAlbums,
@@ -28,11 +24,10 @@
 		getDuplicates,
 	} from "$ts/library/libraryManager";
 	import { enrichAlbums, enrichArtists, enrichTracks } from "$ts/library/enrichment";
-	import { library, loadLibrary } from "$ts/store/library.svelte";
+	import { searchTracks, searchAlbums, searchArtists } from "$ts/store/fuseStore.svelte";
 	import type { DuplicateGroup } from "$ts/util/types";
 	import { scanState } from "$ts/store/session.svelte";
 	import { enrichAllAlbums, enrichAllArtists, enrichAllTracks } from "$ts/library/enrichment";
-    import { parseArtistsToString } from "$ts/util/parsers";
 
 	// ─── Search ───────────────────────────────────────────────────────────────────
 	let trackSearch = $state("");
@@ -59,102 +54,20 @@
 	let lastAlbumIndex = $state<number | null>(null);
 	let lastArtistIndex = $state<number | null>(null);
 
-	// ─── Fuse instances ───────────────────────────────────────────────────────────
-	let tracksFuseInstance: Fuse<(typeof library.tracks)[0]> | null = $state(null);
-	let lastTracksRef: typeof library.tracks | null = null;
-
-	function getTracksFuse() {
-		if (tracksFuseInstance && lastTracksRef === library.tracks) return tracksFuseInstance;
-		lastTracksRef = library.tracks;
-		tracksFuseInstance = new Fuse(library.tracks, {
-			keys: [
-				{ name: "title",        weight: 0.5,  getFn: (t) => t.title ?? ""                   },
-				{ name: "artists",      weight: 0.25, getFn: (t) => parseArtistsToString(t.artists) },
-				{ name: "album_artist", weight: 0.15, getFn: (t) => t.album_artist.name ?? ""            },
-				{ name: "albums",       weight: 0.1,  getFn: (t) => t.albums?.toString() ?? ""            },
-				{ name: "tags",         weight: 0.05, getFn: (t) => t.tags ?? ""                    },
-				{ name: "genres",       weight: 0.05, getFn: (t) => t.genres ?? ""                  },
-			],
-			threshold: 0.35,
-			ignoreLocation: true,
-			includeScore: false,
-			useExtendedSearch: false,
-			minMatchCharLength: 2,
-		});
-		return tracksFuseInstance;
-	}
-
+	// ─── Filtered lists ───────────────────────────────────────────────────────────
 	const filteredTracks = $derived(
 		(() => {
-			let pool = library.tracks;
+			let pool = searchTracks(trackSearch);
 			if (trackFilterMode === "ghosts") pool = pool.filter((t) => !t.path && !t.remote_path);
 			else if (trackFilterMode === "remote") pool = pool.filter((t) => !!t.remote_path);
 			else if (trackFilterMode === "local") pool = pool.filter((t) => !!t.path);
-
-			if (trackSearch.trim().length < 2) return pool;
-			const results = getTracksFuse().search(trackSearch).map((r) => r.item);
-			const poolUids = new Set(pool.map((t) => t.uid));
-			return results.filter((t) => poolUids.has(t.uid));
+			return pool;
 		})()
 	);
 
-	let albumFuseInstance: Fuse<(typeof library.albums)[0]> | null = $state(null);
-	let lastAlbumsRef: typeof library.albums | null = null;
+	const filteredAlbums = $derived(searchAlbums(albumSearch));
 
-	function getAlbumFuse() {
-		if (albumFuseInstance && lastAlbumsRef === library.albums) return albumFuseInstance;
-		lastAlbumsRef = library.albums;
-		albumFuseInstance = new Fuse(library.albums, {
-			keys: [
-				{ name: "title",        weight: 0.5,  getFn: (t) => t.title ?? ""                   },
-				{ name: "artists",      weight: 0.25, getFn: (t) => parseArtistsToString(t.artists) },
-				{ name: "album_artist", weight: 0.15, getFn: (t) => t.album_artist!.name.toString() ?? ""            },
-				{ name: "year",         weight: 0.1,  getFn: (t) => t.release_date ?? ""            },
-				{ name: "tags",         weight: 0.05, getFn: (t) => t.tags ?? ""                    },
-				{ name: "genres",       weight: 0.05, getFn: (t) => t.genres ?? ""                  },
-			],
-			threshold: 0.35,
-			ignoreLocation: true,
-			includeScore: false,
-			useExtendedSearch: false,
-			minMatchCharLength: 2,
-		});
-		return albumFuseInstance;
-	}
-
-	const filteredAlbums = $derived(
-		albumSearch.trim().length < 2
-			? library.albums
-			: getAlbumFuse().search(albumSearch).map((r) => r.item)
-	);
-
-	let artistFuseInstance: Fuse<(typeof library.artists)[0]> | null = $state(null);
-	let lastArtistsRef: typeof library.artists | null = null;
-
-	function getArtistFuse() {
-		if (artistFuseInstance && lastArtistsRef === library.artists) return artistFuseInstance;
-		lastArtistsRef = library.artists;
-		artistFuseInstance = new Fuse(library.artists, {
-			keys: [
-				{ name: "name",   weight: 0.5,  getFn: (t) => t.name ?? ""   },
-				{ name: "akas",   weight: 0.35, getFn: (t) => t.aka ?? ""    },
-				{ name: "tags",   weight: 0.05, getFn: (t) => t.tags ?? ""   },
-				{ name: "genres", weight: 0.05, getFn: (t) => t.genres ?? "" },
-			],
-			threshold: 0.35,
-			ignoreLocation: true,
-			includeScore: false,
-			useExtendedSearch: false,
-			minMatchCharLength: 2,
-		});
-		return artistFuseInstance;
-	}
-
-	const filteredArtists = $derived(
-		artistSearch.trim().length < 2
-			? library.artists
-			: getArtistFuse().search(artistSearch).map((r) => r.item)
-	);
+	const filteredArtists = $derived(searchArtists(artistSearch));
 
 	// ─── Track selection derived ──────────────────────────────────────────────────
 	const selectedTrackUids = $derived(

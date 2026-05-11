@@ -78,19 +78,19 @@
 						onclick={(e) => { e.stopPropagation(); setSelection(track.uid); }}
 						class="text-sm truncate cursor-pointer hover:underline text-left"
 					>
-						<ScrollingText text={track.title} hoverOnly />
+						<ScrollingText text={track.title ?? "Unknown Track"} hoverOnly />
 					</button>
 				{:else}
 					<button
 						onclick={(e) => { e.stopPropagation(); setSelection(track.uid); }}
 						class="text-sm text-muted-foreground truncate cursor-pointer hover:underline text-left"
 					>
-						<ScrollingText text={track.title} hoverOnly />
+						<ScrollingText text={track.title ?? "Unknown Track"} hoverOnly />
 					</button>
 				{/if}
 				<div class="text-xs text-muted-foreground truncate">
-					<ArtistsList artists={track.artists} />
-					{#if albumList!.length > 0}
+					<ArtistsList artists={track.artists!} />
+					{#if albumList && albumList!.length > 0}
 						{" · "}
 						{#each albumList as album, i}
 							<button

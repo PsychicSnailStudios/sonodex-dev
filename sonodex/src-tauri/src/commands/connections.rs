@@ -285,12 +285,22 @@ pub fn import_spotify_history_cmd(
 				})
 				.unwrap_or_default();
 
+			let album_uid = track_uid.is_empty().then_some(None).unwrap_or_else(|| {
+				all_tracks.iter()
+					.find(|t| t.uid == track_uid)
+					.and_then(|t| t.albums.as_ref())
+					.and_then(|a| a.first())
+					.map(|e| e.uid.clone())
+					.filter(|u| !u.is_empty())
+			});
+
 			let scrobble_uid = crate::db::analytics_manager::new_scrobble_uid();
 			let scrobble = crate::db::analytics_manager::Scrobble {
 				uid: scrobble_uid,
 				timestamp,
 				track_uid,
 				artist_uid,
+				album_uid,
 				duration_played: ms_played,
 				did_seek: false,
 				did_pause: false,
