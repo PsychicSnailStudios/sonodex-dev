@@ -2,7 +2,7 @@
 	import { Switch } from "$shadcn/switch/index.js";
 	import { Button } from "$shadcn/button/index.js";
 	import { eq, EQ_BANDS, EQ_PRESETS, setEqEnabled, setEqBandGain, applyEqPreset } from "$ts/store/eqStore.svelte";
-	import { applyEqToGraph } from "$ts/audio/audioManager.svelte";
+	import { applyEqToGraph } from "$ts/audio/audioGraph.svelte";
 
 	async function handleEqToggle(checked: boolean) {
 		await setEqEnabled(checked);

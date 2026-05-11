@@ -32,7 +32,7 @@
 
 <button
 	class="w-full text-left flex flex-col gap-2 p-2 rounded-md bg-background border hover:border-primary transition-colors cursor-default justify-start group"
-	onclick={() => setSelection(artworkUid, type)}
+	onclick={() => setSelection(artworkUid)}
 >
 	<div class="relative w-full">
 		<ArtworkDisplay uid={artworkUid} type={type}>

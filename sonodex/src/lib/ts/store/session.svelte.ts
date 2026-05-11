@@ -4,6 +4,7 @@ import { clamp } from "$ts/util/helpers";
 import type { SortField, SortDirection } from "$ts/util/sortConfig.svelte";
 import type { ColumnKey } from "$ts/util/columnConfig.svelte";
 import { profileState } from "$ts/store/profiles.svelte";
+import { parseUidType } from "$ts/util/parsers";
 
 type Selection = {
 	uid: string;
@@ -44,7 +45,7 @@ export function loadSessionState(profileUid: string) {
 		const raw = localStorage.getItem(sessionKey(profileUid));
 		if (!raw) return;
 		const saved = JSON.parse(raw);
-		setSelection(saved.selection.uid, saved.selection.type);
+		setSelection(saved.selection.uid);
 		setView(saved.activeView.id);
 	} catch {}
 }
@@ -120,14 +121,19 @@ export function createPersistedViewState(
 }
 
 // SELECTION
-export function setSelection(uid: string, type: "track" | "album" | "artist" | "playlist" | "none") {
+export function setSelection(uid: string) {
 	selection.uid = uid;
-	selection.type = type;
+	if (uid === "") {
+		selection.type = "none";
+	} else {
+		selection.type = parseUidType(uid) as "track" | "album" | "artist" | "playlist" | "none";
+	}
 
 	if (viewHistory.length - 1 !== viewIndex) {
 		viewHistory = viewHistory.slice(0, viewIndex + 1);
 	}
 
+	let type = selection.type;
 	viewHistory = [...viewHistory, { uid, type }];
 	viewIndex = viewHistory.length - 1;
 }

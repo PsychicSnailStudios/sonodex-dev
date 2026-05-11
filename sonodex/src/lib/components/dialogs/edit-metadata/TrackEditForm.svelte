@@ -72,7 +72,7 @@
 
 		hasLyrics = lyrics != null;
 		title = track.title ?? "";
-		albumArtist = track.album_artist!.name.toString() ?? "";
+		albumArtist = track.album_artist?.name.toString() ?? "";
 		originalAlbumArtist = albumArtist;
 		year = track.year ?? "";
 		bpm = track.bpm != null ? String(track.bpm) : "";
@@ -83,21 +83,19 @@
 		artworkPath = track.artwork_path ?? null;
 		path = track.path ?? "";
 
-		try {
-			const artistArr = track.artists ? JSON.parse(track.artists) : [];
-			artists = artistArr.join(", ");
-			originalArtists = artistArr;
-		} catch { artists = ""; originalArtists = []; }
+		const artistArr = track.artists ? track.artists.map(a => a.name.toString()) : [];
+		artists = artistArr.join(", ");
+		originalArtists = artistArr;
 
-		try {
-			const parsed = track.albums ? JSON.parse(track.albums) : [];
-			albums = parsed.map((a: any) => ({
-				...a,
+		albums = track.albums
+			? track.albums.map(a => ({
+				uid: a.uid,
+				name: a.name,
 				track_number: a.track_number ?? null,
 				disc: a.disc ?? null,
-			}));
-			originalAlbumUids = parsed.map((a: TrackAlbumEntry) => a.uid).filter(Boolean);
-		} catch { albums = []; }
+			}))
+			: [];
+		originalAlbumUids = albums.map(a => a.uid).filter(Boolean);
 
 		try { genreList = track.genres ? JSON.parse(track.genres) : []; } catch { genreList = []; }
 		try { tagList = track.tags ? JSON.parse(track.tags) : []; } catch { tagList = []; }
@@ -190,8 +188,8 @@
 
 			const update: Record<string, any> = {
 				title: title || null,
-				artists: artistArr.length ? JSON.stringify(artistArr) : null,
-				album_artist: albumArtist || null,
+				artists: artistArr.length ? JSON.stringify(artistArr.map(name => ({ name, uid: "" }))) : null,
+				album_artist: albumArtist ? { name: albumArtist, uid: "" } : null,
 				albums: finalAlbumEntries.length ? JSON.stringify(finalAlbumEntries) : null,
 				year: year || null,
 				genres: genreList.length > 0 ? JSON.stringify(genreList) : null,

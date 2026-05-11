@@ -18,7 +18,7 @@ export function buildAudioGraph(el: HTMLAudioElement) {
 	}
 	filterNodes = [];
 
-	sourceNode = audioCtx.createMediaElementSource(el);
+	sourceNode = audioCtx!.createMediaElementSource(el);
 
 	const filters = EQ_BANDS.map((freq, i) => {
 		const filter = audioCtx!.createBiquadFilter();
@@ -29,7 +29,7 @@ export function buildAudioGraph(el: HTMLAudioElement) {
 		return filter;
 	});
 
-	gainNode = audioCtx.createGain();
+	gainNode = audioCtx!.createGain();
 	gainNode.gain.value = 1;
 
 	sourceNode.connect(filters[0]);
@@ -37,7 +37,7 @@ export function buildAudioGraph(el: HTMLAudioElement) {
 		filters[i].connect(filters[i + 1]);
 	}
 	filters[filters.length - 1].connect(gainNode);
-	gainNode.connect(audioCtx.destination);
+	gainNode.connect(audioCtx!.destination);
 
 	filterNodes = filters;
 }

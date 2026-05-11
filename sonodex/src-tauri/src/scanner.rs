@@ -1,7 +1,7 @@
 use crate::db::{
 	create_album, create_artist, generate_uid, get_all_albums, get_all_artists, get_setting,
 	update_album, update_track_metadata_by_uid, upsert_track, Album, AlbumUpdate,
-	Artist, MetadataUpdate, Track, 
+	Artist, MetadataUpdate, Track,
 };
 use lofty::file::AudioFile;
 use lofty::file::TaggedFileExt;
@@ -1158,14 +1158,16 @@ pub fn process_track(conn: &Connection, track: &Track) {
 			}
 
 			if !updated_album_entries.is_empty() {
-				let _ = update_track_metadata_by_uid(
-					conn,
-					&track_uid,
-					&MetadataUpdate {
-						albums: Some(updated_album_entries),
-						..Default::default()
-					},
-				);
+				if let Ok(patched_albums) = serde_json::to_string(&updated_album_entries) {
+					let _ = update_track_metadata_by_uid(
+						conn,
+						&track_uid,
+						&MetadataUpdate {
+							albums: Some(patched_albums),
+							..Default::default()
+						},
+					);
+				}
 			}
 		}
 	}
@@ -1200,28 +1202,32 @@ pub fn process_track(conn: &Connection, track: &Track) {
 				let uid = artist_uid_map.get(&a.name.to_lowercase()).cloned().unwrap_or_default();
 				crate::db::ArtistEntry { uid, name: a.name.clone() }
 			}).collect();
-			let _ = update_track_metadata_by_uid(
-				conn,
-				&track_uid,
-				&MetadataUpdate {
-					artists: Some(patched),
-					..Default::default()
-				},
-			);
+			if let Ok(json) = serde_json::to_string(&patched) {
+				let _ = update_track_metadata_by_uid(
+					conn,
+					&track_uid,
+					&MetadataUpdate {
+						artists: Some(json),
+						..Default::default()
+					},
+				);
+			}
 		}
 
 		// Patch artist UID back into the track's album_artist field
 		if let Some(ref aa) = track.album_artist {
 			let uid = artist_uid_map.get(&aa.name.to_lowercase()).cloned().unwrap_or_default();
 			let patched = crate::db::ArtistEntry { uid, name: aa.name.clone() };
-			let _ = update_track_metadata_by_uid(
-				conn,
-				&track_uid,
-				&MetadataUpdate {
-					album_artist: Some(patched),
-					..Default::default()
-				},
-			);
+			if let Ok(json) = serde_json::to_string(&patched) {
+				let _ = update_track_metadata_by_uid(
+					conn,
+					&track_uid,
+					&MetadataUpdate {
+						album_artist: Some(json),
+						..Default::default()
+					},
+				);
+			}
 		}
 
 		// Patch artist UIDs into any album records this track belongs to

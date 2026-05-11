@@ -107,8 +107,8 @@
 		albumFuseInstance = new Fuse(library.albums, {
 			keys: [
 				{ name: "title",        weight: 0.5,  getFn: (t) => t.title ?? ""                   },
-				{ name: "artists",      weight: 0.25, getFn: (t) => parseArtistsToString(t.artists ?? "[]") },
-				{ name: "album_artist", weight: 0.15, getFn: (t) => t.album_artist.name.toString() ?? ""            },
+				{ name: "artists",      weight: 0.25, getFn: (t) => parseArtistsToString(t.artists) },
+				{ name: "album_artist", weight: 0.15, getFn: (t) => t.album_artist!.name.toString() ?? ""            },
 				{ name: "year",         weight: 0.1,  getFn: (t) => t.release_date ?? ""            },
 				{ name: "tags",         weight: 0.05, getFn: (t) => t.tags ?? ""                    },
 				{ name: "genres",       weight: 0.05, getFn: (t) => t.genres ?? ""                  },

@@ -13,11 +13,7 @@ import {
 	setQueuedTracks,
 } from "$ts/audio/audioPlayer.svelte";
 import { buildAudioGraph, audioCtx, applyEqToGraph } from "$ts/audio/audioGraph.svelte";
-import {
-	isLocalPath, pathToSrc,
-	isGhostTrack, localBitrate, remoteBitrate,
-	markGhost, triggerOfflineMode, checkOnline,
-} from "$ts/audio/audioHelper";
+import { isLocalPath, pathToSrc, isGhostTrack, markGhost, triggerOfflineMode, checkOnline } from "$ts/audio/audioHelper";
 import { spacedShuffle, smartShuffle } from "$ts/audio/audioShuffles";
 
 let audio: HTMLAudioElement | null = null;
@@ -140,8 +136,8 @@ async function playTrack(track: Track) {
 	const hasLocal = isLocalPath(track.path);
 	const hasRemote = !!(track.remote_path && track.remote_path.length > 0);
 
-	const localBr = localBitrate(track);
-	const remoteBr = remoteBitrate(track);
+	const localBr = track.track_data!.bitrate ?? track.bitrate ?? 0;
+	const remoteBr = track.remote_data!.bitrate ?? 0;
 
 	const preferLocal = hasLocal && (!hasRemote || localBr >= remoteBr);
 
@@ -152,7 +148,7 @@ async function playTrack(track: Track) {
 			return;
 		}
 
-		await markGhost(track.uid);
+		await markGhost(track, true);
 
 		if (!hasRemote) {
 			toast.warning("Cannot play track — local file missing.");
@@ -191,7 +187,7 @@ async function playTrack(track: Track) {
 				}
 			}
 		} else {
-			await markGhost(track.uid);
+			await markGhost(track, true);
 			toast.warning("Cannot play track — stream unavailable.");
 		}
 

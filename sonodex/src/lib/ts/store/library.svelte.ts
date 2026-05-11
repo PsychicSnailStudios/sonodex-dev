@@ -275,10 +275,10 @@ function sortTracks(
                 value = track.title ?? "";
                 break;
             case "artist":
-                value = track.album_artist ?? "";
+                value = track.album_artist!.name.toString() ?? "";
                 break;
             case "album":
-                value = JSON.parse(track.albums ?? "[]")[0]?.name ?? "";
+                value = track.albums![0].name ?? "";
                 break;
             case "year":
                 value = track.year ?? "";

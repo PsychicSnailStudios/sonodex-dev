@@ -41,17 +41,13 @@
 		const albumUidsWithArtist = new Set<string>();
 		for (const t of library.tracks) {
 			if (!t.artists) continue;
-			let artistsArr: string[];
-			try { artistsArr = JSON.parse(t.artists); } catch { continue; }
-			if (!artistsArr.some(a => allNames.has(a.toLowerCase()))) continue;
+			if (!t.artists.some(a => allNames.has(a.name.toLowerCase()))) continue;
 			if (!t.albums) continue;
-			let albumsArr: { uid: string }[];
-			try { albumsArr = JSON.parse(t.albums as unknown as string); } catch { continue; }
-			for (const a of albumsArr) albumUidsWithArtist.add(a.uid);
+			for (const a of t.albums) albumUidsWithArtist.add(a.uid);
 		}
 
 		return library.albums.filter(album => {
-			if (album.album_artist && allNames.has(album.album_artist.toLowerCase())) return true;
+			if (album.album_artist && allNames.has(album.album_artist.name.toLowerCase())) return true;
 			return albumUidsWithArtist.has(album.uid);
 		});
 	});
@@ -119,8 +115,8 @@
 
 			<Tabs.Content value="home" class="flex-1 overflow-y-auto">
 				<h3 class="text-sm font-semibold mb-2 mt-2">TAGS & GENRES</h3>
-				<TagList tags={genres} canEdit={false} />
-				<TagList tags={tags} canEdit={false} />
+				<TagList uid={artist.uid} tags={genres!} canEdit={false} />
+				<TagList uid={artist.uid} tags={tags!} canEdit={false} />
 
 				<h3 class="text-sm font-semibold mb-2 mt-2 pt-4">TOP SONGS</h3>
 				<ArtistTopTracks artistUid={artist.uid} artistName={artist.name} />
@@ -131,7 +127,7 @@
 					<ScrollArea class="min-h-0 min-w-0">
 						<div class="grid gap-2 mt-2 pr-4" style="grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));">
 							{#each artistAlbums as album}
-								<AudioCard title={album.title} subTitle={album.album_artist} artworkUid={album.uid} type="album" />
+								<AudioCard title={album.title} subTitle={album.album_artist?.name.toString() ?? "Unknown Artist"} artworkUid={album.uid} type="album" />
 							{/each}
 						</div>
 					</ScrollArea>

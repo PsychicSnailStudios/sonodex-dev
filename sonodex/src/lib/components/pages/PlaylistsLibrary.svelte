@@ -210,7 +210,7 @@
 			setHoveredPlaylist(uid);
 			if (playlistHoverTimer === null) {
 				playlistHoverTimer = setTimeout(() => {
-					setSelection(uid, "playlist");
+					setSelection(uid);
 					playlistHoverTimer = null;
 				}, 700);
 			}

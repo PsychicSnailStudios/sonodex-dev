@@ -1,24 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-shell";
 import { listen } from "@tauri-apps/api/event";
-
-export type SpotifyPlaylistSummary = {
-	id: string;
-	name: string;
-	description: string | null;
-	track_count: number;
-	owner: string;
-	image_url: string | null;
-};
-
-export type SpotifyPlaylistInfo = {
-	id: string;
-	name: string;
-	description: string | null;
-	owner: string;
-	track_count: number;
-	image_url: string | null;
-};
+import type { SpotifyPlaylistInfo, SpotifyPlaylistSummary } from "$ts/util/types";
 
 export async function spotifyIsConnected(): Promise<boolean> {
 	return invoke<boolean>("spotify_connection_status");

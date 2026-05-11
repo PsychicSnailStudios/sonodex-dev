@@ -209,28 +209,14 @@
 			const trackTitle = (track.title ?? "").toLowerCase();
 			if (trackTitle !== titleLower) continue;
 
-			const trackArtistsRaw = track.artists;
-			let trackArtists: string[] = [];
-			if (typeof trackArtistsRaw === "string") {
-				try { trackArtists = JSON.parse(trackArtistsRaw); } catch { trackArtists = [trackArtistsRaw]; }
-			} else if (Array.isArray(trackArtistsRaw)) {
-				trackArtists = trackArtistsRaw as string[];
-			}
-
 			const artistMatch =
-				trackArtists.some(a => a.toLowerCase() === artistLower) ||
-				(track.album_artist ?? "").toLowerCase() === artistLower;
+				(track.artists ?? []).some(a => a.name.toLowerCase() === artistLower) ||
+				(track.album_artist?.name ?? "").toLowerCase() === artistLower;
 
 			if (!artistMatch) continue;
 
 			if (parsed.album) {
-				const tracksAlbumsRaw = track.albums;
-				let albumEntries: { name: string }[] = [];
-				if (typeof tracksAlbumsRaw === "string") {
-					try { albumEntries = JSON.parse(tracksAlbumsRaw); } catch {}
-				} else if (Array.isArray(tracksAlbumsRaw)) {
-					albumEntries = tracksAlbumsRaw as any;
-				}
+				const albumEntries = track.albums ?? [];
 				if (albumEntries.some(a => a.name.toLowerCase() === parsed.album.toLowerCase())) {
 					return track;
 				}
@@ -244,17 +230,9 @@
 				const trackTitle = (track.title ?? "").toLowerCase();
 				if (trackTitle !== titleLower) continue;
 
-				const trackArtistsRaw = track.artists;
-				let trackArtists: string[] = [];
-				if (typeof trackArtistsRaw === "string") {
-					try { trackArtists = JSON.parse(trackArtistsRaw); } catch { trackArtists = [trackArtistsRaw]; }
-				} else if (Array.isArray(trackArtistsRaw)) {
-					trackArtists = trackArtistsRaw as string[];
-				}
-
 				const artistMatch =
-					trackArtists.some(a => a.toLowerCase() === artistLower) ||
-					(track.album_artist ?? "").toLowerCase() === artistLower;
+					(track.artists ?? []).some(a => a.name.toLowerCase() === artistLower) ||
+					(track.album_artist?.name ?? "").toLowerCase() === artistLower;
 
 				if (artistMatch) return track;
 			}

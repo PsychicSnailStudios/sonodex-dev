@@ -2,9 +2,7 @@ import { getPlaylist, getTrack, reloadLibrary } from "$ts/store/library.svelte";
 import { invoke } from "@tauri-apps/api/core";
 import { showWarning } from "$ts/ui/dialogManager.svelte";
 
-import type { Playlist, Track } from "$ts/util/types";
-import { get } from "svelte/store";
-type TrackEntry = { uid: string; name: string; order: number }
+import type { Playlist, Track, TrackEntry } from "$ts/util/types";
 
 export function parseTracks(raw: unknown): TrackEntry[] {
 	if (!raw) return []

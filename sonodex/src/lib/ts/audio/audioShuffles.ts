@@ -9,7 +9,7 @@ function trackNum(t: Track): number | null {
 }
 
 function albumArtist(t: Track): string | null {
-	return t.album_artist?.trim() || null;
+	return t.album_artist?.name.trim() || null;
 }
 
 function bpm(t: Track): number | null {

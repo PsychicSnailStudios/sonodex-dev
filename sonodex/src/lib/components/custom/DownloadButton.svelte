@@ -54,8 +54,7 @@
 		if (type === "playlist") {
 			const playlist = getPlaylist(uid);
 			if (!playlist) return true;
-			let trackUids: string[] = [];
-			try { trackUids = JSON.parse(playlist.tracks ?? "[]").map((e: any) => e.uid); } catch {}
+			const trackUids = (playlist.tracks ?? []).map(e => e.uid);
 			if (trackUids.length === 0) return true;
 			return trackUids.every(tuid => {
 				const t = library.tracks.find(t => t.uid === tuid);

@@ -27,10 +27,9 @@
 	const inferredArtists = $derived.by<string[]>(() => {
 		const set = new Set<string>();
 		for (const t of selectedTracks) {
-			try {
-				const arr: string[] = t.artists ? JSON.parse(t.artists as string) : [];
-				arr.forEach((a) => set.add(a));
-			} catch {}
+			if (t.artists) {
+				t.artists.forEach(a => set.add(a.name.toString()));
+			}
 		}
 		return [...set];
 	});
@@ -114,12 +113,9 @@
 			});
 
 			for (const t of selectedTracks) {
-				let albumEntries: { uid: string; name: string; track_number: number | null }[] = [];
-				try {
-					albumEntries = t.albums ? JSON.parse(t.albums as string) : [];
-				} catch {}
+				const albumEntries = t.albums ? [...t.albums] : [];
 				if (!albumEntries.some((e) => e.uid === targetUid)) {
-					albumEntries.push({ uid: targetUid, name, track_number: null });
+					albumEntries.push({ uid: targetUid, name, track_number: null, disc: null });
 					await invoke("update_track_metadata", {
 						uid: t.uid,
 						update: { albums: JSON.stringify(albumEntries) },
@@ -138,8 +134,8 @@
 				album: {
 					uid: newUid,
 					title: name,
-					artists: JSON.stringify(inferredArtists),
-					album_artist: inferredArtists[0] ?? null,
+					artists: JSON.stringify(inferredArtists.map(n => ({ name: n, uid: "" }))),
+					album_artist: inferredArtists[0] ? { name: inferredArtists[0], uid: "" } : null,
 					tracks: JSON.stringify(trackEntries),
 					format: null,
 					rating: null,
@@ -148,17 +144,13 @@
 					genres: "[]",
 					credits: null,
 					label: null,
-					artwork_blob: null,
 					artwork_path: null,
 				},
 			});
 
 			for (const t of selectedTracks) {
-				let albumEntries: { uid: string; name: string; track_number: number | null }[] = [];
-				try {
-					albumEntries = t.albums ? JSON.parse(t.albums as string) : [];
-				} catch {}
-				albumEntries.push({ uid: newUid, name, track_number: null });
+				const albumEntries = t.albums ? [...t.albums] : [];
+				albumEntries.push({ uid: newUid, name, track_number: null, disc: null });
 				await invoke("update_track_metadata", {
 					uid: t.uid,
 					update: { albums: JSON.stringify(albumEntries) },

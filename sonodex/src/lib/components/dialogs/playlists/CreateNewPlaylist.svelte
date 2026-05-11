@@ -19,7 +19,7 @@
 		let uid = await createPlaylist(nameInput.trim(), profileState.active?.name ?? null, folder);
 		nameInput = "";
 
-		setSelection(uid, "playlist");
+		setSelection(uid);
 		open = false;
 	}
 </script>

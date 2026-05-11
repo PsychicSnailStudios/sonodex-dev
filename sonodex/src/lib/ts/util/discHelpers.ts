@@ -1,5 +1,5 @@
 import { Disc, Disc3, Videotape } from "lucide-svelte";
-import type { Track } from "$ts/util/types";
+import type { Track, TrackAlbumEntry } from "$ts/util/types";
 
 export type DiscBreakEntry = {
 	label: string;
@@ -40,19 +40,13 @@ export function getDiscIcon(emulateType: string | null | undefined): any {
 	}
 }
 
-export function parseDiscNumber(albumsJson: string | null | undefined, albumUid: string): number | null {
-	if (!albumsJson) return null;
-	try {
-		const entries = JSON.parse(albumsJson);
-		if (!Array.isArray(entries)) return null;
-		const match = entries.find((e: any) => e.uid === albumUid);
-		if (!match) return null;
-		const disc = match.disc;
-		if (disc == null || isNaN(Number(disc))) return null;
-		return Number(disc);
-	} catch {
-		return null;
-	}
+export function parseDiscNumber(albums: TrackAlbumEntry[] | null | undefined, albumUid: string): number | null {
+	if (!albums) return null;
+	const match = albums.find(e => e.uid === albumUid);
+	if (!match) return null;
+	const disc = match.disc;
+	if (disc == null || isNaN(Number(disc))) return null;
+	return Number(disc);
 }
 
 export function buildDiscBreaks(

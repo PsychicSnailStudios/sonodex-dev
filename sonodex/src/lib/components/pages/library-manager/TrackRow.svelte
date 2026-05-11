@@ -75,14 +75,14 @@
 			<div class="min-w-0 grid">
 				{#if track.path != ""}
 					<button
-						onclick={(e) => { e.stopPropagation(); setSelection(track.uid, "track"); }}
+						onclick={(e) => { e.stopPropagation(); setSelection(track.uid); }}
 						class="text-sm truncate cursor-pointer hover:underline text-left"
 					>
 						<ScrollingText text={track.title} hoverOnly />
 					</button>
 				{:else}
 					<button
-						onclick={(e) => { e.stopPropagation(); setSelection(track.uid, "track"); }}
+						onclick={(e) => { e.stopPropagation(); setSelection(track.uid); }}
 						class="text-sm text-muted-foreground truncate cursor-pointer hover:underline text-left"
 					>
 						<ScrollingText text={track.title} hoverOnly />
@@ -90,14 +90,14 @@
 				{/if}
 				<div class="text-xs text-muted-foreground truncate">
 					<ArtistsList artists={track.artists} />
-					{#if albumList.length > 0}
+					{#if albumList!.length > 0}
 						{" · "}
 						{#each albumList as album, i}
 							<button
-								onclick={(e) => { e.stopPropagation(); setSelection(album.uid, "album"); }}
+								onclick={(e) => { e.stopPropagation(); setSelection(album.uid); }}
 								class="text-xs cursor-pointer hover:underline"
 							>
-								{album.name}{i < albumList.length - 1 ? "," : ""}
+								{album.name}{i < albumList!.length - 1 ? "," : ""}
 							</button>
 						{/each}
 					{/if}

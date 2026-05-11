@@ -1,4 +1,5 @@
 use crate::db::{self, AlbumUpdate, ArtistUpdate, MetadataUpdate};
+use crate::db::{ArtistEntry, TrackAlbumEntry};
 use crate::enrichment::{self, EnrichSettings};
 use crate::library_manager;
 use crate::state::AppState;
@@ -26,18 +27,6 @@ fn load_enrich_settings(settings_conn: &rusqlite::Connection) -> EnrichSettings 
 		priority_bpm: g("enrich_priority_bpm", "local"),
 		priority_key: g("enrich_priority_key", "local"),
 		priority_artwork: g("enrich_priority_artwork", "local"),
-	}
-}
-
-fn ensure_genre_tags(conn: &rusqlite::Connection, genres: &Option<Vec<String>>) {
-	if let Some(ref names) = genres {
-		for name in names {
-			crate::db::tag_manager::ensure_tag(
-				conn,
-				name,
-				crate::db::tag_manager::TagKind::Genre,
-			);
-		}
 	}
 }
 
@@ -98,16 +87,11 @@ pub async fn enrich_track(
 
 	let update = MetadataUpdate {
 		title: result.title,
-		artists: result.artists.as_deref()
-			.and_then(|s| serde_json::from_str::<Vec<String>>(s).ok())
-			.map(|names| names.into_iter().map(|n| crate::db::ArtistEntry { uid: String::new(), name: n }).collect()),
-		album_artist: result.album_artist.as_deref()
-			.map(|s| crate::db::ArtistEntry { uid: String::new(), name: s.to_string() }),
-		albums: result.albums.as_deref()
-			.and_then(|s| serde_json::from_str::<Vec<crate::db::TrackAlbumEntry>>(s).ok()),
+		artists: result.artists,
+		album_artist: result.album_artist,
+		albums: result.albums,
 		year: result.year,
-		genres: result.genres.as_deref()
-			.and_then(|s| serde_json::from_str::<Vec<String>>(s).ok()),
+		genres: result.genres,
 		bpm: result.bpm,
 		key: result.key,
 		artwork_blob: result.artwork,
@@ -116,7 +100,7 @@ pub async fn enrich_track(
 
 	match library_manager::open_source_conn_for_entity(&profile_uid, &uid, "tracks") {
 		Ok((source_conn, lib)) => {
-			ensure_genre_tags(&source_conn, &update.genres);
+			ensure_genre_tags_str(&source_conn, &update.genres);
 			db::update_track_metadata_by_uid(&source_conn, &uid, &update)
 				.map_err(|e| e.to_string())?;
 			library_manager::incremental_update(&profile_uid, &[lib.uid])
@@ -124,7 +108,7 @@ pub async fn enrich_track(
 		}
 		Err(_) => {
 			let conn = open_lib_conn(&profile_uid);
-			ensure_genre_tags(&conn, &update.genres);
+			ensure_genre_tags_str(&conn, &update.genres);
 			db::update_track_metadata(&conn, numeric_id, &update).map_err(|e| e.to_string())?;
 		}
 	}
@@ -185,23 +169,18 @@ pub async fn enrich_all(app: AppHandle, state: State<'_, AppState>) -> Result<()
 			Ok(result) => {
 				let update = MetadataUpdate {
 					title: result.title,
-					artists: result.artists.as_deref()
-						.and_then(|s| serde_json::from_str::<Vec<String>>(s).ok())
-						.map(|names| names.into_iter().map(|n| crate::db::ArtistEntry { uid: String::new(), name: n }).collect()),
-					album_artist: result.album_artist.as_deref()
-						.map(|s| crate::db::ArtistEntry { uid: String::new(), name: s.to_string() }),
-					albums: result.albums.as_deref()
-						.and_then(|s| serde_json::from_str::<Vec<crate::db::TrackAlbumEntry>>(s).ok()),
+					artists: result.artists,
+					album_artist: result.album_artist,
+					albums: result.albums,
 					year: result.year,
-					genres: result.genres.as_deref()
-						.and_then(|s| serde_json::from_str::<Vec<String>>(s).ok()),
+					genres: result.genres,
 					bpm: result.bpm,
 					key: result.key,
 					artwork_blob: result.artwork,
 					..Default::default()
 				};
 				let conn = open_lib_conn(&profile_uid);
-				ensure_genre_tags(&conn, &update.genres);
+				ensure_genre_tags_str(&conn, &update.genres);
 				db::update_track_metadata(&conn, track_input.id, &update).ok();
 			}
 			Err(_) => errors += 1,
@@ -216,7 +195,6 @@ pub async fn enrich_all(app: AppHandle, state: State<'_, AppState>) -> Result<()
 		}
 	}
 
-	// Single incremental update after all tracks processed
 	let settings_conn2 = open_settings_conn(&profile_uid);
 	if let Ok(Some(lib)) = crate::db::library_registry::get_default_library(&settings_conn2) {
 		let _ = library_manager::incremental_update(&profile_uid, &[lib.uid]);
@@ -563,18 +541,15 @@ pub async fn spotify_enrich_track_cmd(
 
 	let update = MetadataUpdate {
 		title: meta.title,
-		artists: meta.artists.map(|names| {
-			names.into_iter().map(|n| crate::db::ArtistEntry { uid: String::new(), name: n }).collect()
-		}),
+		artists: meta.artists.as_ref().map(|v| serde_json::to_string(v).unwrap_or_default()),
 		year: meta.year,
-		genres: meta.genres.as_deref()
-			.and_then(|s| serde_json::from_str::<Vec<String>>(s).ok()),
+		genres: meta.genres,
 		..Default::default()
 	};
 
 	match library_manager::open_source_conn_for_entity(&profile_uid, &uid, "tracks") {
 		Ok((source_conn, lib)) => {
-			ensure_genre_tags(&source_conn, &update.genres);
+			ensure_genre_tags_str(&source_conn, &update.genres);
 			db::track_manager::update_track_metadata_by_uid(&source_conn, &uid, &update)
 				.map_err(|e| e.to_string())?;
 			library_manager::incremental_update(&profile_uid, &[lib.uid])
@@ -582,7 +557,7 @@ pub async fn spotify_enrich_track_cmd(
 		}
 		Err(_) => {
 			let fallback = open_lib_conn(&profile_uid);
-			ensure_genre_tags(&fallback, &update.genres);
+			ensure_genre_tags_str(&fallback, &update.genres);
 			db::track_manager::update_track_metadata_by_uid(&fallback, &uid, &update)
 				.map_err(|e| e.to_string())?;
 		}

@@ -75,6 +75,7 @@
 
 <ContextMenu.Root>
 	<ContextMenu.Trigger>
+		<!-- svelte-ignore a11y_click_events_have_key_events -->
 		<div
 			class="flex gap-2 p-2 items-center cursor-grab active:cursor-grabbing rounded-md transition-colors {isSelected ? 'bg-primary/15 hover:bg-primary/20' : 'hover:bg-muted/50'}"
 			draggable="true"
@@ -89,8 +90,8 @@
 				<span
 					role="button"
 					tabindex="0"
-					onclick={(e) => { e.stopPropagation(); setSelection(track.uid, "track"); }}
-					onkeydown={(e) => { if (e.key === 'Enter') setSelection(track.uid, "track"); }}
+					onclick={(e) => { e.stopPropagation(); setSelection(track.uid); }}
+					onkeydown={(e) => { if (e.key === 'Enter') setSelection(track.uid); }}
 					class="text-sm truncate cursor-pointer hover:underline"
 				>
 					{track.title}

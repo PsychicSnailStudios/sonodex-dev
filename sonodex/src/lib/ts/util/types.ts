@@ -34,6 +34,7 @@ export type UserOptions = {
 export type TrackData = {
 	format: String,
 	bitrate: number,
+	is_ghost: boolean,
 }
 
 export type Track = {
@@ -121,6 +122,26 @@ export type Playlist = {
 	pending_tracks: string | null;
 	share_settings: string | null;
 	artwork_thumb: string | null;
+};
+
+export type TrackEntry = { uid: string; name: string; order: number }
+
+export type SpotifyPlaylistSummary = {
+	id: string;
+	name: string;
+	description: string | null;
+	track_count: number;
+	owner: string;
+	image_url: string | null;
+};
+
+export type SpotifyPlaylistInfo = {
+	id: string;
+	name: string;
+	description: string | null;
+	owner: string;
+	track_count: number;
+	image_url: string | null;
 };
 
 export type Lyrics = {

@@ -35,21 +35,6 @@
 		}
 	}
 
-	const trackCount = $derived(
-		library.tracks.filter((t) => {
-			try {
-				const arr: string[] = t.artists ? JSON.parse(t.artists as string) : [];
-				return arr.includes(artist.name);
-			} catch { return false; }
-		}).length
-	);
-
-	const genres = $derived.by<string[]>(() => {
-		try {
-			return artist.genres ? JSON.parse(artist.genres as string) : [];
-		} catch { return []; }
-	});
-
 	function handleRowClick(e: MouseEvent) {
 		const target = e.target as HTMLElement;
 		if (target.closest("a, button")) return;
@@ -68,6 +53,8 @@
 			if (v !== selected) onToggle?.();
 		}}
 	/>
+	<!-- svelte-ignore a11y_interactive_supports_focus -->
+	<!-- svelte-ignore a11y_click_events_have_key_events -->
 	<div
 		class="flex gap-2 p-2 border-2 rounded-md justify-between items-center flex-1 cursor-pointer"
 		class:border-primary={selected}
@@ -80,7 +67,7 @@
 			<ArtworkDisplay uid={artist.uid} size={40} type="artist" />
 			<div class="min-w-0 grid">
 				<button
-					onclick={(e) => { e.stopPropagation(); setSelection(artist.uid, "artist"); }}
+					onclick={(e) => { e.stopPropagation(); setSelection(artist.uid); }}
 					class="text-sm truncate cursor-pointer hover:underline text-left"
 				>
 					{artist.name}

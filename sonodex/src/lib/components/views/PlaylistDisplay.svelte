@@ -23,7 +23,7 @@
 	import { artworkCache } from "$ts/library/artworkLoader";
 
 	import type { Track } from "$ts/util/types";
-   import { addTracksToPlaylist } from "$ts/audio/playlistManager.svelte";
+   import { addTracksToPlaylist, addTrackToPlaylist } from "$ts/audio/playlistManager.svelte";
     import { parseArtistsToString } from "$ts/util/parsers";
 
 	let search = $state("");
@@ -168,7 +168,7 @@
 										<span class="text-xs text-muted-foreground truncate">{parseArtistsToString(track.artists)}</span>
 									</div>
 									<span></span>
-									<button onclick={() => { addTracksToPlaylist(playlist, track) }}><CirclePlus size={20} /></button>
+									<button onclick={() => { addTrackToPlaylist(playlist, track) }}><CirclePlus size={20} /></button>
 								</div>
 							{/each}
 						</div>

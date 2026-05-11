@@ -44,7 +44,7 @@
 	</ContextMenu.Group>
 	<ContextMenu.Separator />
 	<ContextMenu.Group>
-		<ContextMenu.Item onSelect={() => setSelection(track.uid, "track")}>Go to Track</ContextMenu.Item>
+		<ContextMenu.Item onSelect={() => setSelection(track.uid)}>Go to Track</ContextMenu.Item>
 		<ContextMenu.Item onSelect={() => openEditModal({ type: "track", uid: track!.uid })}>Edit Metadata</ContextMenu.Item>
 	</ContextMenu.Group>
 </ContextMenu.Content>

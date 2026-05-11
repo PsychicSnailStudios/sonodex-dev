@@ -89,7 +89,7 @@
 			const uid = await importSpotifyPlaylist(pl.id, pl.name, pl.owner);
 			await reloadLibrary("playlists");
 			await reloadLibrary("tracks");
-			setSelection(uid, "playlist");
+			setSelection(uid);
 			open = false;
 		} catch (e) {
 			console.error("Failed to import playlist:", e);
@@ -132,7 +132,7 @@
 		await reloadLibrary("playlists");
 		await reloadLibrary("tracks");
 
-		if (lastUid) setSelection(lastUid, "playlist");
+		if (lastUid) setSelection(lastUid);
 		bulkProgress = null;
 		selected = new Set();
 		open = false;

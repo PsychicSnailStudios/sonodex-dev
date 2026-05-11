@@ -25,7 +25,7 @@
 
 	// exclude self and own children from move targets
 	const moveTargets = $derived(
-		folderPaths.filter((fp) => fp !== path && !fp.startsWith(path + "/"))
+		folderPaths.filter((fp: string) => fp !== path && !fp.startsWith(path + "/"))
 	);
 
 	async function handleDelete() {

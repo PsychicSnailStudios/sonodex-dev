@@ -79,7 +79,7 @@
 						class={view.sort.field === "name" as SortField ? "bg-accent" : ""}
 						onSelect={() => toggleAlbumSort("name")}
 					>
-						{#if view.sort.field === "name"}
+						{#if view.sort.field === "name" as SortField}
 							{#if view.sort.direction === "asc"}
 								<ArrowUp class="size-3 text-primary" />
 							{:else}
@@ -137,7 +137,7 @@
 						style="grid-template-columns: 40px 1fr 1fr 40px; height: 56px;"
 					>
 						<ArtworkDisplay uid={album.uid} type="album" size={40} />
-						<button onclick={() => setSelection(album.uid, "album")} class="pl-2 text-sm truncate text-left">
+						<button onclick={() => setSelection(album.uid)} class="pl-2 text-sm truncate text-left">
 							<p class="text-sm font-medium">{album.title}</p>
 						</button>
 						<p class="text-sm">{parseArtistsToString(album.artists)}</p>
@@ -148,7 +148,7 @@
 		{:else}
 			<MediaGrid>
 				{#each filteredAlbums as album}
-					<AudioCard title={album.title} subTitle={album.album_artist} artworkUid={album.uid} type="album" />
+					<AudioCard title={album.title} subTitle={album.album_artist?.name} artworkUid={album.uid} type="album" />
 				{/each}
 			</MediaGrid>
 		{/if}

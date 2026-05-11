@@ -9,6 +9,7 @@
 	import { setSelection } from "$ts/store/session.svelte";
 	import type { Album } from "$ts/util/types";
     import { enrichAlbum } from "$ts/library/enrichment";
+    import ArtistsList from "$lib/components/custom/text-display/ArtistsList.svelte";
 
 	let {
 		album,
@@ -58,6 +59,8 @@
 			if (v !== selected) onToggle?.();
 		}}
 	/>
+	<!-- svelte-ignore a11y_interactive_supports_focus -->
+	<!-- svelte-ignore a11y_click_events_have_key_events -->
 	<div
 		class="flex gap-2 p-2 border-2 rounded-md justify-between items-center flex-1 cursor-pointer"
 		class:border-primary={selected}
@@ -70,27 +73,20 @@
 			<ArtworkDisplay uid={album.uid} size={40} type="album" />
 			<div class="min-w-0 grid">
 				<button
-					onclick={(e) => { e.stopPropagation(); setSelection(album.uid, "album"); }}
+					onclick={(e) => { e.stopPropagation(); setSelection(album.uid); }}
 					class="text-sm truncate cursor-pointer hover:underline text-left"
 				>
 					{album.title}
 				</button>
 				<div class="text-xs text-muted-foreground truncate">
-					{#if album.artists.length > 0}
-						{#each album.artists as artist, i}
-							<button
-								onclick={(e) => { e.stopPropagation(); setSelection(artist.uid, "artist"); }}
-								class="text-xs cursor-pointer hover:underline"
-							>
-								{artist}{i < album.artists.length - 1 ? "," : ""}
-							</button>
-						{/each}
+					{#if album.artists!.length > 0}
+						<ArtistsList artists={album.artists!} />
 					{:else if album.album_artist}
 						<button
-							onclick={(e) => { e.stopPropagation(); setSelection(album.album_artist!.uid, "artist"); }}
+							onclick={(e) => { e.stopPropagation(); setSelection(album.album_artist!.uid.toString()); }}
 							class="text-xs cursor-pointer hover:underline"
 						>
-							{album.album_artist}
+							{album.album_artist.name}
 						</button>
 					{:else}
 						—

@@ -14,9 +14,10 @@
 	import { setSelection } from "$ts/store/session.svelte";
 	import { trackSelection, selectTrack } from "$ts/store/trackSelection.svelte";
 	import { startDrag, endDrag } from "$ts/store/drag.svelte";
-	import { player, playTrackByUid, togglePlay } from "$ts/audio/audioManager.svelte";
+	import { playTrackByUid, togglePlay } from "$ts/audio/audioManager.svelte";
 	import { formatDuration } from "$ts/util/helpers";
 	import { parseArtistsToString } from "$ts/util/parsers";
+	import { player } from "$ts/audio/audioPlayer.svelte";
 	import type { Track } from "$ts/util/types";
 
 	// PROPS
@@ -84,7 +85,7 @@
 
 		let uids: string[];
 		if (trackSelection.isSelected(track.uid, viewId) && trackSelection.count > 1) {
-			uids = orderedUids.filter((uid) => trackSelection.isSelected(uid, viewId));
+			uids = orderedUids.filter((uid: string) => trackSelection.isSelected(uid, viewId));
 		} else {
 			uids = [track.uid];
 		}
@@ -170,19 +171,19 @@
 	{#if showTitle}
 		{#if compact}
 			<div class="min-w-0 flex items-center">
-				<span role="button" tabindex="0" onclick={() => setSelection(track.uid, "track")} onkeydown={(e) => { if (e.key === 'Enter') setSelection(track.uid, "track"); }} class="text-sm truncate cursor-pointer hover:underline">
+				<span role="button" tabindex="0" onclick={() => setSelection(track.uid)} onkeydown={(e) => { if (e.key === 'Enter') setSelection(track.uid); }} class="text-sm truncate cursor-pointer hover:underline">
 					{track.title ?? "Unknown Title"}
 				</span>
 			</div>
 		{:else}
 			<div class="flex flex-col min-w-0">
 				<div class="min-w-0 flex items-center">
-					<span role="button" tabindex="0" onclick={() => setSelection(track.uid, "track")} onkeydown={(e) => { if (e.key === 'Enter') setSelection(track.uid, "track"); }} class="text-sm truncate cursor-pointer hover:underline">
+					<span role="button" tabindex="0" onclick={() => setSelection(track.uid)} onkeydown={(e) => { if (e.key === 'Enter') setSelection(track.uid); }} class="text-sm truncate cursor-pointer hover:underline">
 						{track.title ?? "Unknown Title"}
 					</span>
 				</div>
 				<div class="min-w-0 flex items-center">
-					<span role="button" tabindex="0" onclick={() => setSelection(track.album_artist.uid, "artist")} onkeydown={(e) => { if (e.key === 'Enter') setSelection(track.album_artist.uid, "artist"); }} class="text-xs text-muted-foreground truncate cursor-pointer hover:underline">
+					<span role="button" tabindex="0" onclick={() => setSelection(track.album_artist.uid)} onkeydown={(e) => { if (e.key === 'Enter') setSelection(track.album_artist.uid); }} class="text-xs text-muted-foreground truncate cursor-pointer hover:underline">
 						<ArtistsList artists={track.artists} />
 					</span>
 				</div>
@@ -191,14 +192,14 @@
 	{/if}
 
 	{#if showArtist}
-		<span role="button" tabindex="0" onclick={() => setSelection(track.album_artist.uid, "artist")} onkeydown={(e) => { if (e.key === 'Enter') setSelection(track.album_artist.uid, "artist"); }} class="text-sm truncate cursor-pointer hover:underline">
+		<span role="button" tabindex="0" onclick={() => setSelection(track.album_artist.uid)} onkeydown={(e) => { if (e.key === 'Enter') setSelection(track.album_artist.uid); }} class="text-sm truncate cursor-pointer hover:underline">
 			<ArtistsList artists={track.artists} />
 		</span>
 	{/if}
 
 	{#if showAlbum}
 		<div class="min-w-0 flex items-center pr-4">
-			<span role="button" tabindex="0" onclick={() => setSelection(track.albums[0].uid, "album")} onkeydown={(e) => { if (e.key === 'Enter') setSelection(track.albums[0].uid, "album"); }} class="text-sm truncate cursor-pointer hover:underline">
+			<span role="button" tabindex="0" onclick={() => setSelection(track.albums[0].uid)} onkeydown={(e) => { if (e.key === 'Enter') setSelection(track.albums[0].uid); }} class="text-sm truncate cursor-pointer hover:underline">
 				{track.albums[0].name ?? "Unknown Album"}
 			</span>
 		</div>

@@ -1,7 +1,7 @@
 import Fuse from "fuse.js";
 	import { library } from "$ts/store/library.svelte";
-import { parseArtists, parseAlbum } from "$ts/util/helpers";
 import type { Track, Album, Artist } from "$ts/util/types";
+import { parseAlbumsToString, parseArtistsToString } from "$ts/util/parsers";
 
 function makeFuse<T>(list: T[], keys: Fuse.FuseOptionKey<T>[]): Fuse<T> {
 	return new Fuse(list, {
@@ -27,12 +27,12 @@ export function getTrackFuse(): Fuse<Track> {
 	if (_trackFuse && _trackRef === library.tracks) return _trackFuse;
 	_trackRef = library.tracks;
 	_trackFuse = makeFuse(library.tracks, [
-		{ name: "title",        weight: 0.5,  getFn: (t) => t.title ?? "" },
-		{ name: "artists",      weight: 0.25, getFn: (t) => parseArtists(t.artists ?? "[]") },
-		{ name: "album_artist", weight: 0.15, getFn: (t) => t.album_artist ?? "" },
-		{ name: "albums",       weight: 0.1,  getFn: (t) => parseAlbum(t.albums ?? "[]") },
-		{ name: "tags",         weight: 0.05, getFn: (t) => t.tags ?? "" },
-		{ name: "genres",       weight: 0.05, getFn: (t) => t.genres ?? "" },
+		{ name: "title",        weight: 0.5,  getFn: (t: Track) => t.title ?? "" },
+		{ name: "artists",      weight: 0.25, getFn: (t: Track) => parseArtistsToString(t.artists) },
+		{ name: "album_artist", weight: 0.15, getFn: (t: Track) => t.album_artist ?? "" },
+		{ name: "albums",       weight: 0.1,  getFn: (t: Track) => parseAlbumsToString(t.albums) },
+		{ name: "tags",         weight: 0.05, getFn: (t: Track) => t.tags ?? "" },
+		{ name: "genres",       weight: 0.05, getFn: (t: Track) => t.genres ?? "" },
 	]);
 	return _trackFuse;
 }
@@ -41,12 +41,12 @@ export function getAlbumFuse(): Fuse<Album> {
 	if (_albumFuse && _albumRef === library.albums) return _albumFuse;
 	_albumRef = library.albums;
 	_albumFuse = makeFuse(library.albums, [
-		{ name: "title",        weight: 0.5,  getFn: (a) => a.title ?? "" },
-		{ name: "artists",      weight: 0.25, getFn: (a) => parseArtists(a.artists ?? "[]") },
-		{ name: "album_artist", weight: 0.15, getFn: (a) => a.album_artist ?? "" },
-		{ name: "year",         weight: 0.1,  getFn: (a) => a.release_date ?? "" },
-		{ name: "tags",         weight: 0.05, getFn: (a) => a.tags ?? "" },
-		{ name: "genres",       weight: 0.05, getFn: (a) => a.genres ?? "" },
+		{ name: "title",        weight: 0.5,  getFn: (a: Album) => a.title ?? "" },
+		{ name: "artists",      weight: 0.25, getFn: (a: Album) => parseArtistsToString(a.artists) },
+		{ name: "album_artist", weight: 0.15, getFn: (a: Album) => a.album_artist ?? "" },
+		{ name: "year",         weight: 0.1,  getFn: (a: Album) => a.release_date ?? "" },
+		{ name: "tags",         weight: 0.05, getFn: (a: Album) => a.tags ?? "" },
+		{ name: "genres",       weight: 0.05, getFn: (a: Album) => a.genres ?? "" },
 	]);
 	return _albumFuse;
 }
@@ -55,10 +55,10 @@ export function getArtistFuse(): Fuse<Artist> {
 	if (_artistFuse && _artistRef === library.artists) return _artistFuse;
 	_artistRef = library.artists;
 	_artistFuse = makeFuse(library.artists, [
-		{ name: "name",   weight: 0.5,  getFn: (a) => a.name ?? "" },
-		{ name: "akas",   weight: 0.35, getFn: (a) => a.aka ?? "" },
-		{ name: "tags",   weight: 0.05, getFn: (a) => a.tags ?? "" },
-		{ name: "genres", weight: 0.05, getFn: (a) => a.genres ?? "" },
+		{ name: "name",   weight: 0.5,  getFn: (a: Artist) => a.name ?? "" },
+		{ name: "akas",   weight: 0.35, getFn: (a: Artist) => a.aka ?? "" },
+		{ name: "tags",   weight: 0.05, getFn: (a: Artist) => a.tags ?? "" },
+		{ name: "genres", weight: 0.05, getFn: (a: Artist) => a.genres ?? "" },
 	]);
 	return _artistFuse;
 }

@@ -30,23 +30,22 @@
 
 	let featuredOnAlbums = $derived.by(() => {
 		if (!track?.albums) return [];
-		return parseAlbumEntries(track.albums)
+		return track.albums
 			.map(entry => library.albums.find(a => a.uid === entry.uid))
 			.filter((a): a is NonNullable<typeof a> => a != null);
 	});
 
 	let featuredArtists = $derived.by(() => {
 		if (!track?.artists) return [];
-		const all: string[] = JSON.parse(track.artists);
-		const main = track.album_artist?.toLowerCase() ?? "";
-		return all.filter(a => a.toLowerCase() !== main);
+		const main = track.album_artist?.name?.toLowerCase() ?? "";
+		return track.artists.filter(a => a.name.toLowerCase() !== main);
 	});
 
 	let featuredArtistUIDs = $derived(
-		featuredArtists.map(name => ({ name, uid: getArtistUidFromName(name) }))
+		featuredArtists.map(a => ({ name: a.name, uid: a.uid }))
 	);
 
-	let artistUID = $derived((track?.album_artist.name ?? "Unknown Artist"));
+	let artistUID = $derived(track?.album_artist?.uid ?? "");
 
 	$effect(() => {
 		const uid = selection.uid;
@@ -77,13 +76,13 @@
 				<div class="flex flex-col gap-1">
 					<h2 class="text-2xl font-bold">{track.title ?? "Unknown Title"}</h2>
 					<div class="flex gap-2 text-sm text-muted-foreground flex-wrap">
-						<ArtistsList artists={track.artists} />
+						<ArtistsList artists={track.artists!} />
 						<span>|</span>
 						<div>
 							{#if track.albums}
 							{@const albumList = track.albums}
 							{#each albumList as album, i}
-								<button onclick={() => setSelection(album.uid, "album")} class="text-sm truncate cursor-pointer hover:underline">
+								<button onclick={() => setSelection(album.uid)} class="text-sm truncate cursor-pointer hover:underline">
 									{album.name}{i < albumList.length - 1 ? "," : ""}
 								</button>
 							{/each}
@@ -134,7 +133,7 @@
 
 				<Tabs.Content value="tags" class="flex-1 overflow-y-auto mt-2">
 					{#if tags}
-						<TagList uid={track.uid} tags={genres} canEdit={false} />
+						<TagList uid={track.uid} tags={genres!} canEdit={false} />
 						<TagList uid={track.uid} tags={tags} canEdit={true} />
 					{:else}
 						<p class="text-muted-foreground text-sm">Track has no tags.</p>
@@ -146,10 +145,10 @@
 
 					{#if track.album_artist}
 						<button
-							onclick={() => setSelection(artistUID, "artist")}
+							onclick={() => setSelection(artistUID.toString())}
 							class="flex items-center gap-2 flex-row cursor-pointer p-2 rounded-md bg-muted/50 hover:bg-muted">
-							<ArtworkDisplay uid={artistUID} type="artist" size={40} />
-							{track.album_artist}
+							<ArtworkDisplay uid={artistUID.toString()} type="artist" size={40} />
+							{track.album_artist.name}
 						</button>
 					{:else}
 						<p class="text-muted-foreground text-sm">No album artist available.</p>
@@ -159,9 +158,9 @@
 					{#if featuredArtists.length > 0}
 						{#each featuredArtistUIDs as { name: artistName, uid: featArtistUID }}
 							<button
-								onclick={() => setSelection(featArtistUID, "artist")}
+								onclick={() => setSelection(featArtistUID.toString())}
 								class="flex items-center gap-2 flex-row cursor-pointer p-2 mb-2 rounded-md bg-muted/50 hover:bg-muted">
-								<ArtworkDisplay uid={featArtistUID} type="artist" size={40} />
+								<ArtworkDisplay uid={featArtistUID.toString()} type="artist" size={40} />
 								{artistName}
 							</button>
 						{/each}
@@ -187,12 +186,12 @@
 						<div class="flex flex-col gap-2 mt-2">
 							{#each featuredOnAlbums as album}
 								<button
-									onclick={() => setSelection(album.uid, "album")}
+									onclick={() => setSelection(album.uid)}
 									class="flex items-center gap-3 cursor-pointer p-2 rounded-md bg-muted/50 hover:bg-muted text-left">
 									<ArtworkDisplay uid={album.uid} type="album" size={48} />
 									<div class="flex flex-col">
 										<span class="text-sm font-medium">{album.title}</span>
-										<span class="text-xs text-muted-foreground">{album.album_artist}</span>
+										<span class="text-xs text-muted-foreground">{album.album_artist?.name}</span>
 									</div>
 								</button>
 							{/each}
@@ -207,12 +206,12 @@
 						<div class="flex flex-col gap-2 mt-2">
 							{#each featuredOnAlbums as album}
 								<button
-									onclick={() => setSelection(album.uid, "album")}
+									onclick={() => setSelection(album.uid)}
 									class="flex items-center gap-3 cursor-pointer p-2 rounded-md bg-muted/50 hover:bg-muted text-left">
 									<ArtworkDisplay uid={album.uid} type="album" size={48} />
 									<div class="flex flex-col">
 										<span class="text-sm font-medium">{album.title}</span>
-										<span class="text-xs text-muted-foreground">{album.album_artist}</span>
+										<span class="text-xs text-muted-foreground">{album.album_artist?.name}</span>
 									</div>
 								</button>
 							{/each}

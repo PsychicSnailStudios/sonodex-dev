@@ -46,7 +46,7 @@
 	
 	<button
 		class="flex items-center gap-2 flex-1 min-w-0 text-left h-8"
-		onclick={() => setSelection(playlist.uid, "playlist")}
+		onclick={() => setSelection(playlist.uid)}
 	>
 		<span class="text-sm truncate leading-tight">{playlist.title}</span>
 	</button>

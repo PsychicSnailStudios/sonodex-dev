@@ -6,9 +6,8 @@
 	import { Music4, User, DiscAlbum } from "lucide-svelte";
 	import { Skeleton } from "$shadcn/skeleton/index.js";
 
-	import { getAlbum, getArtist, getPlaylist, getTrack, library } from "$ts/store/library.svelte";
+	import { getAlbum, getArtist, getPlaylist, getTrack } from "$ts/store/library.svelte";
 	import type { AudioCatagories, Track } from "$ts/util/types";
-	import { trackSelection } from "$ts/store/trackSelection.svelte";
 	import { artworkCache, artworkInflight } from "$ts/library/artworkLoader";
 
 	let { uid, size = null, type = "track", previewPath = null }: {

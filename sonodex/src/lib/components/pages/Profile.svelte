@@ -53,9 +53,9 @@
 
 	<div class="flex items-center justify-between">
 		<div class="flex gap-2 items-center">
-			<div class="w-8 h-8 rounded-full bg-muted overflow-hidden flex items-center justify-center flex-shrink-0">
-				{#if avatarUrls[profileState.active?.uid]}
-					<img src={avatarUrls[profileState.active?.uid]} alt="" class="w-full h-full object-cover" />
+			<div class="w-8 h-8 rounded-full bg-muted overflow-hidden flex items-center justify-center shrink-0">
+				{#if avatarUrls[profileState.active?.uid as string]}
+					<img src={avatarUrls[profileState.active?.uid as string]} alt="" class="w-full h-full object-cover" />
 				{:else}
 					<User class="w-5 h-5 text-muted-foreground" />
 				{/if}

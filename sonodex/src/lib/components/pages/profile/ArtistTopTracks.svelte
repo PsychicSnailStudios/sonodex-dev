@@ -135,7 +135,7 @@
 						</div>
 						<div class="relative min-w-0 flex-1 grid">
 							<button
-								onclick={() => setSelection(track.uid, "track")}
+								onclick={() => setSelection(track.uid)}
 								class="text-sm truncate text-left hover:underline font-medium"
 							>{track.title ?? "Unknown"}</button>
 							<span class="text-xs text-muted-foreground truncate">{parseArtistsToString(track.artists)}</span>
@@ -166,7 +166,7 @@
 						</div>
 						<div class="relative min-w-0 flex-1 grid">
 							<button
-								onclick={() => setSelection(album.uid, "album")}
+								onclick={() => setSelection(album.uid)}
 								class="text-sm truncate text-left hover:underline font-medium"
 							>{album.title}</button>
 							<span class="text-xs text-muted-foreground truncate">{album.album_artist ?? ""}</span>

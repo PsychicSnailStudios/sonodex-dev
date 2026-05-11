@@ -43,12 +43,12 @@
 			return [...group].sort((a, b) => {
 				switch (sort.field) {
 					case "title":    return dir * (a.title ?? "").localeCompare(b.title ?? "")
-					case "album":    return dir * (a.albums?.toString() ?? "").localeCompare(b.albums?.toString() ?? "")
+					case "album":    return dir * ((a.albums?.[0]?.name ?? "").localeCompare(b.albums?.[0]?.name ?? ""))
 					case "year":     return dir * ((a.year ?? "").localeCompare(b.year ?? ""))
 					case "rating":   return dir * ((a.rating ?? -1) - (b.rating ?? -1))
 					case "duration": return dir * ((a.duration_ms ?? 0) - (b.duration_ms ?? 0))
 					case "label":    return dir * (a.label ?? "").localeCompare(b.label ?? "")
-					case "artist":   return dir * (a.album_artist!.name ?? "").localeCompare(b.album_artist!.name ?? "")
+					case "artist":   return dir * (a.album_artist!.name ?? "").localeCompare(b.album_artist.name ?? "")
 					case "number":   return dir * sortByNumber(a, b)
 					default:         return 0
 				}
@@ -111,7 +111,7 @@
 	// FUNCTIONS
 	function sortByNumber(a: Track, b: Track) {
 		if (playlistUid) return 0
-		return (a.albums![0].track ?? 0) - (b.albums![0].track ?? 0)
+		return (a.albums![0].track_number ?? 0) - (b.albums![0].track_number ?? 0)
 	}
 
 	function handleTableClick(e: MouseEvent) {

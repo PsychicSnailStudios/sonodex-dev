@@ -51,7 +51,7 @@
 			const uid = await importSpotifyPlaylist(info.id, info.name, info.owner);
 			await reloadLibrary("playlists");
 			await reloadLibrary("tracks");
-			setSelection(uid, "playlist");
+			setSelection(uid);
 			onClose();
 		} catch (e: any) {
 			error = e?.toString() ?? "Import failed.";

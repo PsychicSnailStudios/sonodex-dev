@@ -3,12 +3,16 @@
 	import { invoke } from "@tauri-apps/api/core";
 	import X from "@lucide/svelte/icons/x";
 	import { Badge } from "$shadcn/badge/index.js";
+    import { parseUidType } from "$ts/util/parsers";
 
 	let { tags, uid, canEdit = false }: { tags: string[], uid: string, canEdit?: boolean } = $props();
 
 	async function removeTag(tag: string) {
+		let type = parseUidType(uid);
+
 		const new_tags = tags.filter(t => t !== tag);
 		tags = new_tags;
+		
 		await invoke("update_track_metadata", {
 			uid,
 			update: { tags: JSON.stringify(new_tags) },

@@ -71,13 +71,13 @@
 				<ScrollingText
 					text={currentlyPlaying.track?.title!}
 					class="text-sm font-medium cursor-pointer hover:underline"
-					onclick={() => setSelection(currentlyPlaying.track?.uid!, "track")}
+					onclick={() => setSelection(currentlyPlaying.track?.uid!)}
 					
 				/>
 				<ScrollingText
 					text={parseArtistsToString(currentlyPlaying.track?.artists ?? null)}
 					class="text-xs text-muted-foreground cursor-pointer hover:underline"
-					onclick={() => setSelection(currentlyPlaying.track?.album_artist!.uid, "artist")}
+					onclick={() => setSelection(currentlyPlaying.track?.album_artist!.uid.toString() || "")}
 					hoverOnly
 				/>
 			</div>

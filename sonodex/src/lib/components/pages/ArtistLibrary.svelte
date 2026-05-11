@@ -103,7 +103,7 @@
 						style="grid-template-columns: 40px 1fr; height: 56px;"
 					>
 						<ArtworkDisplay uid={artist.uid} type="artist" size={40} />
-						<button onclick={() => setSelection(artist.uid, "artist")} class="pl-2 text-sm truncate text-left">
+						<button onclick={() => setSelection(artist.uid)} class="pl-2 text-sm truncate text-left">
 							<p class="text-sm font-medium">{artist.name}</p>
 						</button>
 					</div>
@@ -112,7 +112,7 @@
 		{:else}
 			<MediaGrid>
 				{#each filteredArtists as artist}
-					<button onclick={() => setSelection(artist.uid, "artist")} class="flex flex-col items-center gap-2 p-2 rounded-md bg-background border hover:border-primary transition-colors cursor-default">
+					<button onclick={() => setSelection(artist.uid)} class="flex flex-col items-center gap-2 p-2 rounded-md bg-background border hover:border-primary transition-colors cursor-default">
 						<div class="w-full aspect-square rounded-full bg-muted flex items-center justify-center overflow-hidden">
 							<ArtworkDisplay uid={artist.uid} type="artist" />
 						</div>

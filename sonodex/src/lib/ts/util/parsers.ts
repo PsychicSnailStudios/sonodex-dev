@@ -1,4 +1,4 @@
-import type { Track, TrackAlbumEntry, PlaylistTrackEntry, AudioCatagories, UserOptions, Artist, ArtistEntry } from "$ts/util/types";
+import type { Track, TrackAlbumEntry, PlaylistTrackEntry, AudioCatagories, UserOptions, Artist, ArtistEntry, AlbumEntry } from "$ts/util/types";
 
 export function parseUidType(uid: string): AudioCatagories {
 	if (uid.startsWith("t-")) return "track";
@@ -13,6 +13,14 @@ export function parseArtistsToString(artists: ArtistEntry[] | null): string {
 
 	return artists
 		.map(artist => artist.name || "Unknown Artist")
+		.join(", ");
+}
+
+export function parseAlbumsToString(albums: TrackAlbumEntry[] | null): string {
+	if (!albums || albums.length === 0) return "Unknown Albums";
+
+	return albums
+		.map(album => album.name || "Unknown Albums")
 		.join(", ");
 }
 

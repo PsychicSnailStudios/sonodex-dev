@@ -29,26 +29,14 @@ pub async fn fetch_track_lyrics(
 			.map_err(|e| e.to_string())?
 			.ok_or("Track not found")?;
 		let title = track.title.clone().unwrap_or_default();
-		let artist = track
-			.album_artist
-			.clone()
+		let artist = track.album_artist.as_ref().map(|a| a.name.clone())
 			.or_else(|| {
-				track.artists.as_deref().and_then(|a| {
-					serde_json::from_str::<Vec<String>>(a)
-						.ok()
-						.and_then(|v| v.into_iter().next())
-				})
+				track.artists.as_ref().and_then(|v| v.first()).map(|a| a.name.clone())
 			})
 			.unwrap_or_default();
-		let album = track.albums.as_deref().and_then(|a| {
-			serde_json::from_str::<Vec<serde_json::Value>>(a)
-				.ok()
-				.and_then(|v| {
-					v.into_iter()
-						.next()
-						.and_then(|e| e["name"].as_str().map(|s| s.to_string()))
-				})
-		});
+		let album = track.albums.as_ref()
+			.and_then(|v| v.first())
+			.map(|e| e.name.clone());
 		let duration_secs = track.duration_ms.map(|ms| (ms / 1000) as u64);
 		(title, artist, album, duration_secs)
 	};
@@ -64,7 +52,6 @@ pub async fn fetch_track_lyrics(
 	.await;
 
 	if let Some(lyrics) = result {
-		// Write to the source library
 		match library_manager::open_source_conn_for_entity(&profile_uid, &uid, "tracks") {
 			Ok((source_conn, lib)) => {
 				let track = db::get_track_by_uid(&source_conn, &uid)

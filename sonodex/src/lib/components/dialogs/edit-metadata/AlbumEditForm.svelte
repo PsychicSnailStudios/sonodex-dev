@@ -73,7 +73,7 @@
 
 		title = album.title ?? "";
 		originalTitle = title;
-		albumArtist = album.album_artist!.name.toString() ?? "";
+		albumArtist = album.album_artist?.name.toString() ?? "";
 		originalAlbumArtist = albumArtist;
 		releaseDate = album.release_date ?? "";
 		format = album.format ?? "";
@@ -83,11 +83,9 @@
 		artworkPath = album.artwork_path ?? null;
 		type = album.emulate_type ?? "None";
 
-		try {
-			const arr = album.artists ? JSON.parse(album.artists) : [];
-			artists = arr.join(", ");
-			originalArtists = arr;
-		} catch { artists = ""; originalArtists = []; }
+		const artistArr = album.artists ? album.artists.map(a => a.name.toString()) : [];
+		artists = artistArr.join(", ");
+		originalArtists = artistArr;
 
 		try {
 			genreList = album.genres ? JSON.parse(album.genres) : [];
@@ -136,8 +134,8 @@
 
 			const update: Record<string, any> = {
 				title: title || null,
-				album_artist: albumArtist || null,
-				artists: artistArr.length ? JSON.stringify(artistArr) : null,
+				album_artist: albumArtist ? { name: albumArtist, uid: "" } : null,
+				artists: artistArr.length ? JSON.stringify(artistArr.map(name => ({ name, uid: "" }))) : null,
 				release_date: releaseDate || null,
 				format: format || null,
 				genres: genreList.length ? JSON.stringify(genreList) : null,

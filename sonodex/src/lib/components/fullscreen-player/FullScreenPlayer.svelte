@@ -13,7 +13,7 @@
 	import ScrollingText from "$lib/components/custom/text-display/ScrollingText.svelte";
 
 	// SCRIPTS
-	import { currentlyPlaying, player } from "$ts/audio/audioManager.svelte";
+	import { currentlyPlaying, player } from "$ts/audio/audioPlayer.svelte";
 	import { getArtworkColor } from "$ts/util/helpers";
 
 	// VARIABLES

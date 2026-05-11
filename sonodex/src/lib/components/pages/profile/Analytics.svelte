@@ -471,11 +471,11 @@
 								</div>
 								<div class="relative min-w-0 flex-1 grid">
 									<button
-										onclick={() => setSelection(track.uid, "track")}
+										onclick={() => setSelection(track.uid)}
 										class="text-sm truncate text-left hover:underline font-medium"
 									>{track.title ?? "Unknown"}</button>
 									<button
-										onclick={() => setSelection(track.album_artist.uid, "artist")}
+										onclick={() => setSelection(track.album_artist!.uid.toString())}
 										class="text-xs text-muted-foreground truncate text-left hover:underline"
 									>{parseArtistsToString(track.artists)}</button>
 								</div>
@@ -519,7 +519,7 @@
 								</div>
 								<div class="relative min-w-0 flex-1">
 									<button
-										onclick={() => setSelection(artist.uid, "artist")}
+										onclick={() => setSelection(artist.uid)}
 										class="text-sm truncate text-left hover:underline font-medium block w-full"
 									>{artist.name}</button>
 								</div>
@@ -564,7 +564,7 @@
 								</div>
 								<div class="relative min-w-0 flex-1 grid">
 									<button
-										onclick={() => setSelection(album.uid, "album")}
+										onclick={() => setSelection(album.uid)}
 										class="text-sm truncate text-left hover:underline font-medium"
 									>{album.title}</button>
 									<span class="text-xs text-muted-foreground truncate">{album.album_artist ?? ""}</span>

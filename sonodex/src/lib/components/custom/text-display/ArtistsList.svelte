@@ -9,7 +9,7 @@
 
 {#if artists}
 		{#each artists as artist, i}
-			<button onclick={() => setSelection(artist.uid, "artist")} class="text-sm truncate cursor-pointer hover:underline">
+			<button onclick={() => setSelection(artist.uid)} class="text-sm truncate cursor-pointer hover:underline">
 				<p class="text-sm leading-relaxed">{artist.name}{i < artists.length - 1 ? ", " : ""}</p>
 			</button>
 		{/each}
