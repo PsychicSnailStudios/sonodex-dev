@@ -11,7 +11,6 @@
 
 	import HomeView from "$lib/components/pages/Profile.svelte";
 	import PlaylistsView from "$lib/components/pages/PlaylistsLibrary.svelte";
-	import MusicView from "$lib/components/pages/MusicLibrary.svelte";
 	import TracksView from "$lib/components/pages/TrackLibrary.svelte";
 	import AlbumsView from "$lib/components/pages/AlbumLibrary.svelte";
 	import ArtistsView from "$lib/components/pages/ArtistLibrary.svelte";

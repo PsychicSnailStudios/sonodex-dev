@@ -33,7 +33,7 @@
       await saveWindowState(StateFlags.ALL);
     });
 
-    const minDelay = new Promise(res => setTimeout(res, 2000));
+    const minDelay = new Promise(res => setTimeout(res, 600));
     await minDelay;
 
     loadingFading = true;
