@@ -17,9 +17,9 @@
 	import { library } from "$ts/store/library.svelte";
 	import { currentTrackTab, selection, setSelection } from "$ts/store/session.svelte";
 	import { openEditModal } from "$ts/ui/editModal.svelte";
-	import { formatDuration, getArtworkColor } from "$ts/util/helpers";
+	import { formatDuration } from "$ts/util/helpers";
 	import { playTrackByObject } from "$ts/audio/audioManager.svelte";
-	import { artworkCache } from "$ts/library/artworkLoader";
+	import { fetchArtworkColor } from "$ts/library/artworkLoader";
     import { parseTags } from "$ts/util/parsers";
 
 	let track = $derived(library.tracks.find(t => t.uid === selection.uid) ?? null);
@@ -51,12 +51,7 @@
 		const uid = selection.uid;
 		if (!uid) return;
 		color = "var(--muted)";
-		const cached = artworkCache.get(`track:${uid}`);
-		if (cached) {
-			fetch(cached).then(r => r.arrayBuffer()).then(buf => {
-				getArtworkColor(Array.from(new Uint8Array(buf)), 0.3).then(c => color = c);
-			}).catch(() => {});
-		}
+		fetchArtworkColor(uid, "track").then(c => { color = c; });
 	});
 
 	function trackIsNotGhost(): boolean {

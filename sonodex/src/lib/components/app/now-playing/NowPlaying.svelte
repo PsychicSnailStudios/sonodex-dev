@@ -1,7 +1,6 @@
 <script lang="ts">
 
 	// APP
-   import { invoke } from "@tauri-apps/api/core";
 	
 	// COMPONENTS
 	import { Rows4, BadgePlus, Square } from "lucide-svelte";
@@ -21,7 +20,7 @@
 	// SCRIPTS
 	import { setSelection } from "$ts/store/session.svelte";
 	import { currentlyPlaying, player } from "$ts/audio/audioPlayer.svelte";
-	import { getArtworkColor } from "$ts/util/helpers";
+	import { fetchArtworkColor } from "$ts/library/artworkLoader";
    import { parseArtistsToString } from "$ts/util/parsers";
 
 	// VARIABLES
@@ -32,13 +31,9 @@
 	// APP FUNCTIONS
 	$effect(() => {
 		color = "var(--muted)";
-
 		const track = player.track;
 		if (!track?.uid) return;
-
-		invoke("get_track_artwork", { uid: track.uid }).then((bytes) => {
-			if (bytes) getArtworkColor(bytes as number[], 0.3).then((c) => color = c);
-		});
+		fetchArtworkColor(track.uid, "track").then(c => { color = c; });
 	});
 
 </script>

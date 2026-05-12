@@ -16,9 +16,9 @@
 	import { getAlbum, getTrackArrayFromUID, library } from "$ts/store/library.svelte";
 	import { queueTracksByObject } from "$ts/audio/audioManager.svelte";
 	import { openEditModal } from "$ts/ui/editModal.svelte";
-	import { getArtworkColor, totalDuration } from "$ts/util/helpers";
+	import { totalDuration } from "$ts/util/helpers";
 	import { createPersistedViewState } from "$ts/store/session.svelte";
-	import { artworkCache } from "$ts/library/artworkLoader";
+	import { artworkColorCache, fetchArtworkColor } from "$ts/library/artworkLoader";
 
 	import type { Album, Track } from "$ts/util/types";
     import { parseTags } from "$ts/util/parsers";
@@ -40,23 +40,29 @@
 		return getTrackArrayFromUID(album.uid, view.sort);
 	});
 
-	let artistAlbums: Album[] = $derived.by(() => {
-		if (!album?.album_artist) return [];
-		return library.albums.filter(a =>
-			a.album_artist?.name.toLowerCase() === album?.album_artist?.name.toLowerCase()
-		);
-	});
+	const albumsByArtistName = $derived(
+		library.albums.reduce((map, a) => {
+			const key = a.album_artist?.name?.toLowerCase() ?? "";
+			if (!map.has(key)) map.set(key, []);
+			map.get(key)!.push(a);
+			return map;
+		}, new Map<string, Album[]>())
+	);
+
+	let artistAlbums: Album[] = $derived(
+		albumsByArtistName.get(album?.album_artist?.name?.toLowerCase() ?? "") ?? []
+	);
 
 	$effect(() => {
 		const uid = selection.uid;
 		if (!uid) return;
-		color = "var(--muted)";
-		const cached = artworkCache.get(`album:${uid}`);
+		const cached = artworkColorCache.get(`album:${uid}`);
 		if (cached) {
-			fetch(cached).then(r => r.arrayBuffer()).then(buf => {
-				getArtworkColor(Array.from(new Uint8Array(buf)), 0.3).then(c => color = c);
-			}).catch(() => {});
+			color = cached;
+			return;
 		}
+		color = "var(--muted)";
+		fetchArtworkColor(uid, "album").then(c => { color = c; });
 	});
 
 	function trackIsGhost(t: Track): boolean {
