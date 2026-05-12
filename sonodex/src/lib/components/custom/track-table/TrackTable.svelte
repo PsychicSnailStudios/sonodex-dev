@@ -48,7 +48,7 @@
 					case "rating":   return dir * ((a.rating ?? -1) - (b.rating ?? -1))
 					case "duration": return dir * ((a.duration_ms ?? 0) - (b.duration_ms ?? 0))
 					case "label":    return dir * (a.label ?? "").localeCompare(b.label ?? "")
-					case "artist":   return dir * (a.album_artist!.name ?? "").localeCompare(b.album_artist.name ?? "")
+					case "artist":   return dir * (a.album_artist?.name ?? "").localeCompare(b.album_artist?.name ?? "")
 					case "number":   return dir * sortByNumber(a, b)
 					default:         return 0
 				}
@@ -100,6 +100,25 @@
 
 	const orderedUids = $derived(sortedTracks.map((t) => t.uid))
 
+	// VIRTUALIZATION
+	const ROW_HEIGHT = $derived(compact ? 28 : 56)
+	const OVERSCAN = 10
+	let scrollTop = $state(0)
+	let containerHeight = $state(600)
+	let scrollContainer = $state<HTMLElement | null>(null)
+
+	const visibleRange = $derived.by(() => {
+		const start = Math.max(0, Math.floor(scrollTop / ROW_HEIGHT) - OVERSCAN)
+		const end = Math.min(sortedTracks.length, Math.ceil((scrollTop + containerHeight) / ROW_HEIGHT) + OVERSCAN)
+		return { start, end }
+	})
+
+	const totalHeight = $derived(sortedTracks.length * ROW_HEIGHT)
+	const offsetY = $derived(visibleRange.start * ROW_HEIGHT)
+
+	// disable virtualization when disc breaks are present (album view) — list is small enough
+	const useVirtualization = $derived(!albumUid && sortedTracks.length > 200)
+
 	let dragOverIndex = $state<number | null>(null)
 	let dragOverPosition = $state<"above" | "below">("below")
 
@@ -108,10 +127,19 @@
 		setTrackSelectionContext(playlistUid ? "playlist" : "library", playlistUid ?? null)
 	})
 
+	$effect(() => {
+		if (!scrollContainer) return
+		const ro = new ResizeObserver((entries) => {
+			containerHeight = entries[0].contentRect.height
+		})
+		ro.observe(scrollContainer)
+		return () => ro.disconnect()
+	})
+
 	// FUNCTIONS
 	function sortByNumber(a: Track, b: Track) {
 		if (playlistUid) return 0
-		return (a.albums![0].track_number ?? 0) - (b.albums![0].track_number ?? 0)
+		return (a.albums?.[0]?.track_number ?? 0) - (b.albums?.[0]?.track_number ?? 0)
 	}
 
 	function handleTableClick(e: MouseEvent) {
@@ -214,14 +242,14 @@
 	role="grid"
 	aria-label="Track list"
 	tabindex="-1"
-	class="flex flex-col p-0 outline-none"
+	class="flex flex-col p-0 outline-none h-full"
 	onclick={handleTableClick}
 	onkeydown={handleKeyDown}
 	ondragover={(e) => e.preventDefault()}
 	ondrop={handleTableDrop}
 >
 	<div
-		class="grid text-xs font-medium text-muted-foreground px-3 py-2 border-b"
+		class="grid text-xs font-medium text-muted-foreground px-3 py-2 border-b shrink-0"
 		style="grid-template-columns: {gridTemplate};"
 	>
 		{#if v.number}
@@ -310,56 +338,113 @@
 		{/if}
 	</div>
 
-	<div>
-		{#each sortedTracks as track, i (track.uid)}
-			{#if discBreaks.has(track.uid)}
-				{@const entry = discBreaks.get(track.uid)!}
-				<div class="flex items-center gap-2 px-3 py-3 text-xs font-medium text-muted-foreground">
-					<svelte:component this={entry.Icon} class="size-3.5 shrink-0" />
-					<span>{entry.label}</span>
+	{#if useVirtualization}
+		<div
+			bind:this={scrollContainer}
+			class="overflow-y-auto flex-1 min-h-0"
+			onscroll={(e) => { scrollTop = (e.currentTarget as HTMLElement).scrollTop }}
+		>
+			<div style="height: {totalHeight}px; position: relative;">
+				<div style="position: absolute; top: {offsetY}px; left: 0; right: 0;">
+					{#each sortedTracks.slice(visibleRange.start, visibleRange.end) as track, localI (track.uid)}
+						{@const i = visibleRange.start + localI}
+						<div
+							class="relative"
+							role="row"
+							tabindex={i}
+							ondragover={(e) => handleRowDragOver(e, i)}
+							ondragleave={handleRowDragLeave}
+							ondrop={(e) => handleRowDrop(e, i)}
+						>
+							{#if dragOverIndex === i && dragOverPosition === "above"}
+								<div class="absolute top-0 left-0 right-0 h-0.5 bg-primary z-10 pointer-events-none"></div>
+							{/if}
+
+							<ContextMenu.Root>
+								<ContextMenu.Trigger>
+									<TrackRow
+										{track}
+										{orderedUids}
+										index={i}
+										{compact}
+										{gridTemplate}
+										{viewId}
+										showNumber={v.number}
+										showArtwork={v.artwork}
+										showTitle={v.title}
+										showArtist={v.artist}
+										showAlbum={v.album}
+										showYear={v.year}
+										showRating={v.rating}
+										showDuration={v.duration}
+										showLabel={v.label}
+										showOptions={v.options}
+										{playlistUid}
+									/>
+								</ContextMenu.Trigger>
+								<TrackContext track={track} />
+							</ContextMenu.Root>
+
+							{#if dragOverIndex === i && dragOverPosition === "below"}
+								<div class="absolute bottom-0 left-0 right-0 h-0.5 bg-primary z-10 pointer-events-none"></div>
+							{/if}
+						</div>
+					{/each}
 				</div>
-			{/if}
-			<div
-				class="relative"
-				role="row"
-				tabindex={i}
-				ondragover={(e) => handleRowDragOver(e, i)}
-				ondragleave={handleRowDragLeave}
-				ondrop={(e) => handleRowDrop(e, i)}
-			>
-				{#if dragOverIndex === i && dragOverPosition === "above"}
-					<div class="absolute top-0 left-0 right-0 h-0.5 bg-primary z-10 pointer-events-none"></div>
-				{/if}
-
-				<ContextMenu.Root>
-					<ContextMenu.Trigger>
-						<TrackRow
-							{track}
-							{orderedUids}
-							index={i}
-							{compact}
-							{gridTemplate}
-  							{viewId}
-							showNumber={v.number}
-							showArtwork={v.artwork}
-							showTitle={v.title}
-							showArtist={v.artist}
-							showAlbum={v.album}
-							showYear={v.year}
-							showRating={v.rating}
-							showDuration={v.duration}
-							showLabel={v.label}
-							showOptions={v.options}
-							{playlistUid}
-						/>
-					</ContextMenu.Trigger>
-					<TrackContext track={track} />
-				</ContextMenu.Root>
-
-				{#if dragOverIndex === i && dragOverPosition === "below"}
-					<div class="absolute bottom-0 left-0 right-0 h-0.5 bg-primary z-10 pointer-events-none"></div>
-				{/if}
 			</div>
-		{/each}
-	</div>
+		</div>
+	{:else}
+		<div>
+			{#each sortedTracks as track, i (track.uid)}
+				{#if discBreaks.has(track.uid)}
+					{@const entry = discBreaks.get(track.uid)!}
+					<div class="flex items-center gap-2 px-3 py-3 text-xs font-medium text-muted-foreground">
+						<svelte:component this={entry.Icon} class="size-3.5 shrink-0" />
+						<span>{entry.label}</span>
+					</div>
+				{/if}
+				<div
+					class="relative"
+					role="row"
+					tabindex={i}
+					ondragover={(e) => handleRowDragOver(e, i)}
+					ondragleave={handleRowDragLeave}
+					ondrop={(e) => handleRowDrop(e, i)}
+				>
+					{#if dragOverIndex === i && dragOverPosition === "above"}
+						<div class="absolute top-0 left-0 right-0 h-0.5 bg-primary z-10 pointer-events-none"></div>
+					{/if}
+
+					<ContextMenu.Root>
+						<ContextMenu.Trigger>
+							<TrackRow
+								{track}
+								{orderedUids}
+								index={i}
+								{compact}
+								{gridTemplate}
+								{viewId}
+								showNumber={v.number}
+								showArtwork={v.artwork}
+								showTitle={v.title}
+								showArtist={v.artist}
+								showAlbum={v.album}
+								showYear={v.year}
+								showRating={v.rating}
+								showDuration={v.duration}
+								showLabel={v.label}
+								showOptions={v.options}
+								{playlistUid}
+							/>
+						</ContextMenu.Trigger>
+						<TrackContext track={track} />
+					</ContextMenu.Root>
+
+					{#if dragOverIndex === i && dragOverPosition === "below"}
+						<div class="absolute bottom-0 left-0 right-0 h-0.5 bg-primary z-10 pointer-events-none"></div>
+					{/if}
+				</div>
+			{/each}
+		</div>
+	{/if}
 </div>

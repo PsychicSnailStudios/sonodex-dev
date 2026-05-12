@@ -100,13 +100,11 @@
 	}
 
 	function getTrackNumber(): string {
-		let num = track.albums[0].track ?? "#"
-
 		if (playlistUid) {
-			num = orderedUids.indexOf(track.uid) + 1
+			return (orderedUids.indexOf(track.uid) + 1).toString();
 		}
-
-		return num.toString();
+		const num = track.albums?.[0]?.track_number
+		return num != null ? num.toString() : "#"
 	}
 </script>
 
@@ -183,7 +181,7 @@
 					</span>
 				</div>
 				<div class="min-w-0 flex items-center">
-					<span role="button" tabindex="0" onclick={() => setSelection(track.album_artist.uid)} onkeydown={(e) => { if (e.key === 'Enter') setSelection(track.album_artist.uid); }} class="text-xs text-muted-foreground truncate cursor-pointer hover:underline">
+					<span role="button" tabindex="0" onclick={() => { if (track.album_artist?.uid) setSelection(track.album_artist.uid) }} onkeydown={(e) => { if (e.key === 'Enter' && track.album_artist?.uid) setSelection(track.album_artist.uid); }} class="text-xs text-muted-foreground truncate cursor-pointer hover:underline">
 						<ArtistsList artists={track.artists} />
 					</span>
 				</div>
@@ -192,14 +190,14 @@
 	{/if}
 
 	{#if showArtist}
-		<span role="button" tabindex="0" onclick={() => setSelection(track.album_artist.uid)} onkeydown={(e) => { if (e.key === 'Enter') setSelection(track.album_artist.uid); }} class="text-sm truncate cursor-pointer hover:underline">
+		<span role="button" tabindex="0" onclick={() => { if (track.album_artist?.uid) setSelection(track.album_artist.uid) }} onkeydown={(e) => { if (e.key === 'Enter' && track.album_artist?.uid) setSelection(track.album_artist.uid); }} class="text-sm truncate cursor-pointer hover:underline">
 			<ArtistsList artists={track.artists} />
 		</span>
 	{/if}
 
-	{#if showAlbum && track.albums}
+	{#if showAlbum && track.albums?.[0]}
 		<div class="min-w-0 flex items-center pr-4">
-			<span role="button" tabindex="0" onclick={() => setSelection(track.albums[0].uid)} onkeydown={(e) => { if (e.key === 'Enter') setSelection(track.albums[0].uid); }} class="text-sm truncate cursor-pointer hover:underline">
+			<span role="button" tabindex="0" onclick={() => { if (track.albums?.[0]?.uid) setSelection(track.albums[0].uid) }} onkeydown={(e) => { if (e.key === 'Enter' && track.albums?.[0]?.uid) setSelection(track.albums[0].uid); }} class="text-sm truncate cursor-pointer hover:underline">
 				{track.albums[0].name ?? "Unknown Album"}
 			</span>
 		</div>

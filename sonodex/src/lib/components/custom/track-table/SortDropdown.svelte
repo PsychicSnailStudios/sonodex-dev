@@ -32,10 +32,9 @@
 
 	function setField(f: SortField) {
 		if (sort.field === f) {
-			if (f !== null) sort.direction = sort.direction === "asc" ? "desc" : "asc";
+			sort.set(f, sort.direction === "asc" ? "desc" : "asc")
 		} else {
-			sort.field = f;
-			sort.direction = "asc";
+			sort.set(f, "asc")
 		}
 	}
 </script>
@@ -59,7 +58,6 @@
 			{#each fields as f}
 				<DropdownMenu.Item
 					class={sort.active(f.value) ? "bg-accent" : ""}
-					// onclick={() => sort.active(f.value) ? sort.clear() : sort.set(f.value)}
 					onclick={() => setField(f.value)}
 				>
 					{#if sort.active(f.value)}
@@ -76,14 +74,4 @@
 			{/each}
 		</DropdownMenu.Content>
 	</DropdownMenu.Root>
-
-	<!-- {#if sort.field}
-		<Button variant="ghost" size="sm" onclick={toggleDirection} class="px-2">
-			{#if sort.direction === "asc"}
-				<ChevronUp size={14} />
-			{:else}
-				<ChevronDown size={14} />
-			{/if}
-		</Button>
-	{/if} -->
 </div>
