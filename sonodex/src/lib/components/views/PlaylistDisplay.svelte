@@ -15,12 +15,12 @@
 	import { selection } from "$ts/store/session.svelte";
 	import { getTrackArrayFromUID, library } from "$ts/store/library.svelte";
 	import { openEditModal } from "$ts/ui/editModal.svelte";
-	import { getArtworkColor, getArtworkColorFromPath, totalDuration } from "$ts/util/helpers";
+	import { totalDuration } from "$ts/util/helpers";
 	import { queueTracksByObject } from "$ts/audio/audioManager.svelte";
 	import { dragState, endDrag } from "$ts/store/drag.svelte";
 	import { createPersistedViewState } from "$ts/store/session.svelte";
 	import { searchTracks } from "$ts/store/fuseStore.svelte";
-	import { artworkCache } from "$ts/library/artworkLoader";
+	import { fetchArtworkColor } from "$ts/library/artworkLoader";
 
 	import type { Track } from "$ts/util/types";
    import { addTracksToPlaylist, addTrackToPlaylist } from "$ts/audio/playlistManager.svelte";
@@ -50,26 +50,14 @@
 		if (!uid) return;
 
 		color = "var(--muted)";
-
-		if (playlist?.artwork_path) {
-			getArtworkColorFromPath(playlist.artwork_path, 0.3).then((c) => color = c);
-			return;
-		}
-
-		const cached = artworkCache.get(`playlist:${uid}`);
-		if (cached) {
-			fetch(cached).then(r => r.arrayBuffer()).then(buf => {
-				getArtworkColor(Array.from(new Uint8Array(buf)), 0.3).then(c => color = c);
-			}).catch(() => {
-				if (!firstTrack) return;
-				const trackCached = artworkCache.get(`track:${firstTrack.uid}`);
-				if (trackCached) {
-					fetch(trackCached).then(r => r.arrayBuffer()).then(buf => {
-						getArtworkColor(Array.from(new Uint8Array(buf)), 0.3).then(c => color = c);
-					}).catch(() => {});
-				}
-			});
-		}
+		fetchArtworkColor(uid, "playlist").then(c => {
+			if (c !== "var(--muted)") {
+				color = c;
+			} else if (firstTrack) {
+				// Playlist has no artwork — use the first track's color as fallback
+				fetchArtworkColor(firstTrack.uid, "track").then(tc => { color = tc; });
+			}
+		});
 	});
 
 	function handleDisplayDragOver(e: DragEvent) {
@@ -184,6 +172,5 @@
 
 		</div>
 	</ScrollArea>
-
 
 </div>
