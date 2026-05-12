@@ -8,10 +8,16 @@ use lofty::file::TaggedFileExt;
 use lofty::probe::Probe;
 use lofty::tag::Accessor;
 use rusqlite::Connection;
+use std::collections::HashMap;
 use std::path::Path;
 use std::time::UNIX_EPOCH;
 use tauri::{AppHandle, Emitter};
 use walkdir::WalkDir;
+
+// (title_lower, album_artist_lower) -> (id, uid, tracks_json, label)
+type AlbumCache = HashMap<(String, String), (i64, String, String, Option<String>)>;
+// name_lower -> (id, uid)
+type ArtistCache = HashMap<String, (i64, String)>;
 
 const SUPPORTED_EXTENSIONS: &[&str] = &["mp3", "flac", "m4a", "aac", "wav", "aiff", "ogg"];
 
@@ -948,6 +954,129 @@ pub fn read_track_with_settings(
 	})
 }
 
+fn find_or_create_album_cached(
+	conn: &Connection,
+	cache: &mut AlbumCache,
+	title: &str,
+	album_artist_name: Option<&str>,
+	year: Option<&str>,
+	genres: Option<&str>,
+	artwork_blob: Option<Vec<u8>>,
+	track_uid: &str,
+	track_title: Option<&str>,
+	track_number: Option<u32>,
+	label: Option<&str>,
+) -> Option<(i64, String)> {
+	let title_lower = title.to_lowercase();
+	let artist_lower = album_artist_name.map(|a| a.to_lowercase()).unwrap_or_default();
+	let cache_key = (title_lower.clone(), artist_lower.clone());
+
+	if let Some((cached_id, cached_uid, tracks_json, cached_label)) = cache.get(&cache_key).cloned() {
+		let existing_tracks: Vec<serde_json::Value> =
+			serde_json::from_str(&tracks_json).unwrap_or_default();
+
+		let needs_label_update = cached_label.is_none() && label.is_some();
+		let track_already_present = existing_tracks
+			.iter()
+			.any(|t| t["uid"].as_str() == Some(track_uid));
+
+		if !track_already_present || needs_label_update {
+			let mut updated = existing_tracks;
+			if !track_already_present {
+				updated.push(serde_json::json!({
+					"uid": track_uid,
+					"name": track_title.unwrap_or(""),
+					"track_number": track_number
+				}));
+			}
+			let new_tracks_json = serde_json::to_string(&updated).ok()?;
+
+			update_album(
+				conn,
+				cached_id,
+				&AlbumUpdate {
+					format: None,
+					title: None,
+					rating: None,
+					artists: None,
+					album_artist: None,
+					release_date: None,
+					tags: None,
+					genres: None,
+					tracks: Some(new_tracks_json.clone()),
+					credits: None,
+					label: if needs_label_update { label.map(|s| s.to_string()) } else { None },
+					artwork_blob: None,
+					artwork_path: None,
+					emulate_type: None,
+				},
+			)
+			.ok()?;
+
+			if let Some(entry) = cache.get_mut(&cache_key) {
+				entry.2 = new_tracks_json;
+				if needs_label_update {
+					entry.3 = label.map(|s| s.to_string());
+				}
+			}
+		}
+
+		return Some((cached_id, cached_uid));
+	}
+
+	let uid = generate_uid("a");
+	let tracks_json = serde_json::to_string(&vec![serde_json::json!({
+		"uid": track_uid,
+		"name": track_title.unwrap_or(""),
+		"track_number": track_number
+	})])
+	.unwrap_or_else(|_| "[]".to_string());
+
+	let album_artist_struct = album_artist_name
+		.map(|n| crate::db::ArtistEntry { uid: String::new(), name: n.to_string() });
+	let artists_struct = album_artist_name
+		.map(|n| vec![crate::db::ArtistEntry { uid: String::new(), name: n.to_string() }]);
+	let genres_parsed: Option<Vec<String>> = genres
+		.and_then(|g| serde_json::from_str(g).ok());
+
+	let album = Album {
+		id: None,
+		uid: uid.clone(),
+		format: None,
+		title: title.to_string(),
+		rating: None,
+		artists: artists_struct,
+		album_artist: album_artist_struct,
+		release_date: year.map(|s| s.to_string()),
+		tags: None,
+		genres: genres_parsed,
+		tracks: Some(tracks_json.clone()),
+		credits: None,
+		label: label.map(|s| s.to_string()),
+		artwork_blob: artwork_blob.clone(),
+		artwork_thumb: artwork_blob.as_deref().and_then(crate::thumb::make_thumb),
+		artwork_path: None,
+		emulate_type: None,
+	};
+
+	create_album(conn, &album).ok()?;
+
+	let album_id: i64 = conn
+		.query_row(
+			"SELECT id FROM albums WHERE uid = ?1",
+			rusqlite::params![uid],
+			|row| row.get(0),
+		)
+		.ok()?;
+
+	cache.insert(
+		cache_key,
+		(album_id, uid.clone(), tracks_json, label.map(|s| s.to_string())),
+	);
+
+	Some((album_id, uid))
+}
+
 fn find_or_create_album(
 	conn: &Connection,
 	title: &str,
@@ -1066,6 +1195,50 @@ fn find_or_create_album(
 	Some((created_album.id?, uid))
 }
 
+fn find_or_create_artist_cached(
+	conn: &Connection,
+	cache: &mut ArtistCache,
+	name: &str,
+) -> Option<(i64, String)> {
+	let name_lower = name.to_lowercase();
+
+	if let Some(&(id, ref uid)) = cache.get(&name_lower) {
+		return Some((id, uid.clone()));
+	}
+
+	let uid = generate_uid("ar");
+	let artist = Artist {
+		id: None,
+		uid: uid.clone(),
+		name: name.to_string(),
+		aka: None,
+		about: None,
+		tags: None,
+		genres: None,
+		websites: None,
+		members: None,
+		profile_art_blob: None,
+		profile_art_path: None,
+		banner_art_blob: None,
+		banner_art_path: None,
+		profile_art_thumb: None,
+		banner_art_thumb: None,
+	};
+
+	create_artist(conn, &artist).ok()?;
+
+	let artist_id: i64 = conn
+		.query_row(
+			"SELECT id FROM artists WHERE uid = ?1",
+			rusqlite::params![uid],
+			|row| row.get(0),
+		)
+		.ok()?;
+
+	cache.insert(name_lower, (artist_id, uid.clone()));
+	Some((artist_id, uid))
+}
+
 fn find_or_create_artist(conn: &Connection, name: &str) -> Option<(i64, String)> {
 	let existing = get_all_artists(conn).ok()?;
 	let name_lower = name.to_lowercase();
@@ -1105,6 +1278,17 @@ fn find_or_create_artist(conn: &Connection, name: &str) -> Option<(i64, String)>
 }
 
 pub fn process_track(conn: &Connection, track: &Track) {
+	let mut album_cache: AlbumCache = HashMap::new();
+	let mut artist_cache: ArtistCache = HashMap::new();
+	process_track_cached(conn, track, &mut album_cache, &mut artist_cache);
+}
+
+pub fn process_track_cached(
+	conn: &Connection,
+	track: &Track,
+	album_cache: &mut AlbumCache,
+	artist_cache: &mut ArtistCache,
+) {
 	let track_uid = track.uid.clone();
 	let track_title = track.title.as_deref();
 
@@ -1120,9 +1304,7 @@ pub fn process_track(conn: &Connection, track: &Track) {
 		.map(|v| v == "true")
 		.unwrap_or(true);
 
-	// Collect artist name → uid mappings as we create/find them, so we can
-	// patch UIDs back into the track and album records in one pass.
-	let mut artist_uid_map: std::collections::HashMap<String, String> = std::collections::HashMap::new();
+	let mut artist_uid_map: HashMap<String, String> = HashMap::new();
 
 	if create_albums {
 		if let Some(albums_arr) = &track.albums {
@@ -1136,8 +1318,9 @@ pub fn process_track(conn: &Connection, track: &Track) {
 				if !album_entry.name.is_empty() {
 					let track_number = if album_entry.track > 0 { Some(album_entry.track as u32) } else { None };
 
-					if let Some((_album_id, album_uid)) = find_or_create_album(
+					if let Some((_album_id, album_uid)) = find_or_create_album_cached(
 						conn,
+						album_cache,
 						&album_entry.name,
 						album_artist_name,
 						track.year.as_deref(),
@@ -1160,13 +1343,9 @@ pub fn process_track(conn: &Connection, track: &Track) {
 
 			if !updated_album_entries.is_empty() {
 				if let Ok(patched_albums) = serde_json::to_string(&updated_album_entries) {
-					let _ = update_track_metadata_by_uid(
-						conn,
-						&track_uid,
-						&MetadataUpdate {
-							albums: Some(patched_albums),
-							..Default::default()
-						},
+					let _ = conn.execute(
+						"UPDATE tracks SET albums = ?1 WHERE uid = ?2",
+						rusqlite::params![patched_albums, track_uid],
 					);
 				}
 			}
@@ -1191,52 +1370,42 @@ pub fn process_track(conn: &Connection, track: &Track) {
 
 		for name in &all_names {
 			if !name.is_empty() {
-				if let Some((_, uid)) = find_or_create_artist(conn, name) {
+				if let Some((_, uid)) = find_or_create_artist_cached(conn, artist_cache, name) {
 					artist_uid_map.insert(name.to_lowercase(), uid);
 				}
 			}
 		}
 
-		// Patch artist UIDs back into the track's artists field
 		if let Some(ref artists) = track.artists {
 			let patched: Vec<crate::db::ArtistEntry> = artists.iter().map(|a| {
 				let uid = artist_uid_map.get(&a.name.to_lowercase()).cloned().unwrap_or_default();
 				crate::db::ArtistEntry { uid, name: a.name.clone() }
 			}).collect();
 			if let Ok(json) = serde_json::to_string(&patched) {
-				let _ = update_track_metadata_by_uid(
-					conn,
-					&track_uid,
-					&MetadataUpdate {
-						artists: Some(json),
-						..Default::default()
-					},
+				let _ = conn.execute(
+					"UPDATE tracks SET artists = ?1 WHERE uid = ?2",
+					rusqlite::params![json, track_uid],
 				);
 			}
 		}
 
-		// Patch artist UID back into the track's album_artist field
 		if let Some(ref aa) = track.album_artist {
 			let uid = artist_uid_map.get(&aa.name.to_lowercase()).cloned().unwrap_or_default();
 			let patched = crate::db::ArtistEntry { uid, name: aa.name.clone() };
 			if let Ok(json) = serde_json::to_string(&patched) {
-				let _ = update_track_metadata_by_uid(
-					conn,
-					&track_uid,
-					&MetadataUpdate {
-						album_artist: Some(json),
-						..Default::default()
-					},
+				let _ = conn.execute(
+					"UPDATE tracks SET album_artist = ?1 WHERE uid = ?2",
+					rusqlite::params![json, track_uid],
 				);
 			}
 		}
 
-		// Patch artist UIDs into any album records this track belongs to
 		if let Some(ref album_entries) = track.albums {
 			for album_entry in album_entries {
 				if !album_entry.uid.is_empty() {
-					let albums_all = get_all_albums(conn).unwrap_or_default();
-					if let Some(album) = albums_all.iter().find(|a| a.uid == album_entry.uid) {
+					let cache_key_iter = album_cache.iter().find(|(_, v)| v.1 == album_entry.uid);
+					if let Some((_, (album_id, _, _, _))) = cache_key_iter {
+						let album_id = *album_id;
 						let mut needs_update = false;
 						let mut update = AlbumUpdate {
 							format: None, title: None, rating: None,
@@ -1246,27 +1415,38 @@ pub fn process_track(conn: &Connection, track: &Track) {
 							artwork_path: None, emulate_type: None,
 						};
 
-						if let Some(ref artists) = album.artists {
-							let patched: Vec<crate::db::ArtistEntry> = artists.iter().map(|a| {
-								let uid = artist_uid_map.get(&a.name.to_lowercase()).cloned().unwrap_or_default();
-								crate::db::ArtistEntry { uid, name: a.name.clone() }
-							}).collect();
-							update.artists = serde_json::to_string(&patched).ok();
-							needs_update = true;
-						}
+						let row: Option<(Option<String>, Option<String>)> = conn
+							.query_row(
+								"SELECT artists, album_artist FROM albums WHERE id = ?1",
+								rusqlite::params![album_id],
+								|row| Ok((row.get(0)?, row.get(1)?)),
+							)
+							.ok();
 
-						if let Some(ref aa) = album.album_artist {
-							if let Some(uid) = artist_uid_map.get(&aa.name.to_lowercase()) {
-								let patched = crate::db::ArtistEntry { uid: uid.clone(), name: aa.name.clone() };
-								update.album_artist = serde_json::to_string(&patched).ok();
-								needs_update = true;
+						if let Some((artists_json, aa_json)) = row {
+							if let Some(artists_str) = artists_json {
+								if let Ok(artists) = serde_json::from_str::<Vec<crate::db::ArtistEntry>>(&artists_str) {
+									let patched: Vec<crate::db::ArtistEntry> = artists.iter().map(|a| {
+										let uid = artist_uid_map.get(&a.name.to_lowercase()).cloned().unwrap_or_default();
+										crate::db::ArtistEntry { uid, name: a.name.clone() }
+									}).collect();
+									update.artists = serde_json::to_string(&patched).ok();
+									needs_update = true;
+								}
+							}
+							if let Some(aa_str) = aa_json {
+								if let Ok(aa) = serde_json::from_str::<crate::db::ArtistEntry>(&aa_str) {
+									if let Some(uid) = artist_uid_map.get(&aa.name.to_lowercase()) {
+										let patched = crate::db::ArtistEntry { uid: uid.clone(), name: aa.name.clone() };
+										update.album_artist = serde_json::to_string(&patched).ok();
+										needs_update = true;
+									}
+								}
 							}
 						}
 
 						if needs_update {
-							if let Some(album_id) = album.id {
-								let _ = update_album(conn, album_id, &update);
-							}
+							let _ = update_album(conn, album_id, &update);
 						}
 					}
 				}
@@ -1276,6 +1456,13 @@ pub fn process_track(conn: &Connection, track: &Track) {
 }
 
 pub fn scan_directory_with_progress(conn: &Connection, dir: &str, app: &AppHandle) {
+	conn.execute_batch(
+		"PRAGMA journal_mode = WAL;
+		 PRAGMA synchronous = NORMAL;
+		 PRAGMA cache_size = -32000;",
+	)
+	.ok();
+
 	let priority_title = get_setting(conn, "filename_priority_title")
 		.ok()
 		.flatten()
@@ -1456,7 +1643,29 @@ pub fn scan_directory_with_progress(conn: &Connection, dir: &str, app: &AppHandl
 		None
 	};
 
+	// Pre-load album and artist caches from existing DB records to avoid per-track full table scans
+	let mut album_cache: AlbumCache = {
+		let existing = get_all_albums(conn).unwrap_or_default();
+		existing.into_iter().filter_map(|a| {
+			let id = a.id?;
+			let title_lower = a.title.to_lowercase();
+			let artist_lower = a.album_artist.as_ref().map(|ar| ar.name.to_lowercase()).unwrap_or_default();
+			let tracks_json = a.tracks.unwrap_or_else(|| "[]".to_string());
+			Some(((title_lower, artist_lower), (id, a.uid, tracks_json, a.label)))
+		}).collect()
+	};
+
+	let mut artist_cache: ArtistCache = {
+		let existing = get_all_artists(conn).unwrap_or_default();
+		existing.into_iter().filter_map(|a| {
+			let id = a.id?;
+			Some((a.name.to_lowercase(), (id, a.uid)))
+		}).collect()
+	};
+
 	let mut scanned_album_uids: Vec<String> = Vec::new();
+
+	conn.execute_batch("BEGIN DEFERRED").ok();
 
 	for entry in all_files {
 		if let Some(mut track) = read_track_with_settings(
@@ -1556,7 +1765,7 @@ pub fn scan_directory_with_progress(conn: &Connection, dir: &str, app: &AppHandl
 					track.uid.clone()
 				};
 				let track_for_process = crate::db::Track { uid: actual_uid, ..track.clone() };
-				process_track(conn, &track_for_process);
+				process_track_cached(conn, &track_for_process, &mut album_cache, &mut artist_cache);
 
 				if let Some(ref tags) = track.tags {
 					for name in tags {
@@ -1638,6 +1847,8 @@ pub fn scan_directory_with_progress(conn: &Connection, dir: &str, app: &AppHandl
 			.ok();
 		}
 	}
+
+	conn.execute_batch("COMMIT").ok();
 
 	if auto_enrich_albums && !scanned_album_uids.is_empty() {
 		if let (Some(ref settings), Some(ref client), Some(ref rt)) =
