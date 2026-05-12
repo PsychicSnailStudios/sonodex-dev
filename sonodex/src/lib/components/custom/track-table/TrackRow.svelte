@@ -197,7 +197,7 @@
 		</span>
 	{/if}
 
-	{#if showAlbum}
+	{#if showAlbum && track.albums}
 		<div class="min-w-0 flex items-center pr-4">
 			<span role="button" tabindex="0" onclick={() => setSelection(track.albums[0].uid)} onkeydown={(e) => { if (e.key === 'Enter') setSelection(track.albums[0].uid); }} class="text-sm truncate cursor-pointer hover:underline">
 				{track.albums[0].name ?? "Unknown Album"}
