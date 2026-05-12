@@ -1,12 +1,9 @@
 <script lang="ts">
-
 	// COMPONENTS
-	import { ArrowDownAZ, ArrowUpAZ, ArrowUpDown, ChevronUp, ChevronDown, LayoutGrid, List } from "lucide-svelte";
+	import { ArrowDownAZ, ArrowUpAZ, LayoutGrid, List } from "lucide-svelte";
 
 	import { Button } from "$shadcn/button/index.js";
 	import { ScrollArea } from "$shadcn/scroll-area/index.js";
-	import { Input } from "$shadcn/input/index.js";
-	import Toggle from "$shadcn/toggle/toggle.svelte";
 
 	// CUSTOM COMPONENTS
 	import ArtworkDisplay from "$lib/components/custom/ArtworkDisplay.svelte";
@@ -14,8 +11,8 @@
 	import MediaGrid from "$lib/layouts/MediaGrid.svelte";
 
 	// SCRIPTS
-	import Fuse from "fuse.js";
 	import { library } from "$ts/store/library.svelte";
+	import { searchArtists } from "$ts/store/fuseStore.svelte";
 	import { setSelection } from "$ts/store/session.svelte";
 	import { createPersistedViewState } from "$ts/store/session.svelte";
 	
@@ -28,38 +25,18 @@
 		colPreset: "album",
 	});
 
-	let fuseInstance: Fuse<(typeof library.artists)[0]> | null = $state(null);
-	let lastArtistsRef: typeof library.artists | null = null;
-
-	function getFuse() {
-		if (fuseInstance && lastArtistsRef === library.artists) return fuseInstance;
-		lastArtistsRef = library.artists;
-		fuseInstance = new Fuse(library.artists, {
-			keys: [
-				{ name: "name",   weight: 0.5,  getFn: (t) => t.name ?? ""   },
-				{ name: "akas",   weight: 0.35, getFn: (t) => t.aka ?? ""    },
-				{ name: "tags",   weight: 0.05, getFn: (t) => t.tags ?? ""   },
-				{ name: "genres", weight: 0.05, getFn: (t) => t.genres ?? "" },
-			],
-			threshold: 0.35,
-			ignoreLocation: true,
-			includeScore: false,
-			useExtendedSearch: false,
-			minMatchCharLength: 2,
-		});
-		return fuseInstance;
-	}
-
-	const filteredArtists = $derived.by(() => {
-		const list = search.trim().length < 2
-			? library.artists
-			: getFuse().search(search).map((r) => r.item);
-
-		return [...list].sort((a, b) => {
+	const sortedArtists = $derived(
+		[...library.artists].sort((a, b) => {
 			const cmp = a.name.localeCompare(b.name);
 			return view.sort.direction === "asc" ? cmp : -cmp;
-		});
-	});
+		})
+	);
+
+	const filteredArtists = $derived(
+		search.trim().length < 2
+			? sortedArtists
+			: searchArtists(search)
+	);
 </script>
 
 <div class="flex flex-col gap-2 pt-4 border-2 h-full w-full overflow-hidden rounded-md">
