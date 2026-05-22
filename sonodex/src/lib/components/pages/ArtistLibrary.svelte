@@ -20,22 +20,20 @@
 	let search = $state("");
 
 	const view = createPersistedViewState("artist-library", {
-		sortField: "number",
+		sortField: "title",
 		sortDir: "asc",
-		colPreset: "album",
+		colPreset: "default",
 	});
 
-	const sortedArtists = $derived(
-		[...library.artists].sort((a, b) => {
-			const cmp = a.name.localeCompare(b.name);
-			return view.sort.direction === "asc" ? cmp : -cmp;
-		})
-	);
+	const sortedArtists = $derived.by(() => {
+		const dir = view.sort.direction === "asc" ? 1 : -1;
+		return [...library.artists].sort((a, b) => a.name.localeCompare(b.name) * dir);
+	});
 
 	const filteredArtists = $derived(
-		search.trim().length < 2
-			? sortedArtists
-			: searchArtists(search)
+		search.trim().length >= 2
+			? searchArtists(search)
+			: sortedArtists
 	);
 </script>
 

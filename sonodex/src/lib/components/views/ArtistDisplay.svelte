@@ -15,7 +15,7 @@
 	import TagList from "$lib/components/custom/tags/TagList.svelte";
 
 	import { selection } from "$ts/store/session.svelte";
-	import { getAlbum, getArtist, getPlaylist, getTrack, library } from "$ts/store/library.svelte";
+	import { getAlbum, getArtist, getPlaylist, getTrack, getArtistAlbums, library } from "$ts/store/library.svelte";
 	import { openEditModal } from "$ts/ui/editModal.svelte";
 	import { currentArtistTab } from "$ts/store/session.svelte";
 	import type { Artist, Album } from "$ts/util/types";
@@ -32,24 +32,18 @@
 	let genres = $derived(artist?.genres ? parseTags(artist.genres) : null);
 	let tags = $derived(artist?.tags ? parseTags(artist.tags) : null);
 
+	// Parse aka once, reuse for both album lookup and template display
+	let akaList = $derived<string[]>(artist?.aka ? (JSON.parse(artist.aka) as string[]) : []);
+
 	let artistAlbums: Album[] = $derived.by(() => {
 		if (!artist) return [];
-
-		const akaNames: string[] = artist.aka ? (JSON.parse(artist.aka) as string[]).map(n => n.toLowerCase()) : [];
-		const allNames = new Set([artist.name.toLowerCase(), ...akaNames]);
-
-		const albumUidsWithArtist = new Set<string>();
-		for (const t of library.tracks) {
-			if (!t.artists) continue;
-			if (!t.artists.some(a => allNames.has(a.name.toLowerCase()))) continue;
-			if (!t.albums) continue;
-			for (const a of t.albums) albumUidsWithArtist.add(a.uid);
+		const akaUids: string[] = [];
+		// Find UIDs of aka artists by name match (needed for index lookup)
+		const akaNames = new Set(akaList.map(n => n.toLowerCase()));
+		for (const a of library.artists) {
+			if (akaNames.has(a.name.toLowerCase())) akaUids.push(a.uid.toString());
 		}
-
-		return library.albums.filter(album => {
-			if (album.album_artist && allNames.has(album.album_artist.name.toLowerCase())) return true;
-			return albumUidsWithArtist.has(album.uid);
-		});
+		return getArtistAlbums(artist.uid.toString(), akaUids);
 	});
 
 	$effect(() => {
@@ -135,15 +129,14 @@
 			</Tabs.Content>
 
 			<Tabs.Content value="about" class="flex-1 overflow-y-auto">
-				{#if artist.aka}
+			{#if artist.aka}
 				<h3 class="text-sm font-semibold mb-2 mt-2">AKA</h3>
-					{@const akaList = JSON.parse(artist.aka) as string[]}
-					<div class="flex flex-row gap-1 flex-wrap">
-						{#each akaList as aka, i}
-							<p class="text-sm leading-relaxed">{aka}{i < akaList.length - 1 ? "," : ""}</p>
-						{/each}
-					</div>
-				{/if}
+				<div class="flex flex-row gap-1 flex-wrap">
+					{#each akaList as aka, i}
+						<p class="text-sm leading-relaxed">{aka}{i < akaList.length - 1 ? "," : ""}</p>
+					{/each}
+				</div>
+			{/if}
 				
 				<h3 class="text-sm font-semibold mb-2 mt-2 pt-4">BIO</h3>
 				{#if artist.about}

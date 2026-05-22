@@ -25,21 +25,27 @@
 		colPreset: "album",
 	});
 
-	const filteredAlbums = $derived.by(() => {
-		const list = searchAlbums(search);
-
-		return [...list].sort((a, b) => {
+	const sortedAlbums = $derived.by(() => {
+		const field = view.sort.field;
+		const dir = view.sort.direction === "asc" ? 1 : -1;
+		return [...library.albums].sort((a, b) => {
 			let cmp = 0;
-			if (view.sort.field === "name" as SortField) {
+			if (field === "name" as SortField) {
 				cmp = a.title.localeCompare(b.title);
-			} else if (view.sort.field === "artist" as SortField) {
-				cmp = (a.album_artist?.name ?? "").localeCompare(b.album_artist?.name ?? "");
-			} else if (view.sort.field === "year" as SortField) {
+			} else if (field === "artist" as SortField) {
+				cmp = (a.album_artist?.name ?? "").localeCompare(b.album_artist?.name.toString() ?? "");
+			} else if (field === "year" as SortField) {
 				cmp = (a.release_date ?? "").localeCompare(b.release_date ?? "");
 			}
-			return view.sort.direction === "asc" ? cmp : -cmp;
+			return cmp * dir;
 		});
 	});
+
+	const filteredAlbums = $derived(
+		search.trim().length < 2
+			? sortedAlbums
+			: searchAlbums(search)
+	);
 
 	function toggleAlbumSort(field: "name" | "artist" | "year") {
 		if (view.sort.field === field) {
@@ -148,7 +154,7 @@
 		{:else}
 			<MediaGrid>
 				{#each filteredAlbums as album}
-					<AudioCard title={album.title} subTitle={album.album_artist?.name} artworkUid={album.uid} type="album" />
+					<AudioCard title={album.title} subTitle={album.album_artist?.name.toString() ?? "Unknown Artist"} artworkUid={album.uid} type="album" />
 				{/each}
 			</MediaGrid>
 		{/if}

@@ -75,7 +75,24 @@
 		search.trim() === "" ? getSortedFolders(playlists, currentPath, sortField, sortDir) : []
 	);
 
-	let fuseInstance: Fuse<(typeof library.playlists)[0]> | null = $state(null);
+	const compactRowsResult = $derived(
+		search.trim() === "" ? compactRows(playlists, currentPath, sortField, sortDir, expandedFolders) : []
+	);
+
+	const playlistIndexInFolder = $derived.by(() => {
+		const map = new Map<string, number>();
+		const folderCounts = new Map<string, number>();
+		for (const row of compactRowsResult) {
+			if (row.kind !== "playlist") continue;
+			const key = row.folderPath ?? "";
+			const idx = folderCounts.get(key) ?? 0;
+			map.set(row.playlist.uid + "|" + key, idx);
+			folderCounts.set(key, idx + 1);
+		}
+		return map;
+	});
+
+	let fuseInstance: Fuse<(typeof library.playlists)[0]> | null = null;
 	let lastPlaylistsRef: typeof library.playlists | null = null;
 
 	function getFuse() {
@@ -262,7 +279,6 @@
 		const raw = e.dataTransfer?.getData("text/plain");
 		if (!raw) { clearGridDrop(); endDrag(); return; }
 		const val = raw.trim();
-		console.log(val)
 		if (isDraggingFolderType(e) && gridDropTarget !== null) {
 			await doFolderReorder(val, gridDropTarget.index, gridDropTarget.side, playlists, currentPath, sortField, sortDir);
 		} else if (val.startsWith("p-") && gridDropTarget !== null) {
@@ -424,7 +440,8 @@
 							<ChevronRight class="size-3 shrink-0" />
 						{/if}
 						<button
-							class="hover:text-foreground transition-colors px-1 py-0.5 rounded {dragState.active ? 'bg-primary/20' : ''}"
+							class="hover:text-foreground transition-colors px-1 py-0.5 rounded"
+							class:bg-accent={dragState.active}
 							class:text-foreground={i === crumbs.length - 1}
 							onclick={() => navigateTo(crumb.path)}
 							ondragover={(e) => { e.preventDefault(); onBreadcrumbDragOver(crumb.path, navigateTo); }}
@@ -531,7 +548,7 @@
 					{:else}
 						<div class="flex flex-col pr-4 pl-4 pb-4">
 		
-							{#each compactRows(playlists, currentPath, sortField, sortDir, expandedFolders) as row, ri}
+							{#each compactRowsResult as row, ri}
 								{#if row.kind === "folder"}
 									{@const isExpanded = expandedFolders.has(row.path)}
 									{@const folderHovered = dragState.hoveredFolderPath === row.path && compactFolderDrop === null}
@@ -594,7 +611,7 @@
 									</ContextMenu.Root>
 		
 								{:else}
-									{@const pi = getDirectPlaylists(playlists, row.folderPath, sortField, sortDir).findIndex((p) => p.uid === row.playlist.uid)}
+									{@const pi = playlistIndexInFolder.get(row.playlist.uid + "|" + (row.folderPath ?? "")) ?? 0}
 									<PlaylistCompactRow
 										playlist={row.playlist}
 										indent={(row.depth + 1) * 16}
@@ -613,26 +630,6 @@
 										onrowdrop={(e) => dropOnPlaylist(e, row.playlist.uid)}
 									/>
 								{/if}
-							{/each}
-		
-							{#each filteredDirect as p, pi (p.uid)}
-								<PlaylistCompactRow
-									playlist={p}
-									indent={8}
-									isDraggingThis={draggingPlaylistUid === p.uid}
-									isDropBefore={compactDrop?.folderPath === currentPath && compactDrop.index === pi && compactDrop.side === "before"}
-									isDropAfter={compactDrop?.folderPath === currentPath && compactDrop.index === pi && compactDrop.side === "after"}
-									{allFolderPaths}
-									{draggingPlaylistUid}
-									ondragstart={(e) => handlePlaylistDragStart(e, p.uid)}
-									ondragend={handleDragEnd}
-									ondragover={(e) => handleCompactPlaylistDragOver(e, pi, currentPath)}
-									ondragleave={() => { compactDrop = null; }}
-									ondrop={(e) => handleCompactPlaylistDrop(e, pi, currentPath)}
-									onrowdragover={(e) => { e.preventDefault(); setHoveredPlaylist(p.uid); }}
-									onrowdragleave={() => setHoveredPlaylist(null)}
-									onrowdrop={(e) => dropOnPlaylist(e, p.uid)}
-								/>
 							{/each}
 		
 						</div>

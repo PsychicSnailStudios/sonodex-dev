@@ -36,23 +36,30 @@
 
 	const sortedTracks = $derived.by(() => {
 		const dir = sort.direction === "asc" ? 1 : -1
-		const hasSort = !!(sort.field && sort.direction)
+		const field = sort.field
+		const hasSort = !!(field && sort.direction)
+
+		type Cmp = (a: Track, b: Track) => number
+		let cmp: Cmp
+		if (!hasSort) {
+			cmp = () => 0
+		} else {
+			switch (field) {
+				case "title":    cmp = (a, b) => dir * (a.title ?? "").localeCompare(b.title ?? ""); break
+				case "album":    cmp = (a, b) => dir * ((a.albums?.[0]?.name ?? "").localeCompare(b.albums?.[0]?.name ?? "")); break
+				case "year":     cmp = (a, b) => dir * ((a.year ?? "").localeCompare(b.year ?? "")); break
+				case "rating":   cmp = (a, b) => dir * ((a.rating ?? -1) - (b.rating ?? -1)); break
+				case "duration": cmp = (a, b) => dir * ((a.duration_ms ?? 0) - (b.duration_ms ?? 0)); break
+				case "label":    cmp = (a, b) => dir * (a.label ?? "").localeCompare(b.label ?? ""); break
+				case "artist":   cmp = (a, b) => dir * (a.album_artist?.name ?? "").localeCompare(b.album_artist?.name ?? ""); break
+				case "number":   cmp = (a, b) => dir * sortByNumber(a, b); break
+				default:         cmp = () => 0
+			}
+		}
 
 		function sortGroup(group: Track[]): Track[] {
 			if (!hasSort) return group
-			return [...group].sort((a, b) => {
-				switch (sort.field) {
-					case "title":    return dir * (a.title ?? "").localeCompare(b.title ?? "")
-					case "album":    return dir * ((a.albums?.[0]?.name ?? "").localeCompare(b.albums?.[0]?.name ?? ""))
-					case "year":     return dir * ((a.year ?? "").localeCompare(b.year ?? ""))
-					case "rating":   return dir * ((a.rating ?? -1) - (b.rating ?? -1))
-					case "duration": return dir * ((a.duration_ms ?? 0) - (b.duration_ms ?? 0))
-					case "label":    return dir * (a.label ?? "").localeCompare(b.label ?? "")
-					case "artist":   return dir * (a.album_artist?.name ?? "").localeCompare(b.album_artist?.name ?? "")
-					case "number":   return dir * sortByNumber(a, b)
-					default:         return 0
-				}
-			})
+			return [...group].sort(cmp)
 		}
 
 		if (!albumUid) return sortGroup(tracks)
@@ -100,6 +107,13 @@
 
 	const orderedUids = $derived(sortedTracks.map((t) => t.uid))
 
+	// O(1) position lookup — replaces orderedUids.indexOf() called per row per render
+	const uidIndexMap = $derived.by(() => {
+		const m = new Map<string, number>()
+		for (let i = 0; i < orderedUids.length; i++) m.set(orderedUids[i], i)
+		return m
+	})
+
 	// VIRTUALIZATION
 	const ROW_HEIGHT = $derived(compact ? 28 : 56)
 	const OVERSCAN = 10
@@ -108,8 +122,9 @@
 	let scrollContainer = $state<HTMLElement | null>(null)
 
 	const visibleRange = $derived.by(() => {
+		const total = sortedTracks.length
 		const start = Math.max(0, Math.floor(scrollTop / ROW_HEIGHT) - OVERSCAN)
-		const end = Math.min(sortedTracks.length, Math.ceil((scrollTop + containerHeight) / ROW_HEIGHT) + OVERSCAN)
+		const end = Math.min(total, Math.ceil((scrollTop + containerHeight) / ROW_HEIGHT) + OVERSCAN)
 		return { start, end }
 	})
 
@@ -121,6 +136,7 @@
 
 	let dragOverIndex = $state<number | null>(null)
 	let dragOverPosition = $state<"above" | "below">("below")
+	let contextMenuTrackUid = $state<string | null>(null)
 
 	// APP FUNCTIONS
 	$effect(() => {
@@ -206,7 +222,7 @@
 		} else {
 			await addTracksToPlaylist(playlistUid, uids);
 
-			const playlist = library.playlists.find((p) => p.uid === playlistUid);
+			const playlist = library.playlistMap.get(playlistUid);
 			if (!playlist) { dragOverIndex = null; endDrag(); return; }
 			const current = parseTracks(playlist.tracks);
 			const currentUids = current.sort((a, b) => a.order - b.order).map((t) => t.uid);
@@ -339,112 +355,127 @@
 	</div>
 
 	{#if useVirtualization}
-		<div
-			bind:this={scrollContainer}
-			class="overflow-y-auto flex-1 min-h-0"
-			onscroll={(e) => { scrollTop = (e.currentTarget as HTMLElement).scrollTop }}
-		>
-			<div style="height: {totalHeight}px; position: relative;">
-				<div style="position: absolute; top: {offsetY}px; left: 0; right: 0;">
-					{#each sortedTracks.slice(visibleRange.start, visibleRange.end) as track, localI (track.uid)}
-						{@const i = visibleRange.start + localI}
-						<div
-							class="relative"
-							role="row"
-							tabindex={i}
-							ondragover={(e) => handleRowDragOver(e, i)}
-							ondragleave={handleRowDragLeave}
-							ondrop={(e) => handleRowDrop(e, i)}
-						>
-							{#if dragOverIndex === i && dragOverPosition === "above"}
-								<div class="absolute top-0 left-0 right-0 h-0.5 bg-primary z-10 pointer-events-none"></div>
-							{/if}
+		<ContextMenu.Root>
+			<ContextMenu.Trigger asChild>
+				{#snippet child({ props })}
+					<div
+						bind:this={scrollContainer}
+						class="overflow-y-auto flex-1 min-h-0"
+						onscroll={(e) => { scrollTop = (e.currentTarget as HTMLElement).scrollTop }}
+						{...props}
+					>
+						<div style="height: {totalHeight}px; position: relative;">
+							<div style="position: absolute; top: {offsetY}px; left: 0; right: 0;">
+								{#each sortedTracks.slice(visibleRange.start, visibleRange.end) as track, localI (track.uid)}
+									{@const i = visibleRange.start + localI}
+									<div
+										class="relative"
+										role="row"
+										tabindex={i}
+										oncontextmenu={() => { contextMenuTrackUid = track.uid }}
+										ondragover={(e) => handleRowDragOver(e, i)}
+										ondragleave={handleRowDragLeave}
+										ondrop={(e) => handleRowDrop(e, i)}
+									>
+										{#if dragOverIndex === i && dragOverPosition === "above"}
+											<div class="absolute top-0 left-0 right-0 h-0.5 bg-primary z-10 pointer-events-none"></div>
+										{/if}
 
-							<ContextMenu.Root>
-								<ContextMenu.Trigger>
-									<TrackRow
-										{track}
-										{orderedUids}
-										index={i}
-										{compact}
-										{gridTemplate}
-										{viewId}
-										showNumber={v.number}
-										showArtwork={v.artwork}
-										showTitle={v.title}
-										showArtist={v.artist}
-										showAlbum={v.album}
-										showYear={v.year}
-										showRating={v.rating}
-										showDuration={v.duration}
-										showLabel={v.label}
-										showOptions={v.options}
-										{playlistUid}
-									/>
-								</ContextMenu.Trigger>
-								<TrackContext track={track} />
-							</ContextMenu.Root>
+										<TrackRow
+											{track}
+											{orderedUids}
+											{uidIndexMap}
+											index={i}
+											{compact}
+											{gridTemplate}
+											{viewId}
+											showNumber={v.number}
+											showArtwork={v.artwork}
+											showTitle={v.title}
+											showArtist={v.artist}
+											showAlbum={v.album}
+											showYear={v.year}
+											showRating={v.rating}
+											showDuration={v.duration}
+											showLabel={v.label}
+											showOptions={v.options}
+											{playlistUid}
+										/>
 
-							{#if dragOverIndex === i && dragOverPosition === "below"}
-								<div class="absolute bottom-0 left-0 right-0 h-0.5 bg-primary z-10 pointer-events-none"></div>
-							{/if}
+										{#if dragOverIndex === i && dragOverPosition === "below"}
+											<div class="absolute bottom-0 left-0 right-0 h-0.5 bg-primary z-10 pointer-events-none"></div>
+										{/if}
+									</div>
+								{/each}
+							</div>
 						</div>
-					{/each}
-				</div>
-			</div>
-		</div>
-	{:else}
-		<div>
-			{#each sortedTracks as track, i (track.uid)}
-				{#if discBreaks.has(track.uid)}
-					{@const entry = discBreaks.get(track.uid)!}
-					<div class="flex items-center gap-2 px-3 py-3 text-xs font-medium text-muted-foreground">
-						<svelte:component this={entry.Icon} class="size-3.5 shrink-0" />
-						<span>{entry.label}</span>
 					</div>
-				{/if}
-				<div
-					class="relative"
-					role="row"
-					tabindex={i}
-					ondragover={(e) => handleRowDragOver(e, i)}
-					ondragleave={handleRowDragLeave}
-					ondrop={(e) => handleRowDrop(e, i)}
-				>
-					{#if dragOverIndex === i && dragOverPosition === "above"}
-						<div class="absolute top-0 left-0 right-0 h-0.5 bg-primary z-10 pointer-events-none"></div>
-					{/if}
+				{/snippet}
+			</ContextMenu.Trigger>
+			{@const ctxTrack = contextMenuTrackUid ? sortedTracks.find(t => t.uid === contextMenuTrackUid) : null}
+			{#if ctxTrack}
+				<TrackContext track={ctxTrack} />
+			{/if}
+		</ContextMenu.Root>
+	{:else}
+		<ContextMenu.Root>
+			<ContextMenu.Trigger asChild>
+				{#snippet child({ props })}
+					<div {...props}>
+						{#each sortedTracks as track, i (track.uid)}
+							{#if discBreaks.has(track.uid)}
+								{@const entry = discBreaks.get(track.uid)!}
+								<div class="flex items-center gap-2 px-3 py-3 text-xs font-medium text-muted-foreground">
+									<svelte:component this={entry.Icon} class="size-3.5 shrink-0" />
+									<span>{entry.label}</span>
+								</div>
+							{/if}
+							<div
+								class="relative"
+								role="row"
+								tabindex={i}
+								oncontextmenu={() => { contextMenuTrackUid = track.uid }}
+								ondragover={(e) => handleRowDragOver(e, i)}
+								ondragleave={handleRowDragLeave}
+								ondrop={(e) => handleRowDrop(e, i)}
+							>
+								{#if dragOverIndex === i && dragOverPosition === "above"}
+									<div class="absolute top-0 left-0 right-0 h-0.5 bg-primary z-10 pointer-events-none"></div>
+								{/if}
 
-					<ContextMenu.Root>
-						<ContextMenu.Trigger>
-							<TrackRow
-								{track}
-								{orderedUids}
-								index={i}
-								{compact}
-								{gridTemplate}
-								{viewId}
-								showNumber={v.number}
-								showArtwork={v.artwork}
-								showTitle={v.title}
-								showArtist={v.artist}
-								showAlbum={v.album}
-								showYear={v.year}
-								showRating={v.rating}
-								showDuration={v.duration}
-								showLabel={v.label}
-								showOptions={v.options}
-								{playlistUid}
-							/>
-						</ContextMenu.Trigger>
-						<TrackContext track={track} />
-					</ContextMenu.Root>
+								<TrackRow
+									{track}
+									{orderedUids}
+									{uidIndexMap}
+									index={i}
+									{compact}
+									{gridTemplate}
+									{viewId}
+									showNumber={v.number}
+									showArtwork={v.artwork}
+									showTitle={v.title}
+									showArtist={v.artist}
+									showAlbum={v.album}
+									showYear={v.year}
+									showRating={v.rating}
+									showDuration={v.duration}
+									showLabel={v.label}
+									showOptions={v.options}
+									{playlistUid}
+								/>
 
-					{#if dragOverIndex === i && dragOverPosition === "below"}
-						<div class="absolute bottom-0 left-0 right-0 h-0.5 bg-primary z-10 pointer-events-none"></div>
-					{/if}
-				</div>
-			{/each}
-		</div>
+								{#if dragOverIndex === i && dragOverPosition === "below"}
+									<div class="absolute bottom-0 left-0 right-0 h-0.5 bg-primary z-10 pointer-events-none"></div>
+								{/if}
+							</div>
+						{/each}
+					</div>
+				{/snippet}
+			</ContextMenu.Trigger>
+			{@const ctxTrack = contextMenuTrackUid ? sortedTracks.find(t => t.uid === contextMenuTrackUid) : null}
+			{#if ctxTrack}
+				<TrackContext track={ctxTrack} />
+			{/if}
+		</ContextMenu.Root>
 	{/if}
 </div>

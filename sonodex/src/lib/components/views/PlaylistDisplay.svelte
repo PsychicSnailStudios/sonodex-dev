@@ -27,7 +27,7 @@
     import { parseArtistsToString } from "$ts/util/parsers";
 
 	let search = $state("");
-	let playlist = $derived(library.playlists.find(p => p.uid === selection.uid) ?? null);
+	let playlist = $derived(library.playlistMap.get(selection.uid) ?? null);
 	let color = $state("rgb(30, 30, 30)");
 	let showSearch = $state(false);
 
@@ -42,7 +42,7 @@
 		return getTrackArrayFromUID(playlist.uid, view.sort);
 	});
 
-	let filteredTracks = $derived(searchTracks(search));
+	let filteredTracks = $derived(showSearch ? searchTracks(search) : []);
 
 	$effect(() => {
 		const uid = selection.uid;

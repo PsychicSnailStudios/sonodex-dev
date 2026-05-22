@@ -40,18 +40,11 @@
 		return getTrackArrayFromUID(album.uid, view.sort);
 	});
 
-	const albumsByArtistName = $derived(
-		library.albums.reduce((map, a) => {
-			const key = a.album_artist?.name?.toLowerCase() ?? "";
-			if (!map.has(key)) map.set(key, []);
-			map.get(key)!.push(a);
-			return map;
-		}, new Map<string, Album[]>())
-	);
-
-	let artistAlbums: Album[] = $derived(
-		albumsByArtistName.get(album?.album_artist?.name?.toLowerCase() ?? "") ?? []
-	);
+	let artistAlbums: Album[] = $derived.by(() => {
+		if (!album?.album_artist) return [];
+		const artistName = album.album_artist.name.toLowerCase();
+		return library.albums.filter(a => a.album_artist?.name?.toLowerCase() === artistName);
+	});
 
 	$effect(() => {
 		const uid = selection.uid;

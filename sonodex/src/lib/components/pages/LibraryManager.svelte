@@ -23,11 +23,10 @@
 		removeArtists,
 		getDuplicates,
 	} from "$ts/library/libraryManager";
-	import { enrichAlbums, enrichArtists, enrichTracks } from "$ts/library/enrichment";
+	import { enrichAlbums, enrichArtists, enrichTracks, enrichAllAlbums, enrichAllArtists, enrichAllTracks } from "$ts/library/enrichment";
 	import { searchTracks, searchAlbums, searchArtists } from "$ts/store/fuseStore.svelte";
 	import type { DuplicateGroup } from "$ts/util/types";
 	import { scanState } from "$ts/store/session.svelte";
-	import { enrichAllAlbums, enrichAllArtists, enrichAllTracks } from "$ts/library/enrichment";
 
 	// ─── Search ───────────────────────────────────────────────────────────────────
 	let trackSearch = $state("");
@@ -58,9 +57,9 @@
 	const filteredTracks = $derived(
 		(() => {
 			let pool = searchTracks(trackSearch);
-			if (trackFilterMode === "ghosts") pool = pool.filter((t) => !t.path && !t.remote_path);
+			if (trackFilterMode === "ghosts") pool = pool.filter((t) => !t.remote_path && (!t.path || t.path === t.uid));
 			else if (trackFilterMode === "remote") pool = pool.filter((t) => !!t.remote_path);
-			else if (trackFilterMode === "local") pool = pool.filter((t) => !!t.path);
+			else if (trackFilterMode === "local") pool = pool.filter((t) => !!t.path && t.path !== t.uid && !t.remote_path);
 			return pool;
 		})()
 	);
@@ -208,12 +207,13 @@
 		scanState.enrichErrors = 0;
 		try {
 			switch (type) {
-				case "tracks":  enrichAllTracks();  break;
-				case "albums":  enrichAllAlbums();  break;
-				case "artists": enrichAllArtists(); break;
+				case "tracks":  await enrichAllTracks();  break;
+				case "albums":  await enrichAllAlbums();  break;
+				case "artists": await enrichAllArtists(); break;
 			}
 		} catch (e) {
 			scanState.status = `Enrich error: ${e}`;
+		} finally {
 			scanState.enriching = false;
 		}
 	}
@@ -225,8 +225,8 @@
 		duplicatesLoaded = true;
 	}
 
-	function onDuplicateResolved(groupIndex: number) {
-		duplicates = duplicates.filter((_, i) => i !== groupIndex);
+	function onDuplicateResolved(groupKey: string) {
+		duplicates = duplicates.filter((g) => g.tracks[0]?.uid !== groupKey);
 	}
 </script>
 
@@ -491,8 +491,8 @@
 								{duplicates.length} duplicate {duplicates.length === 1 ? "group" : "groups"}
 							</span>
 							<div class="flex flex-col gap-3">
-								{#each duplicates as group, i (i)}
-									<DuplicateGroupCard {group} onresolved={() => onDuplicateResolved(i)} />
+								{#each duplicates as group (group.tracks[0]?.uid)}
+									<DuplicateGroupCard {group} onresolved={() => onDuplicateResolved(group.tracks[0]?.uid ?? "")} />
 								{/each}
 							</div>
 						{/if}

@@ -24,6 +24,7 @@
 	let {
 		track,
 		orderedUids,
+		uidIndexMap,
 		viewId,
 		index,
 		compact = false,
@@ -42,6 +43,7 @@
 	} = $props<{
 		track: Track;
 		orderedUids: string[];
+		uidIndexMap: Map<string, number>;
 		index: number;
     	viewId: string;    
 		compact?: boolean;
@@ -101,7 +103,8 @@
 
 	function getTrackNumber(): string {
 		if (playlistUid) {
-			return (orderedUids.indexOf(track.uid) + 1).toString();
+			const idx = uidIndexMap.get(track.uid)
+			return idx != null ? (idx + 1).toString() : "#"
 		}
 		const num = track.albums?.[0]?.track_number
 		return num != null ? num.toString() : "#"

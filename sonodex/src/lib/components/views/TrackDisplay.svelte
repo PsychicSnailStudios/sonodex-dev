@@ -22,7 +22,7 @@
 	import { fetchArtworkColor } from "$ts/library/artworkLoader";
     import { parseTags } from "$ts/util/parsers";
 
-	let track = $derived(library.tracks.find(t => t.uid === selection.uid) ?? null);
+	let track = $derived(library.trackMap.get(selection.uid) ?? null);
 	let fetchingLyrics = $state(false);
 	let genres = $derived(track?.genres ? parseTags(track.genres) : null);
 	let tags = $derived(track?.tags ? parseTags(track.tags) : null);
@@ -30,9 +30,12 @@
 
 	let featuredOnAlbums = $derived.by(() => {
 		if (!track?.albums) return [];
-		return track.albums
-			.map(entry => library.albums.find(a => a.uid === entry.uid))
-			.filter((a): a is NonNullable<typeof a> => a != null);
+		const result = [];
+		for (const entry of track.albums) {
+			const album = library.albumMap.get(entry.uid);
+			if (album) result.push(album);
+		}
+		return result;
 	});
 
 	let featuredArtists = $derived.by(() => {
@@ -47,18 +50,18 @@
 
 	let artistUID = $derived(track?.album_artist?.uid ?? "");
 
+	let isNotGhost = $derived(() => {
+		const hasLocal = track?.path && track.path !== "" && track.path !== track.uid;
+		const hasRemote = (track as any)?.remote_path && (track as any).remote_path.length > 0;
+		return !!(hasLocal || hasRemote);
+	});
+
 	$effect(() => {
 		const uid = selection.uid;
 		if (!uid) return;
 		color = "var(--muted)";
 		fetchArtworkColor(uid, "track").then(c => { color = c; });
 	});
-
-	function trackIsNotGhost(): boolean {
-		const hasLocal = track?.path && track.path !== "" && track.path !== track.uid;
-		const hasRemote = (track as any)?.remote_path && (track as any).remote_path.length > 0;
-		return !!(hasLocal || hasRemote);
-	}
 </script>
 
 <div class="flex flex-col gap-4 p-4 border-2 h-full w-full overflow-hidden rounded-md">
@@ -102,7 +105,7 @@
 
 			<div class="flex gap-2 justify-between items-center flex-wrap p-2 rounded-md"
 				  style="background: {color};">
-				<Button variant="default" disabled={!trackIsNotGhost()} onclick={() => playTrackByObject(track)}>Play</Button>
+				<Button variant="default" disabled={!isNotGhost()} onclick={() => playTrackByObject(track)}>Play</Button>
 				<div>
 					<TrackPlaylistEditButton track={track} />
 					<Button variant="ghost" size="icon" onclick={() => openEditModal({ type: "track", uid: track!.uid })}><Pencil /></Button>

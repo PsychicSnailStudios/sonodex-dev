@@ -1,5 +1,5 @@
 import Fuse from "fuse.js";
-	import { library } from "$ts/store/library.svelte";
+import { library } from "$ts/store/library.svelte";
 import type { Track, Album, Artist } from "$ts/util/types";
 import { parseAlbumsToString, parseArtistsToString } from "$ts/util/parsers";
 
@@ -23,7 +23,7 @@ let _albumRef: Album[] | null = null;
 let _artistFuse: Fuse<Artist> | null = null;
 let _artistRef: Artist[] | null = null;
 
-export function getTrackFuse(): Fuse<Track> {
+function getTrackFuse(): Fuse<Track> {
 	if (_trackFuse && _trackRef === library.tracks) return _trackFuse;
 	_trackRef = library.tracks;
 	_trackFuse = makeFuse(library.tracks, [
@@ -37,7 +37,7 @@ export function getTrackFuse(): Fuse<Track> {
 	return _trackFuse;
 }
 
-export function getAlbumFuse(): Fuse<Album> {
+function getAlbumFuse(): Fuse<Album> {
 	if (_albumFuse && _albumRef === library.albums) return _albumFuse;
 	_albumRef = library.albums;
 	_albumFuse = makeFuse(library.albums, [
@@ -51,7 +51,7 @@ export function getAlbumFuse(): Fuse<Album> {
 	return _albumFuse;
 }
 
-export function getArtistFuse(): Fuse<Artist> {
+function getArtistFuse(): Fuse<Artist> {
 	if (_artistFuse && _artistRef === library.artists) return _artistFuse;
 	_artistRef = library.artists;
 	_artistFuse = makeFuse(library.artists, [
@@ -76,4 +76,12 @@ export function searchAlbums(query: string): Album[] {
 export function searchArtists(query: string): Artist[] {
 	if (query.trim().length < 2) return library.artists;
 	return getArtistFuse().search(query).map((r) => r.item);
+}
+
+// Call this after library load, deferred with setTimeout(warmupFuseIndexes, 0),
+// so index construction happens after the UI has painted and feels responsive.
+export function warmupFuseIndexes(): void {
+	getTrackFuse();
+	getAlbumFuse();
+	getArtistFuse();
 }
