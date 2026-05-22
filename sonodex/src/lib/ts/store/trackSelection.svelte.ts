@@ -122,5 +122,5 @@ export function copySelectedUIDsToClipboard(orderedUids: string[]) {
 	writeText(uids).catch(() => {});
 }
 export function copySelectedNameToClipboard(track: Track) {
-	writeText((track.title ?? "Unknown Title") + "; " + (track.album_artist ?? "Unknown Artist")).catch(() => {});
+	writeText((track.title ?? "Unknown Title") + "; " + (track.album_artist?.name ?? "Unknown Artist")).catch(() => {});
 }
