@@ -7,8 +7,8 @@
 	import { toast } from "svelte-sonner";
 	import { parseUidType } from "$ts/util/parsers";
 	import { downloadTrack, downloadAlbum, downloadPlaylist } from "$ts/services/downloadManager";
-	import { getAlbum, getArtist, getPlaylist, getTrack, library } from "$ts/store/library.svelte";
-	import type { Track } from "$ts/util/types";
+	import { getAlbum, getArtist, getPlaylist, getTrack, getTrackArrayFromUID, library } from "$ts/store/library.svelte";
+	import type { Playlist, Track } from "$ts/util/types";
 
 	let {
 		uid,
@@ -39,30 +39,11 @@
 			return trackIsLocal(track);
 		}
 
-		if (type === "album") {
-			const album = getAlbum(uid);
-			if (!album) return true;
-			let trackUids: string[] = [];
-			try { trackUids = JSON.parse(album.tracks as string ?? "[]").map((e: any) => e.uid); } catch {}
-			if (trackUids.length === 0) return true;
-			return trackUids.every(tuid => {
-				const t = library.tracks.find(t => t.uid === tuid);
-				return t ? trackIsLocal(t) : true;
-			});
-		}
+		let tracks = getTrackArrayFromUID(uid);
+		if (tracks.length === 0) return true;
+		if (tracks.length === 1) return trackIsLocal(tracks[0]);
 
-		if (type === "playlist") {
-			const playlist = getPlaylist(uid);
-			if (!playlist) return true;
-			const trackUids = (playlist.tracks ?? []).map(e => e.uid);
-			if (trackUids.length === 0) return true;
-			return trackUids.every(tuid => {
-				const t = library.tracks.find(t => t.uid === tuid);
-				return t ? trackIsLocal(t) : true;
-			});
-		}
-
-		return true;
+		return tracks.every(t => trackIsLocal(t));
 	});
 
 	async function ensureDownloadPath(): Promise<boolean> {
