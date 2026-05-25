@@ -1,6 +1,5 @@
 import { convertFileSrc, invoke } from "@tauri-apps/api/core";
 import { toast } from "svelte-sonner";
-import { library } from "$ts/store/library.svelte";
 import { offlineMode } from "$ts/store/session.svelte";
 import type { Track } from "$ts/util/types";
 

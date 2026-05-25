@@ -7,7 +7,7 @@ import type {
 	LibraryDeletePreference,
 	MergeResult,
 } from "$ts/util/types";
-import { getLibraryByUid, loadLibrary } from "$ts/store/library.svelte";
+import { getLibraryByUid, loadLibrary, loadLibraryRegistry, emitLibraryChange } from "$ts/store/library.svelte";
 
 const CASCADE_SINGLE = 0;
 const CASCADE_ALL = 1;
@@ -24,11 +24,13 @@ export async function createLibrary(name: string): Promise<Library> {
 }
 
 export async function updateLibrary(libUid: string, update: LibraryUpdate): Promise<void> {
-	return invoke("update_library_cmd", { libUid, update });
+	await invoke("update_library_cmd", { libUid, update });
+	emitLibraryChange("libraries:changed");
 }
 
 export async function deleteLibrary(libUid: string, deleteFile: boolean): Promise<void> {
-	return invoke("delete_library_cmd", { libUid, deleteFile });
+	await invoke("delete_library_cmd", { libUid, deleteFile });
+	emitLibraryChange("libraries:changed");
 }
 
 // ─── Import / Export ──────────────────────────────────────────────────────────
@@ -44,6 +46,7 @@ export async function importLibrary(
 		writeToken: writeToken ?? null,
 	});
 	await loadLibrary();
+	emitLibraryChange("libraries:changed");
 	return lib;
 }
 
@@ -60,7 +63,14 @@ export async function exportLibrary(libUid: string): Promise<void> {
 
 export async function syncLibrary(libUid: string): Promise<boolean> {
 	const pulled = await invoke<boolean>("sync_library_cmd", { libUid });
-	if (pulled) await loadLibrary();
+	if (pulled) {
+		await loadLibrary();
+		emitLibraryChange("tracks:changed");
+		emitLibraryChange("albums:changed");
+		emitLibraryChange("artists:changed");
+		emitLibraryChange("playlists:changed");
+		emitLibraryChange("libraries:changed");
+	}
 	return pulled;
 }
 
@@ -96,6 +106,10 @@ export function isEntityWritable(
 export async function rebuildMerged(): Promise<MergeResult> {
 	const result = await invoke<MergeResult>("rebuild_merged_cmd");
 	await loadLibrary();
+	emitLibraryChange("tracks:changed");
+	emitLibraryChange("albums:changed");
+	emitLibraryChange("artists:changed");
+	emitLibraryChange("playlists:changed");
 	return result;
 }
 
@@ -116,7 +130,9 @@ export async function addToBlocklist(
 
 export async function removeFromBlocklist(uid: string): Promise<void> {
 	await invoke("remove_from_blocklist_cmd", { uid });
-	await loadLibrary();
+	emitLibraryChange("tracks:changed");
+	emitLibraryChange("albums:changed");
+	emitLibraryChange("artists:changed");
 }
 
 // ─── Delete preferences ───────────────────────────────────────────────────────
@@ -187,7 +203,15 @@ export async function handleReadOnlyDelete(
 		await setDeletePreference(sourceLibUid, cascadeChoice ? CASCADE_ALL : CASCADE_SINGLE);
 	}
 
-	await loadLibrary();
+	// Emit the changed event for whichever domain was affected
+	emitLibraryChange(`${entityType}:changed` as any);
+	if (cascadeChoice && relatedUids && relatedUids.length > 0) {
+		const affectedTypes = new Set(relatedUids.map(r => r.entityType));
+		for (const t of affectedTypes) {
+			emitLibraryChange(`${t}:changed` as any);
+		}
+	}
+
 	return true;
 }
 

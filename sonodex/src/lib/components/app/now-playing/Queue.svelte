@@ -17,11 +17,21 @@
 	import { player } from "$ts/audio/audioPlayer.svelte";
 	import { dragState, endDrag } from "$ts/store/drag.svelte";
 	import { clearQueueSelection, queueSelection } from "$ts/store/queueSelection.svelte";
-   import { getTrack } from "$ts/store/library.svelte";
 
 	// VARIABLES
 	let upcomingTracks = $derived(getQueuedTracks());
 	let upcomingUids = $derived(upcomingTracks.map(t => t.uid));
+
+	// A uid→track map built from whatever the drag payload carries.
+	// The drag system sets dragState.payload.tracks when tracks are dragged from the library.
+	// For queue reorders the tracks are already in upcomingTracks.
+	function resolveUidsToTracks(uids: string[]) {
+		// Build lookup from queue + drag payload
+		const lookup = new Map(upcomingTracks.map(t => [t.uid, t]));
+		const payloadTracks = dragState.payload?.tracks ?? [];
+		for (const t of payloadTracks) lookup.set(t.uid, t);
+		return uids.map(uid => lookup.get(uid)).filter((t): t is NonNullable<typeof t> => t !== undefined);
+	}
 
 	let dragOverIndex = $state<number | null>(null);
 	let dragOverPosition = $state<"above" | "below">("below");
@@ -124,12 +134,6 @@
 	function getDropUids(e: DragEvent): string[] {
 		const raw = e.dataTransfer?.getData("text/plain") ?? "";
 		return raw.split(",").map(u => u.trim()).filter(Boolean);
-	}
-
-	function resolveUidsToTracks(uids: string[]) {
-		return uids
-			.map(uid => getTrack(uid))
-			.filter((t): t is NonNullable<typeof t> => t !== undefined);
 	}
 </script>
 

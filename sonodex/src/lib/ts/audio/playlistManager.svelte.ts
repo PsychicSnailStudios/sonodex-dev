@@ -27,7 +27,7 @@ export async function addTrackToPlaylist(playlist: Playlist, track: Track) {
 }
 
 export async function addTracksToPlaylist(playlistUid: string, trackUids: string[]) {
-	const playlist = getPlaylist(playlistUid)
+	const playlist = await getPlaylist(playlistUid)
 	if (!playlist) return
 
 	const current = parseTracks(playlist.tracks)
@@ -37,11 +37,11 @@ export async function addTracksToPlaylist(playlistUid: string, trackUids: string
 
 	let maxOrder = current.reduce((m, t) => Math.max(m, t.order ?? 0), 0)
 
-	const newEntries: TrackEntry[] = toAdd.map((uid) => {
-		const track = getTrack(uid)
+	const newEntries: TrackEntry[] = await Promise.all(toAdd.map(async (uid) => {
+		const track = await getTrack(uid)
 		maxOrder += 1
 		return { uid, name: track?.title ?? "Unknown Title", order: maxOrder }
-	})
+	}))
 
 	await invoke("update_playlist_entry", {
 		uid: playlistUid,
@@ -64,7 +64,7 @@ export async function removeTrackFromPlaylist(playlist: Playlist, track: Track) 
 }
 
 export async function removeTracksFromPlaylist(playlistUid: string, trackUids: string[]) {
-	const playlist = getPlaylist(playlistUid)
+	const playlist = await getPlaylist(playlistUid)
 	if (!playlist) return
 
 	const toRemove = new Set(trackUids)
@@ -79,7 +79,7 @@ export async function removeTracksFromPlaylist(playlistUid: string, trackUids: s
 }
 
 export async function reorderPlaylistTracks(playlistUid: string, orderedUids: string[]) {
-	const playlist = getPlaylist(playlistUid)
+	const playlist = await getPlaylist(playlistUid)
 	if (!playlist) return
 
 	const current = parseTracks(playlist.tracks)

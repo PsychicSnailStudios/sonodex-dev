@@ -6,7 +6,7 @@
 	import Input from "$shadcn/input/input.svelte";
 	import ScrollArea from "$shadcn/scroll-area/scroll-area.svelte";
 
-	import { library } from "$ts/store/library.svelte";
+	import { getPlaylists, onLibraryChange } from "$ts/store/library.svelte";
 	import { addTrackToPlaylist, removeTrackFromPlaylist } from "$ts/audio/playlistManager.svelte";
 	import type { Playlist, Track } from "$ts/util/types";
 
@@ -14,13 +14,25 @@
 
 	let search = $state("");
 	let browsePath = $state<string | null>(null);
+	let playlists = $state<Playlist[]>([]);
+
+	async function loadPlaylists() {
+		playlists = await getPlaylists();
+	}
+
+	$effect(() => { loadPlaylists(); });
+
+	$effect(() => {
+		const unsub = onLibraryChange("playlists:changed", loadPlaylists);
+		return unsub;
+	});
 
 	const searchActive = $derived(search.trim() !== "");
 	const visibleFolders = $derived(searchActive ? [] : getChildFolders(browsePath));
 
 	const filteredPlaylists = $derived(
 		searchActive
-			? library.playlists.filter((p) => {
+			? playlists.filter((p) => {
 				const q = search.toLowerCase();
 				return p.title.toLowerCase().includes(q) || ((p as any).description?.toLowerCase() ?? "").includes(q);
 			})
@@ -40,7 +52,7 @@
 
 	function getChildFolders(parentPath: string | null): string[] {
 		const seen = new Set<string>();
-		for (const p of library.playlists) {
+		for (const p of playlists) {
 			const pf = folderOf(p);
 			if (!pf) continue;
 			const child = immediateChild(parentPath, pf);
@@ -50,7 +62,7 @@
 	}
 
 	function getDirectPlaylists(folderPath: string | null): Playlist[] {
-		return library.playlists.filter((p) => folderOf(p) === folderPath);
+		return playlists.filter((p) => folderOf(p) === folderPath);
 	}
 
 	function folderLabel(fullPath: string): string {
@@ -69,7 +81,7 @@
 	}
 
 	function hasTrack(playlistUid: string): boolean {
-		const playlist = library.playlists.find((p) => p.uid === playlistUid);
+		const playlist = playlists.find((p) => p.uid === playlistUid);
 		if (!playlist) return false;
 		const tracks: { uid: string }[] = JSON.parse((playlist as any).tracks ?? "[]");
 		return tracks.some((t) => t.uid === track.uid);

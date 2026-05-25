@@ -1,10 +1,7 @@
 <script lang="ts">
-
-	// APP
 	import { invoke } from "@tauri-apps/api/core";
 	import { onMount } from "svelte";
 
-	// COMPONENTS
 	import * as Tabs from "$shadcn/tabs";
 	import { Label } from "$shadcn/label";
 	import { Input } from "$shadcn/input";
@@ -12,15 +9,12 @@
 	import { Button } from "$shadcn/button";
 	import { Separator } from "$shadcn/separator";
 
-	// CUSTOM COMPONENTS
 	import ArtworkEditor from "./ArtworkEditor.svelte";
 
-	// SCRIPTS
 	import { closeEditModal } from "$ts/ui/editModal.svelte";
 	import { getPlaylist, reloadLibrary, reloadSingle } from "$ts/store/library.svelte";
 	import { deletePlaylist } from "$ts/audio/playlistManager.svelte";
 
-	// PROPS
 	let { uid } = $props<{ uid: string }>();
 
 	let title = $state("");
@@ -29,9 +23,8 @@
 	let artworkPath = $state<string | null>(null);
 	let saving = $state(false);
 
-	// APP FUNCTIONS
 	onMount(async () => {
-		const playlist = getPlaylist(uid);
+		const playlist = await getPlaylist(uid);
 		if (!playlist) return;
 
 		title = playlist.title ?? "";
@@ -40,7 +33,6 @@
 		artworkPath = playlist.artwork_path ?? null;
 	});
 
-	// FUNCTIONS
 	async function save() {
 		saving = true;
 		try {

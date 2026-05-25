@@ -1,12 +1,9 @@
 <script lang="ts">
-
 	import { untrack } from "svelte";
 	import { invoke, convertFileSrc } from "@tauri-apps/api/core";
 
 	import { Music4, User, DiscAlbum } from "lucide-svelte";
-	import { Skeleton } from "$shadcn/skeleton/index.js";
 
-	import { getAlbum, getArtist, getPlaylist, getTrack } from "$ts/store/library.svelte";
 	import type { AudioCatagories, Track } from "$ts/util/types";
 	import { artworkCache, artworkInflight } from "$ts/library/artworkLoader";
 
@@ -22,6 +19,8 @@
 	let el: HTMLDivElement;
 	let fetchedKey = $state<string | null>(null);
 
+	// artwork_path and artwork_thumb are fetched on demand alongside artwork blob.
+	// We no longer read from library maps; we rely solely on the cache + invoke.
 	const commandMap: Partial<Record<AudioCatagories, string>> = {
 		track: "get_track_artwork",
 		album: "get_album_artwork",
@@ -29,33 +28,33 @@
 		playlist: "get_playlist_artwork",
 	};
 
-	const pathMap: Partial<Record<AudioCatagories, () => string | null>> = {
-		track: () => getTrack(uid)?.artwork_path ?? null,
-		album: () => getAlbum(uid)?.artwork_path ?? null,
-		artist: () => getArtist(uid)?.profile_art_path ?? null,
-		playlist: () => getPlaylist(uid)?.artwork_path ?? null,
+	const pathCommandMap: Partial<Record<AudioCatagories, string>> = {
+		track: "get_track",
+		album: "get_album",
+		artist: "get_artist",
+		playlist: "get_playlist",
 	};
 
-	const thumbMap: Partial<Record<AudioCatagories, () => string | null>> = {
-		track: () => getTrack(uid)?.artwork_thumb ?? null,
-		album: () => getAlbum(uid)?.artwork_thumb ?? null,
-		artist: () => getArtist(uid)?.profile_art_thumb ?? null,
-		playlist: () => getPlaylist(uid)?.artwork_thumb ?? null,
-	};
+	// thumb is fetched once per uid/type and stored in a local map to avoid
+	// re-invoking on every render. It's only used for the blur-up placeholder.
+	const thumbCache = new Map<string, string | null>();
+	let thumb = $state<string | null>(null);
 
-	const thumb = $derived(thumbMap[type]?.() ?? null);
-
-	const isGhost = $derived.by(() => {
-		if (type !== "track") return false;
-		const track: Track | undefined = getTrack(uid);
-		if (track) return isGhostTrack(track);
-		return true;
-	});
-
-	function isGhostTrack(track: Track): boolean {
-		if (track.remote_path && track.remote_path.length > 0) return false;
-		if (!track.path || track.path === "" || track.path === track.uid) return true;
-		return false;
+	async function fetchThumb(cacheKey: string) {
+		if (thumbCache.has(cacheKey)) {
+			thumb = thumbCache.get(cacheKey) ?? null;
+			return;
+		}
+		const cmd = pathCommandMap[type];
+		if (!cmd) return;
+		try {
+			const entity = await invoke<any>(cmd, { uid });
+			const t = entity?.artwork_thumb ?? null;
+			thumbCache.set(cacheKey, t);
+			thumb = t;
+		} catch {
+			thumbCache.set(cacheKey, null);
+		}
 	}
 
 	async function fetchAndCache(cacheKey: string, command: string, fetchUid: string): Promise<string | null> {
@@ -98,13 +97,8 @@
 		}
 
 		loaded = false;
-
-		const localPath = untrack(() => pathMap[currentType]?.() ?? null);
-		if (localPath) {
-			artworkUrl = convertFileSrc(localPath);
-			fetchedKey = currentKey;
-			return;
-		}
+		thumb = null;
+		fetchThumb(currentKey);
 
 		if (artworkCache.has(currentKey)) {
 			artworkUrl = artworkCache.get(currentKey) ?? null;
@@ -139,8 +133,7 @@
 
 <div bind:this={el}
 	style={size ? `width: ${size}px; height: ${size}px;` : ""}
-	class="rounded-sm overflow-hidden relative bg-muted flex-shrink-0 w-full aspect-square"
-	class:opacity-50={isGhost}>
+	class="rounded-sm overflow-hidden relative bg-muted flex-shrink-0 w-full aspect-square">
 
 	{#if thumb && !loaded}
 		<img

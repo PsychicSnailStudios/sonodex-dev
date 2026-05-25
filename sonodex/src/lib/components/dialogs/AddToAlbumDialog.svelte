@@ -7,8 +7,9 @@
 	import CheckIcon from "@lucide/svelte/icons/check";
 	import { cn } from "$lib/utils.js";
 	import { tick } from "svelte";
-	import { library, loadLibrary } from "$ts/store/library.svelte";
+	import { getAlbums, getTracks, onLibraryChange, reloadLibrary } from "$ts/store/library.svelte";
 	import { invoke } from "@tauri-apps/api/core";
+	import type { Track, Album } from "$ts/util/types";
 
 	let {
 		open = $bindable(false),
@@ -20,48 +21,48 @@
 	let selectedAlbumUid = $state<string | null>(null);
 	let triggerRef = $state<HTMLButtonElement>(null!);
 
-	const selectedTracks = $derived(
-		library.tracks.filter((t) => trackUids.includes(t.uid))
-	);
+	let allTracks = $state<Track[]>([]);
+	let allAlbums = $state<Album[]>([]);
+
+	async function load() {
+		[allTracks, allAlbums] = await Promise.all([getTracks(), getAlbums()]);
+	}
+
+	// Load when dialog opens and stay fresh
+	$effect(() => {
+		if (open) load();
+	});
+	$effect(() => {
+		const u1 = onLibraryChange("tracks:changed", load);
+		const u2 = onLibraryChange("albums:changed", load);
+		return () => { u1(); u2(); };
+	});
+
+	const selectedTracks = $derived(allTracks.filter(t => trackUids.includes(t.uid)));
 
 	const inferredArtists = $derived.by<string[]>(() => {
 		const set = new Set<string>();
 		for (const t of selectedTracks) {
-			if (t.artists) {
-				t.artists.forEach(a => set.add(a.name.toString()));
-			}
+			if (t.artists) t.artists.forEach(a => set.add(a.name.toString()));
 		}
 		return [...set];
 	});
 
 	const filteredAlbums = $derived(
-		library.albums.filter((a) =>
-			a.title.toLowerCase().includes(inputValue.toLowerCase())
-		)
+		allAlbums.filter(a => a.title.toLowerCase().includes(inputValue.toLowerCase()))
 	);
 
 	const exactMatch = $derived(
-		library.albums.find(
-			(a) => a.title.toLowerCase() === inputValue.trim().toLowerCase()
-		)
+		allAlbums.find(a => a.title.toLowerCase() === inputValue.trim().toLowerCase())
 	);
 
 	const selectedAlbumTitle = $derived(
-		selectedAlbumUid
-			? (library.albums.find((a) => a.uid === selectedAlbumUid)?.title ?? "")
-			: ""
+		selectedAlbumUid ? (allAlbums.find(a => a.uid === selectedAlbumUid)?.title ?? "") : ""
 	);
 
-	const displayLabel = $derived(
-		selectedAlbumTitle || inputValue || "Search or create album…"
-	);
-
+	const displayLabel = $derived(selectedAlbumTitle || inputValue || "Search or create album…");
 	const isPlaceholder = $derived(!selectedAlbumTitle && !inputValue);
-
-	const actionLabel = $derived(
-		selectedAlbumUid || exactMatch ? "Add to Album" : "Create & Add"
-	);
-
+	const actionLabel = $derived(selectedAlbumUid || exactMatch ? "Add to Album" : "Create & Add");
 	const canConfirm = $derived(!!inputValue.trim() || !!selectedAlbumUid);
 
 	function closeComboAndFocus() {
@@ -92,29 +93,25 @@
 		const targetUid = selectedAlbumUid ?? exactMatch?.uid ?? null;
 
 		if (targetUid) {
-			const album = library.albums.find((a) => a.uid === targetUid);
+			const album = allAlbums.find(a => a.uid === targetUid);
 			if (!album) return;
 
 			let existing: { uid: string; name: string; track_number: number | null }[] = [];
-			try {
-				existing = album.tracks ? JSON.parse(album.tracks as string) : [];
-			} catch {}
+			try { existing = album.tracks ? JSON.parse(album.tracks as string) : []; } catch {}
 
 			const nextOrder = existing.length + 1;
 			const toAdd = selectedTracks
-				.filter((t) => !existing.some((e) => e.uid === t.uid))
+				.filter(t => !existing.some(e => e.uid === t.uid))
 				.map((t, i) => ({ uid: t.uid, name: t.title ?? "", track_number: nextOrder + i }));
-
-			const merged = [...existing, ...toAdd];
 
 			await invoke("update_album_entry", {
 				uid: targetUid,
-				update: { tracks: JSON.stringify(merged) },
+				update: { tracks: JSON.stringify([...existing, ...toAdd]) },
 			});
 
 			for (const t of selectedTracks) {
 				const albumEntries = t.albums ? [...t.albums] : [];
-				if (!albumEntries.some((e) => e.uid === targetUid)) {
+				if (!albumEntries.some(e => e.uid === targetUid)) {
 					albumEntries.push({ uid: targetUid, name, track_number: null, disc: null });
 					await invoke("update_track_metadata", {
 						uid: t.uid,
@@ -125,9 +122,7 @@
 		} else {
 			const newUid = "a-" + crypto.randomUUID();
 			const trackEntries = selectedTracks.map((t, i) => ({
-				uid: t.uid,
-				name: t.title ?? "",
-				track_number: i + 1,
+				uid: t.uid, name: t.title ?? "", track_number: i + 1,
 			}));
 
 			await invoke("create_album_entry", {
@@ -137,14 +132,8 @@
 					artists: JSON.stringify(inferredArtists.map(n => ({ name: n, uid: "" }))),
 					album_artist: inferredArtists[0] ? { name: inferredArtists[0], uid: "" } : null,
 					tracks: JSON.stringify(trackEntries),
-					format: null,
-					rating: null,
-					release_date: null,
-					tags: "[]",
-					genres: "[]",
-					credits: null,
-					label: null,
-					artwork_path: null,
+					format: null, rating: null, release_date: null,
+					tags: "[]", genres: "[]", credits: null, label: null, artwork_path: null,
 				},
 			});
 
@@ -158,7 +147,8 @@
 			}
 		}
 
-		await loadLibrary();
+		await reloadLibrary("albums");
+		await reloadLibrary("tracks");
 		clearSelection();
 		open = false;
 	}
@@ -203,29 +193,20 @@
 							{#if filteredAlbums.length === 0 && !inputValue.trim()}
 								<Command.Empty>Type to search or create an album.</Command.Empty>
 							{:else if filteredAlbums.length === 0}
-								<Command.Item
-									value="__create__"
-									onSelect={() => closeComboAndFocus()}
-								>
+								<Command.Item value="__create__" onSelect={() => closeComboAndFocus()}>
 									<span class="text-muted-foreground mr-2 text-xs">Create</span>
 									"{inputValue.trim()}"
 								</Command.Item>
 							{:else}
 								<Command.Group>
 									{#each filteredAlbums as album (album.uid)}
-										<Command.Item
-											value={album.uid}
-											onSelect={() => selectAlbum(album.uid, album.title)}
-										>
+										<Command.Item value={album.uid} onSelect={() => selectAlbum(album.uid, album.title)}>
 											<CheckIcon class={cn("mr-2 size-4", selectedAlbumUid !== album.uid && "text-transparent")} />
 											{album.title}
 										</Command.Item>
 									{/each}
 									{#if inputValue.trim() && !exactMatch}
-										<Command.Item
-											value="__create__"
-											onSelect={() => closeComboAndFocus()}
-										>
+										<Command.Item value="__create__" onSelect={() => closeComboAndFocus()}>
 											<span class="text-muted-foreground mr-2 text-xs">Create</span>
 											"{inputValue.trim()}"
 										</Command.Item>

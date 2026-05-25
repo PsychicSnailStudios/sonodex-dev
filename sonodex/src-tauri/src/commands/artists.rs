@@ -128,3 +128,15 @@ pub fn delete_artist_entry(state: State<AppState>, uid: String) -> Result<(), St
 	}
 	Ok(())
 }
+
+#[tauri::command]
+pub fn get_artist_albums(
+	state: State<AppState>,
+	artist_uid: String,
+	aka_uids: Vec<String>,
+) -> Result<Vec<crate::db::album_manager::Album>, String> {
+	let profile_uid = state.get_uid();
+	let conn = open_merged_conn(&profile_uid);
+	crate::db::search_manager::get_artist_albums(&conn, &artist_uid, &aka_uids)
+		.map_err(|e| e.to_string())
+}

@@ -54,6 +54,7 @@
 			{#if isDropAfter}
 				<div class="absolute left-0 right-0 -bottom-px h-0.5 bg-primary rounded-full z-10 pointer-events-none"></div>
 			{/if}
+			<!-- svelte-ignore a11y_no_static_element_interactions -->
 			<div
 				draggable="true"
 				{ondragstart}

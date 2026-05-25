@@ -15,60 +15,78 @@
 	import TagList from "$lib/components/custom/tags/TagList.svelte";
 
 	import { selection } from "$ts/store/session.svelte";
-	import { getAlbum, getArtist, getPlaylist, getTrack, getArtistAlbums, library } from "$ts/store/library.svelte";
+	import { getArtist, getArtistAlbums, getArtists, onLibraryChange, onSingleChange } from "$ts/store/library.svelte";
 	import { openEditModal } from "$ts/ui/editModal.svelte";
 	import { currentArtistTab } from "$ts/store/session.svelte";
 	import type { Artist, Album } from "$ts/util/types";
-    import { parseTags } from "$ts/util/parsers";
+	import { parseTags } from "$ts/util/parsers";
 
 	let bannerUrl = $state<string | null>(null);
-
-	let artist = $derived.by(() => {
-		const uid = selection.uid;
-		if (!uid) return null;
-		return getArtist(uid) ?? null;
-	});
+	let artist = $state<Artist | null>(null);
+	let artistAlbums = $state<Album[]>([]);
 
 	let genres = $derived(artist?.genres ? parseTags(artist.genres) : null);
 	let tags = $derived(artist?.tags ? parseTags(artist.tags) : null);
-
-	// Parse aka once, reuse for both album lookup and template display
 	let akaList = $derived<string[]>(artist?.aka ? (JSON.parse(artist.aka) as string[]) : []);
 
-	let artistAlbums: Album[] = $derived.by(() => {
-		if (!artist) return [];
-		const akaUids: string[] = [];
-		// Find UIDs of aka artists by name match (needed for index lookup)
+	async function loadArtist() {
+		const uid = selection.uid;
+		if (!uid) { artist = null; artistAlbums = []; return; }
+		artist = await getArtist(uid);
+		if (!artist) { artistAlbums = []; return; }
+		await loadArtistAlbums();
+	}
+
+	async function loadArtistAlbums() {
+		if (!artist) { artistAlbums = []; return; }
+
+		// Resolve aka UIDs by name-matching against all artists
 		const akaNames = new Set(akaList.map(n => n.toLowerCase()));
-		for (const a of library.artists) {
-			if (akaNames.has(a.name.toLowerCase())) akaUids.push(a.uid.toString());
+		const akaUids: string[] = [];
+		if (akaNames.size > 0) {
+			const all = await getArtists();
+			for (const a of all) {
+				if (akaNames.has(a.name.toLowerCase())) akaUids.push(a.uid.toString());
+			}
 		}
-		return getArtistAlbums(artist.uid.toString(), akaUids);
+
+		artistAlbums = await getArtistAlbums(artist.uid.toString(), akaUids);
+	}
+
+	// Reload when selection changes
+	$effect(() => {
+		selection.uid;
+		loadArtist();
 	});
 
+	// Banner art effect
 	$effect(() => {
 		const uid = selection.uid;
 		if (!uid) return;
 
 		untrack(() => {
-			if (bannerUrl) {
-				URL.revokeObjectURL(bannerUrl);
-				bannerUrl = null;
-			}
+			if (bannerUrl) { URL.revokeObjectURL(bannerUrl); bannerUrl = null; }
 		});
 
-		if (!artist) return;
-		if (artist.banner_art_path) return;
+		if (!artist || artist.banner_art_path) return;
 
 		invoke<number[] | null>("get_artist_banner_art", { uid }).then((bytes) => {
 			if (bytes && bytes.length > 0) {
-				untrack(() => {
-					if (bannerUrl) URL.revokeObjectURL(bannerUrl);
-				});
+				untrack(() => { if (bannerUrl) URL.revokeObjectURL(bannerUrl); });
 				const blob = new Blob([new Uint8Array(bytes)], { type: "image/jpeg" });
 				bannerUrl = URL.createObjectURL(blob);
 			}
 		});
+	});
+
+	// Event bus subscriptions
+	$effect(() => {
+		const unsubArtists = onLibraryChange("artists:changed", loadArtist);
+		const unsubAlbums  = onLibraryChange("albums:changed",  loadArtistAlbums);
+		const unsubSingle  = onSingleChange((uid) => {
+			if (artist && uid === artist.uid) loadArtist();
+		});
+		return () => { unsubArtists(); unsubAlbums(); unsubSingle(); };
 	});
 </script>
 

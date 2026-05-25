@@ -10,14 +10,16 @@
 	import SearchBar from "$lib/components/custom/search/SearchBar.svelte";
 	import MediaGrid from "$lib/layouts/MediaGrid.svelte";
 
-	import { library } from "$ts/store/library.svelte";
-	import { searchAlbums } from "$ts/store/fuseStore.svelte";
+	import { getAlbums, searchAlbums, onLibraryChange } from "$ts/store/library.svelte";
 	import { setSelection } from "$ts/store/session.svelte";
 	import { createPersistedViewState } from "$ts/store/session.svelte";
 	import type { SortField } from "$ts/util/sortConfig.svelte";
-    import { parseArtistsToString } from "$ts/util/parsers";
+	import { parseArtistsToString } from "$ts/util/parsers";
+	import type { Album } from "$ts/util/types";
 
 	let search = $state("");
+	let allAlbums = $state<Album[]>([]);
+	let searchResults = $state<Album[]>([]);
 
 	const view = createPersistedViewState("album-library", {
 		sortField: "number",
@@ -25,10 +27,25 @@
 		colPreset: "album",
 	});
 
+	async function load() {
+		allAlbums = await getAlbums();
+	}
+
+	async function runSearch() {
+		searchResults = await searchAlbums(search);
+	}
+
+	$effect(() => { load(); });
+	$effect(() => { search; runSearch(); });
+	$effect(() => {
+		const unsub = onLibraryChange("albums:changed", load);
+		return unsub;
+	});
+
 	const sortedAlbums = $derived.by(() => {
 		const field = view.sort.field;
 		const dir = view.sort.direction === "asc" ? 1 : -1;
-		return [...library.albums].sort((a, b) => {
+		return [...allAlbums].sort((a, b) => {
 			let cmp = 0;
 			if (field === "name" as SortField) {
 				cmp = a.title.localeCompare(b.title);
@@ -41,11 +58,7 @@
 		});
 	});
 
-	const filteredAlbums = $derived(
-		search.trim().length < 2
-			? sortedAlbums
-			: searchAlbums(search)
-	);
+	const filteredAlbums = $derived(search.trim().length < 2 ? sortedAlbums : searchResults);
 
 	function toggleAlbumSort(field: "name" | "artist" | "year") {
 		if (view.sort.field === field) {
@@ -65,7 +78,7 @@
 	</div>
 
 	<div class="flex justify-between pr-4 pl-4">
-		<span>{library.albums.length} {library.albums.length === 1 ? "album" : "albums"}</span>
+		<span>{allAlbums.length} {allAlbums.length === 1 ? "album" : "albums"}</span>
 		<div class="flex items-center gap-1">
 			<DropdownMenu.Root>
 				<DropdownMenu.Trigger>

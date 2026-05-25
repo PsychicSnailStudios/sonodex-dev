@@ -6,9 +6,9 @@
 	import SearchBar from "$lib/components/custom/search/SearchBar.svelte";
 
 	import { createPersistedViewState } from "$ts/store/session.svelte";
-	import { library } from "$ts/store/library.svelte";
-	import { searchTracks } from "$ts/store/fuseStore.svelte";
+	import { getTracks, searchTracks, onLibraryChange } from "$ts/store/library.svelte";
 	import { createColumnState } from "$ts/util/columnConfig.svelte";
+	import type { Track } from "$ts/util/types";
 
 	const cols = createColumnState("library");
 	const view = createPersistedViewState("track-library", {
@@ -18,8 +18,23 @@
 	});
 
 	let search = $state("");
+	let allTracks = $state<Track[]>([]);
+	let filteredTracks = $state<Track[]>([]);
 
-	const filteredTracks = $derived(searchTracks(search));
+	async function load() {
+		allTracks = await getTracks();
+	}
+
+	async function runSearch() {
+		filteredTracks = await searchTracks(search);
+	}
+
+	$effect(() => { load(); });
+	$effect(() => { search; runSearch(); });
+	$effect(() => {
+		const unsub = onLibraryChange("tracks:changed", load);
+		return unsub;
+	});
 </script>
 
 <div class="flex flex-col gap-2 p-4 border-2 h-full w-full overflow-hidden rounded-md">
@@ -30,7 +45,7 @@
 	</div>
 
 	<div class="flex justify-between items-center gap-2">
-		<span>{library.tracks.length} {library.tracks.length === 1 ? "track" : "tracks"}</span>
+		<span>{allTracks.length} {allTracks.length === 1 ? "track" : "tracks"}</span>
 		<TrackTableSettings cols={cols} sort={view.sort} compact={view.compact} onCompactChange={(v) => view.compact = v} />
 	</div>
 

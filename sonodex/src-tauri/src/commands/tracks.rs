@@ -356,3 +356,9 @@ pub fn resolve_uid(state: State<AppState>, uid: String) -> Result<String, String
 	let conn = open_settings_conn(&profile_uid);
 	crate::db::settings_manager::resolve_uid(&conn, &uid).map_err(|e| e.to_string())
 }
+#[tauri::command]
+pub fn get_tracks_by_uids(state: State<AppState>, uids: Vec<String>) -> Result<Vec<Track>, String> {
+	let profile_uid = state.get_uid();
+	let conn = open_merged_conn(&profile_uid);
+	crate::db::search_manager::get_tracks_by_uids(&conn, &uids).map_err(|e| e.to_string())
+}

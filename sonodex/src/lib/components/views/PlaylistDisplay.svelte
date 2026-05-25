@@ -13,21 +13,22 @@
 	import DownloadButton from "$lib/components/custom/DownloadButton.svelte";
 
 	import { selection } from "$ts/store/session.svelte";
-	import { getTrackArrayFromUID, library } from "$ts/store/library.svelte";
+	import { getTrackArrayFromUID, getPlaylist, onLibraryChange, onSingleChange, searchTracks } from "$ts/store/library.svelte";
 	import { openEditModal } from "$ts/ui/editModal.svelte";
 	import { totalDuration } from "$ts/util/helpers";
 	import { queueTracksByObject } from "$ts/audio/audioManager.svelte";
 	import { dragState, endDrag } from "$ts/store/drag.svelte";
 	import { createPersistedViewState } from "$ts/store/session.svelte";
-	import { searchTracks } from "$ts/store/fuseStore.svelte";
 	import { fetchArtworkColor } from "$ts/library/artworkLoader";
 
-	import type { Track } from "$ts/util/types";
-   import { addTracksToPlaylist, addTrackToPlaylist } from "$ts/audio/playlistManager.svelte";
-    import { parseArtistsToString } from "$ts/util/parsers";
+	import type { Track, Playlist } from "$ts/util/types";
+	import { addTracksToPlaylist, addTrackToPlaylist } from "$ts/audio/playlistManager.svelte";
+	import { parseArtistsToString } from "$ts/util/parsers";
 
 	let search = $state("");
-	let playlist = $derived(library.playlistMap.get(selection.uid) ?? null);
+	let playlist = $state<Playlist | null>(null);
+	let tracks = $state<Track[]>([]);
+	let filteredTracks = $state<Track[]>([]);
 	let color = $state("rgb(30, 30, 30)");
 	let showSearch = $state(false);
 
@@ -37,12 +38,40 @@
 		colPreset: "playlist",
 	});
 
-	let tracks: Track[] = $derived.by(() => {
-		if (!playlist) return [];
-		return getTrackArrayFromUID(playlist.uid, view.sort);
+	async function loadPlaylist() {
+		const uid = selection.uid;
+		if (!uid) { playlist = null; tracks = []; return; }
+		playlist = await getPlaylist(uid);
+		if (!playlist) { tracks = []; return; }
+		tracks = await getTrackArrayFromUID(playlist.uid, view.sort);
+	}
+
+	async function loadFilteredTracks() {
+		if (!showSearch || search.trim().length < 2) {
+			filteredTracks = [];
+			return;
+		}
+		filteredTracks = await searchTracks(search);
+	}
+
+	// Reload when selection changes or playlists are mutated
+	$effect(() => {
+		selection.uid;
+		loadPlaylist();
 	});
 
-	let filteredTracks = $derived(showSearch ? searchTracks(search) : []);
+	// Reload when sort changes
+	$effect(() => {
+		view.sort;
+		if (playlist) getTrackArrayFromUID(playlist.uid, view.sort).then(t => tracks = t);
+	});
+
+	// Re-run search when query or visibility changes
+	$effect(() => {
+		search;
+		showSearch;
+		loadFilteredTracks();
+	});
 
 	$effect(() => {
 		const uid = selection.uid;
@@ -54,10 +83,19 @@
 			if (c !== "var(--muted)") {
 				color = c;
 			} else if (firstTrack) {
-				// Playlist has no artwork — use the first track's color as fallback
 				fetchArtworkColor(firstTrack.uid, "track").then(tc => { color = tc; });
 			}
 		});
+	});
+
+	// Subscribe to event bus
+	$effect(() => {
+		const unsubPlaylist = onLibraryChange("playlists:changed", loadPlaylist);
+		const unsubTracks   = onLibraryChange("tracks:changed",   loadPlaylist);
+		const unsubSingle   = onSingleChange((uid) => {
+			if (playlist && uid === playlist.uid) loadPlaylist();
+		});
+		return () => { unsubPlaylist(); unsubTracks(); unsubSingle(); };
 	});
 
 	function handleDisplayDragOver(e: DragEvent) {

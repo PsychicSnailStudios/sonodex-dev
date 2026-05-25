@@ -1,33 +1,34 @@
-import { library } from "$ts/store/library.svelte";
+import { getPlaylists } from "$ts/store/library.svelte";
 
 let currentPath = $state<string | null>(null);
 let _knownFolders = $state<Set<string>>(new Set());
 let _seeded = false;
 
-function _seedFromLibrary() {
+async function _seedFromLibrary() {
 	if (_seeded) return;
 	_seeded = true;
-	for (const p of library.playlists ?? []) {
+	const playlists = await getPlaylists();
+	for (const p of playlists) {
 		const f = (p as any).folder;
-		if (f && f !== "") _knownFolders.add(f);
+		if (f && f !== "") _knownFolders = new Set([..._knownFolders, f]);
 	}
 }
 
 export const folderSelection = {
 	get currentPath() { return currentPath; },
 	get knownFolders(): Set<string> {
-		_seedFromLibrary();
 		return _knownFolders;
+	},
+	async init() {
+		await _seedFromLibrary();
 	},
 };
 
 export function registerFolder(path: string) {
-	_seedFromLibrary();
 	_knownFolders = new Set([..._knownFolders, path]);
 }
 
 export function removeFolder(path: string) {
-	_seedFromLibrary();
 	const next = new Set(_knownFolders);
 	for (const k of next) {
 		if (k === path || k.startsWith(path + "/")) next.delete(k);

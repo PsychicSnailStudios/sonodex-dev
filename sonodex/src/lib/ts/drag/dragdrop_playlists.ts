@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import { library } from "$ts/store/library.svelte";
+import { emitLibraryChange } from "$ts/store/library.svelte";
 import { setHoveredPlaylist, setDragActive, setDragPayload, endDrag } from "$ts/store/drag.svelte";
 import { addTracksToPlaylist } from "$ts/audio/playlistManager.svelte";
 import { getDirectPlaylists } from "$ts/ui/playlistFolderTree.svelte";
@@ -37,7 +37,7 @@ export async function movePlaylists(playlistUids: string[], targetFolder: string
 			update: { folder: targetFolder ?? "" },
 		});
 	}
-	library.playlists = await invoke("get_playlists");
+	emitLibraryChange("playlists:changed");
 }
 
 export async function doPlaylistReorder(

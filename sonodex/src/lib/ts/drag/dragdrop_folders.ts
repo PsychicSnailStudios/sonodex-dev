@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import { library } from "$ts/store/library.svelte";
+import { emitLibraryChange } from "$ts/store/library.svelte";
 import { dragState, setHoveredFolder, setDragActive, setDragPayload, endDrag } from "$ts/store/drag.svelte";
 import { isDraggingFolderType } from "$ts/drag/dragdrop";
 import { registerFolder, removeFolder } from "$ts/ui/folderSelection.svelte";
@@ -98,7 +98,7 @@ export async function nestFolder(draggedPath: string, targetPath: string) {
 	await invoke("rename_playlist_folder", { oldPath: draggedPath, newPath });
 	removeFolder(draggedPath);
 	registerFolder(newPath);
-	library.playlists = await invoke("get_playlists");
+	emitLibraryChange("playlists:changed");
 }
 
 export async function moveFolderToRoot(draggedPath: string) {
@@ -107,7 +107,7 @@ export async function moveFolderToRoot(draggedPath: string) {
 	await invoke("rename_playlist_folder", { oldPath: draggedPath, newPath: folderName });
 	removeFolder(draggedPath);
 	registerFolder(folderName);
-	library.playlists = await invoke("get_playlists");
+	emitLibraryChange("playlists:changed");
 }
 
 export async function deleteFolder(
@@ -137,11 +137,11 @@ export async function deleteFolder(
 	}
 
 	removeFolder(folderPath);
-	library.playlists = await invoke("get_playlists");
+	emitLibraryChange("playlists:changed");
 }
 
 async function _deleteFolderRecursive(folderPath: string) {
-	const current = library.playlists ?? [];
+	const current: any[] = await invoke("get_playlists");
 	const direct = current.filter((p: any) => (p.folder ?? "") === folderPath);
 	for (const p of direct) {
 		await invoke("delete_playlist_entry", { uid: p.uid });
@@ -161,7 +161,7 @@ async function _deleteFolderRecursive(folderPath: string) {
 
 export async function deleteFolderAndContents(folderPath: string) {
 	await _deleteFolderRecursive(folderPath);
-	library.playlists = await invoke("get_playlists");
+	emitLibraryChange("playlists:changed");
 }
 
 export async function dropOnFolder(

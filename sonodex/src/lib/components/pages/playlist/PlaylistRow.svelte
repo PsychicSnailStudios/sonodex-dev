@@ -4,7 +4,7 @@
 
 	import { setSelection } from "$ts/store/session.svelte";
 	import { queueTracksByObject } from "$ts/audio/audioManager.svelte";
-   import { getTrackArrayFromUID } from "$ts/store/library.svelte";
+	import { getTrackArrayFromUID } from "$ts/store/library.svelte";
 	import type { Playlist } from "$ts/util/types";
 
 	let {
@@ -23,9 +23,10 @@
 		highlighted?: boolean;
 	}>();
 
-	function play(e: MouseEvent) {
+	async function play(e: MouseEvent) {
 		e.stopPropagation();
-		queueTracksByObject(getTrackArrayFromUID(playlist.uid), true);
+		const tracks = await getTrackArrayFromUID(playlist.uid);
+		queueTracksByObject(tracks, true);
 	}
 </script>
 

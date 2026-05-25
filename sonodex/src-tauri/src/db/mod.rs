@@ -10,6 +10,7 @@ pub mod playlist_manager;
 pub mod settings_manager;
 pub mod tag_manager;
 pub mod track_manager;
+pub mod search_manager;
 
 pub use album_manager::*;
 pub use artist_manager::*;

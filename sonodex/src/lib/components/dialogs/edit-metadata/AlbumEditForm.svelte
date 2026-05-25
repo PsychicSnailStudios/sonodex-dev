@@ -1,10 +1,7 @@
 <script lang="ts">
-	
-	// APP
 	import { invoke } from "@tauri-apps/api/core";
 	import { onMount } from "svelte";
 
-	// COMPONENTS
 	import { Star } from "lucide-svelte";
 
 	import * as Tabs from "$shadcn/tabs";
@@ -16,22 +13,17 @@
 	import { Button } from "$shadcn/button";
 	import { Separator } from "$shadcn/separator";
 
-	// CUSTOM COMPONENTS
 	import ArtworkEditor from "$lib/components/dialogs/edit-metadata/ArtworkEditor.svelte";
 	import TagSelector from "$lib/components/custom/tags/TagSelector.svelte";
 
-	// SCRIPTS
 	import { closeEditModal } from "$ts/ui/editModal.svelte";
 	import { getAlbum, reloadLibrary } from "$ts/store/library.svelte";
 	import { syncArtists, pruneArtists, renameArtistInLibrary, renameAlbumInTracks } from "$ts/library/entitySync";
 	import { warnEmptyFields } from "$ts/ui/dialogManager.svelte";
-    import { tagStore } from "$ts/store/tagManager.svelte";
-    import { get } from "svelte/store";
+	import { tagStore } from "$ts/store/tagManager.svelte";
 
-	// PROPS
 	let { uid } = $props<{ uid: string }>();
 
-	// VARIABLES
 	let title = $state("");
 	let originalTitle = $state("");
 	let albumArtist = $state("");
@@ -66,9 +58,8 @@
 		{ value: "Disc", label: "Disc" }
 	];
 
-	// APP FUNCTIONS
 	onMount(async () => {
-		const album = getAlbum(uid);
+		const album = await getAlbum(uid);
 		if (!album) return;
 
 		title = album.title ?? "";
@@ -87,16 +78,10 @@
 		artists = artistArr.join(", ");
 		originalArtists = artistArr;
 
-		try {
-			genreList = album.genres ? JSON.parse(album.genres) : [];
-		} catch { genreList = []; }
-
-		try {
-			tagList = album.tags ? JSON.parse(album.tags) : [];
-		} catch { tagList = []; }
+		try { genreList = album.genres ? JSON.parse(album.genres) : []; } catch { genreList = []; }
+		try { tagList = album.tags ? JSON.parse(album.tags) : []; } catch { tagList = []; }
 	});
 
-	// FUNCTIONS
 	async function save() {
 		const hasEmpty = !title || !albumArtist;
 		const proceed = await warnEmptyFields(hasEmpty);
@@ -189,22 +174,8 @@
 				<div class="space-y-1.5">
 					<Label for="album-rating">Rating</Label>
 					<div class="flex gap-1 items-end">
-						<Input
-							id="album-rating"
-							type="number"
-							min="0"
-							max="10"
-							step="0.1"
-							bind:value={rating}
-							class="text-sm m-0"
-							placeholder="1-10"
-						/>
-						<Toggle
-							pressed={isFavoritePressed}
-							onPressedChange={onFavoritePressed}
-							size="sm"
-							class="data-[state=on]:bg-transparent data-[state=on]:*:[svg]:fill-yellow-500 data-[state=on]:*:[svg]:stroke-yellow-500"
-						>
+						<Input id="album-rating" type="number" min="0" max="10" step="0.1" bind:value={rating} class="text-sm m-0" placeholder="1-10" />
+						<Toggle pressed={isFavoritePressed} onPressedChange={onFavoritePressed} size="sm" class="data-[state=on]:bg-transparent data-[state=on]:*:[svg]:fill-yellow-500 data-[state=on]:*:[svg]:stroke-yellow-500">
 							<Star />
 						</Toggle>
 					</div>
@@ -214,19 +185,12 @@
 				<div class="space-y-1.5">
 					<Label for="album-format">Format</Label>
 					<Select.Root type="single" name="album-format" bind:value={format}>
-						<Select.Trigger class="text-sm w-full">
-							{format || "Select..."}
-						</Select.Trigger>
+						<Select.Trigger class="text-sm w-full">{format || "Select..."}</Select.Trigger>
 						<Select.Content>
 							<Select.Group>
 								<Select.Label>Format</Select.Label>
 								{#each albumTypes as t (t.value)}
-								<Select.Item
-									value={t.value}
-									label={t.label}
-								>
-									{t.label}
-								</Select.Item>
+									<Select.Item value={t.value} label={t.label}>{t.label}</Select.Item>
 								{/each}
 							</Select.Group>
 						</Select.Content>
@@ -235,19 +199,12 @@
 				<div class="space-y-1.5">
 					<Label for="album-type">Emulate Type</Label>
 					<Select.Root type="single" name="album-type" bind:value={type}>
-						<Select.Trigger class="text-sm w-full">
-							{type || "Select..."}
-						</Select.Trigger>
+						<Select.Trigger class="text-sm w-full">{type || "Select..."}</Select.Trigger>
 						<Select.Content>
 							<Select.Group>
 								<Select.Label>Emulate Type</Select.Label>
 								{#each emulateTypes as t (t.value)}
-								<Select.Item
-									value={t.value}
-									label={t.label}
-								>
-									{t.label}
-								</Select.Item>
+									<Select.Item value={t.value} label={t.label}>{t.label}</Select.Item>
 								{/each}
 							</Select.Group>
 						</Select.Content>
@@ -288,17 +245,12 @@
 	</Tabs.Content>
 
 	<Tabs.Content value="artwork" class="mt-4">
-		<ArtworkEditor
-			entityType="album"
-			entityUid={uid}
-			onchange={(path) => { artworkPath = path; }}
-		/>
+		<ArtworkEditor entityType="album" entityUid={uid} onchange={(path) => { artworkPath = path; }} />
 		<Separator class="my-4" />
 	</Tabs.Content>
 </Tabs.Root>
 
 <div class="flex justify-end gap-2">
-	<!-- <Button variant="outline" onclick={() => enrichAlbum(uid)}>Enrich</Button> -->
 	<Button variant="outline" onclick={closeEditModal}>Cancel</Button>
 	<Button onclick={save} disabled={saving}>{saving ? "Saving…" : "Save"}</Button>
 </div>

@@ -9,6 +9,7 @@ pub mod paths;
 pub mod playlists;
 pub mod profiles;
 pub mod scrobbles;
+pub mod search;
 pub mod settings;
 pub mod tags;
 pub mod tracks;

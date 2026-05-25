@@ -262,6 +262,7 @@ pub fn run() {
 			commands::tracks::replace_track_path,
 			commands::tracks::add_uid_remap,
 			commands::tracks::resolve_uid,
+			commands::tracks::get_tracks_by_uids,
 			// Albums
 			commands::albums::get_albums,
 			commands::albums::get_album,
@@ -277,6 +278,7 @@ pub fn run() {
 			commands::artists::create_artist_entry,
 			commands::artists::update_artist_entry,
 			commands::artists::delete_artist_entry,
+			commands::artists::get_artist_albums,
 			// Playlists
 			commands::playlists::get_playlists,
 			commands::playlists::get_playlist,
@@ -362,6 +364,10 @@ pub fn run() {
 			commands::downloads::download_playlist_tracks_cmd,
 			commands::downloads::sync_offline_subscriptions_cmd,
 			commands::downloads::unsubscribe_offline_cmd,
+			// Search
+			commands::search::search_tracks,
+			commands::search::search_albums,
+			commands::search::search_artists,
 		])
 		.run(tauri::generate_context!())
 		.expect("error while running tauri application");

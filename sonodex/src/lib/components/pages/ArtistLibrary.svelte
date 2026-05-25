@@ -1,23 +1,21 @@
 <script lang="ts">
-	// COMPONENTS
 	import { ArrowDownAZ, ArrowUpAZ, LayoutGrid, List } from "lucide-svelte";
 
 	import { Button } from "$shadcn/button/index.js";
 	import { ScrollArea } from "$shadcn/scroll-area/index.js";
 
-	// CUSTOM COMPONENTS
 	import ArtworkDisplay from "$lib/components/custom/ArtworkDisplay.svelte";
 	import SearchBar from "$lib/components/custom/search/SearchBar.svelte";
 	import MediaGrid from "$lib/layouts/MediaGrid.svelte";
 
-	// SCRIPTS
-	import { library } from "$ts/store/library.svelte";
-	import { searchArtists } from "$ts/store/fuseStore.svelte";
+	import { getArtists, searchArtists, onLibraryChange } from "$ts/store/library.svelte";
 	import { setSelection } from "$ts/store/session.svelte";
 	import { createPersistedViewState } from "$ts/store/session.svelte";
-	
-	// VARIABLES
+	import type { Artist } from "$ts/util/types";
+
 	let search = $state("");
+	let allArtists = $state<Artist[]>([]);
+	let searchResults = $state<Artist[]>([]);
 
 	const view = createPersistedViewState("artist-library", {
 		sortField: "title",
@@ -25,30 +23,39 @@
 		colPreset: "default",
 	});
 
-	const sortedArtists = $derived.by(() => {
-		const dir = view.sort.direction === "asc" ? 1 : -1;
-		return [...library.artists].sort((a, b) => a.name.localeCompare(b.name) * dir);
+	async function load() {
+		allArtists = await getArtists();
+	}
+
+	async function runSearch() {
+		searchResults = await searchArtists(search);
+	}
+
+	$effect(() => { load(); });
+	$effect(() => { search; runSearch(); });
+	$effect(() => {
+		const unsub = onLibraryChange("artists:changed", load);
+		return unsub;
 	});
 
-	const filteredArtists = $derived(
-		search.trim().length >= 2
-			? searchArtists(search)
-			: sortedArtists
-	);
+	const sortedArtists = $derived.by(() => {
+		const dir = view.sort.direction === "asc" ? 1 : -1;
+		return [...allArtists].sort((a, b) => a.name.localeCompare(b.name) * dir);
+	});
+
+	const filteredArtists = $derived(search.trim().length >= 2 ? searchResults : sortedArtists);
 </script>
 
 <div class="flex flex-col gap-2 pt-4 border-2 h-full w-full overflow-hidden rounded-md">
 
 	<div class="flex justify-between items-center gap-2 pr-4 pl-4">
 		<h1 class="h1">Artists</h1>
-
 		<SearchBar bind:search searchCount={filteredArtists.length} />
-
 	</div>
 
 	<div class="flex flex-col h-full w-full overflow-hidden gap-3 p-0.5">
 		<div class="flex justify-between pr-4 pl-4">
-			<span>{library.artists.length} {library.artists.length === 1 ? "artist" : "artists"}</span>
+			<span>{allArtists.length} {allArtists.length === 1 ? "artist" : "artists"}</span>
 			<div class="flex items-center gap-1">
 				<Button variant="ghost" size="icon" onclick={() => view.sort.direction = view.sort.direction === "asc" ? "desc" : "asc"}>
 					{#if view.sort.direction === "asc"}
@@ -59,11 +66,9 @@
 				</Button>
 				<Button variant="ghost" size="icon" onclick={() => view.compact = !view.compact}>
 					{#if view.compact}
-					<!-- Table -->
-					<List />
+						<List />
 					{:else}
-					<LayoutGrid />
-						<!-- List -->
+						<LayoutGrid />
 					{/if}
 				</Button>
 			</div>
@@ -100,5 +105,5 @@
 		{/if}
 		</ScrollArea>
 	</div>
-		
+
 </div>

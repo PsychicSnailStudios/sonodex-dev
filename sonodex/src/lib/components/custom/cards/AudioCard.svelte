@@ -1,8 +1,7 @@
 <script lang="ts">
-
 	// COMPONENTS
 	import Button from "$shadcn/button/button.svelte";
-	
+
 	// CUSTOM COMPONENTS
 	import { Play } from "lucide-svelte";
 	import ArtworkDisplay from "$lib/components/custom/ArtworkDisplay.svelte";
@@ -10,22 +9,20 @@
 	// SCRIPTS
 	import { setSelection } from "$ts/store/session.svelte";
 	import { playTrackByUid, queueTracksByObject } from "$ts/audio/audioManager.svelte";
-   import { getTrackArrayFromUID } from "$ts/store/library.svelte";
+	import { getTrackArrayFromUID } from "$ts/store/library.svelte";
 	import type { AudioCatagories } from "$ts/util/types";
-	
+
 	// PROPS
 	let { title, subTitle, artworkUid, type } = $props<{ title: string; subTitle: string | null; artworkUid: string; type: AudioCatagories }>();
-	
+
 	// FUNCTIONS
-	function play(e: MouseEvent) {
+	async function play(e: MouseEvent) {
 		e.stopPropagation();
 		if (type === "track") {
 			playTrackByUid(artworkUid);
-		} else if (type === "playlist") {
-			queueTracksByObject(getTrackArrayFromUID(artworkUid), true);
-		}
-		else {
-			queueTracksByObject(getTrackArrayFromUID(artworkUid), true);
+		} else {
+			const tracks = await getTrackArrayFromUID(artworkUid);
+			queueTracksByObject(tracks, true);
 		}
 	}
 </script>

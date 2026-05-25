@@ -7,8 +7,8 @@
 	import { toast } from "svelte-sonner";
 	import { parseUidType } from "$ts/util/parsers";
 	import { downloadTrack, downloadAlbum, downloadPlaylist } from "$ts/services/downloadManager";
-	import { getAlbum, getArtist, getPlaylist, getTrack, getTrackArrayFromUID, library } from "$ts/store/library.svelte";
-	import type { Playlist, Track } from "$ts/util/types";
+	import { getTrack, getTrackArrayFromUID } from "$ts/store/library.svelte";
+	import type { Track } from "$ts/util/types";
 
 	let {
 		uid,
@@ -23,6 +23,7 @@
 	} = $props();
 
 	let downloading = $state(false);
+	let allLocal = $state(true);
 
 	function trackIsLocal(t: Track): boolean {
 		if (t.path && t.path != "" && t.path != t.uid) return true;
@@ -30,20 +31,21 @@
 		return false;
 	}
 
-	const allLocal = $derived.by(() => {
-		const type = parseUidType(uid);
+	// Check locality async on mount and whenever uid changes
+	$effect(() => {
+		const currentUid = uid;
+		const type = parseUidType(currentUid);
 
 		if (type === "track") {
-			const track = getTrack(uid);
-			if (!track) return true;
-			return trackIsLocal(track);
+			getTrack(currentUid).then(track => {
+				allLocal = !track ? true : trackIsLocal(track);
+			});
+		} else {
+			getTrackArrayFromUID(currentUid).then(tracks => {
+				if (tracks.length === 0) { allLocal = true; return; }
+				allLocal = tracks.every(t => trackIsLocal(t));
+			});
 		}
-
-		let tracks = getTrackArrayFromUID(uid);
-		if (tracks.length === 0) return true;
-		if (tracks.length === 1) return trackIsLocal(tracks[0]);
-
-		return tracks.every(t => trackIsLocal(t));
 	});
 
 	async function ensureDownloadPath(): Promise<boolean> {
@@ -67,7 +69,7 @@
 		const type = parseUidType(uid);
 
 		if (type === "track") {
-			const track = getTrack(uid);
+			const track = await getTrack(uid);
 			if (!track?.remote_path) {
 				toast.warning("This track has no remote source to download from.");
 				return;

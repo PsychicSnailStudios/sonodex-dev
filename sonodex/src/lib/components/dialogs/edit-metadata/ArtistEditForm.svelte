@@ -1,10 +1,7 @@
 <script lang="ts">
-
-	// APP
 	import { invoke } from "@tauri-apps/api/core";
 	import { onMount } from "svelte";
 
-	// COMPONENTS
 	import * as Tabs from "$shadcn/tabs";
 	import { Label } from "$shadcn/label";
 	import { Input } from "$shadcn/input";
@@ -12,22 +9,17 @@
 	import { Button } from "$shadcn/button";
 	import { Separator } from "$shadcn/separator";
 
-	// CUSTOM COMPONENTS
 	import ArtworkEditor from "$lib/components/dialogs/edit-metadata/ArtworkEditor.svelte";
 	import TagSelector from "$lib/components/custom/tags/TagSelector.svelte";
 
-	// SCRIPTS
 	import { closeEditModal } from "$ts/ui/editModal.svelte";
-	import { reloadSingle, reloadLibrary, getArtist } from "$ts/store/library.svelte";
+	import { getArtist, reloadSingle, reloadLibrary } from "$ts/store/library.svelte";
 	import { renameArtistInLibrary, mergeArtistAkas } from "$ts/library/entitySync";
 	import { warnEmptyFields } from "$ts/ui/dialogManager.svelte";
-    import { tagStore } from "$ts/store/tagManager.svelte";
+	import { tagStore } from "$ts/store/tagManager.svelte";
 
-	// PROPS
 	let { uid } = $props<{ uid: string }>();
-	let artist = $derived(getArtist(uid) ?? null);
 
-	// VARIABLES
 	let name = $state("");
 	let originalName = $state("");
 	let aka = $state("");
@@ -39,17 +31,12 @@
 	let profileArtPath = $state<string | null>(null);
 	let saving = $state(false);
 
-	// APP FUNCTIONS
-	onMount(async () => {
-		updateFields();
-	});
-
-	// FUNCTIONS
 	function splitList(val: string) {
 		return val.split(",").map((s) => s.trim()).filter(Boolean);
 	}
 
-	function updateFields() {
+	onMount(async () => {
+		const artist = await getArtist(uid);
 		if (!artist) return;
 
 		name = artist.name ?? "";
@@ -62,7 +49,7 @@
 		try { tagList = artist.tags ? JSON.parse(artist.tags) : []; } catch { tagList = []; }
 		try { websites = (artist.websites ? JSON.parse(artist.websites) : []).join(", "); } catch { websites = ""; }
 		try { members = (artist.members ? JSON.parse(artist.members) : []).join(", "); } catch { members = ""; }
-	}
+	});
 
 	async function save() {
 		const hasEmpty = !name;
@@ -112,7 +99,6 @@
 
 	<Tabs.Content value="info">
 		<div class="flex-1 min-h-0 pr-1 space-y-3 mt-4">
-
 			<div class="space-y-1.5">
 				<Label for="artist-name">Name</Label>
 				<Input id="artist-name" bind:value={name} />
@@ -151,17 +137,12 @@
 
 	<Tabs.Content value="artwork" class="mt-4">
 		<p class="text-xs text-muted-foreground mb-3">Profile art</p>
-		<ArtworkEditor
-			entityType="artist"
-			entityUid={uid}
-			onchange={(path) => { profileArtPath = path; }}
-		/>
+		<ArtworkEditor entityType="artist" entityUid={uid} onchange={(path) => { profileArtPath = path; }} />
 		<Separator class="my-4" />
 	</Tabs.Content>
 </Tabs.Root>
 
 <div class="flex justify-end gap-2">
-	<!-- <Button variant="outline" onclick={() => enrichArtist(uid)}>Enrich</Button> -->
 	<Button variant="outline" onclick={closeEditModal}>Cancel</Button>
 	<Button onclick={save} disabled={saving}>{saving ? "Saving…" : "Save"}</Button>
 </div>

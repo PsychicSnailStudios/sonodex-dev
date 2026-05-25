@@ -13,7 +13,7 @@
 	import DownloadButton from "$lib/components/custom/DownloadButton.svelte";
 
 	import { selection, setSelection } from "$ts/store/session.svelte";
-	import { getAlbum, getTrackArrayFromUID, library } from "$ts/store/library.svelte";
+	import { getAlbum, getAlbums, getTrackArrayFromUID, onLibraryChange, onSingleChange } from "$ts/store/library.svelte";
 	import { queueTracksByObject } from "$ts/audio/audioManager.svelte";
 	import { openEditModal } from "$ts/ui/editModal.svelte";
 	import { totalDuration } from "$ts/util/helpers";
@@ -21,7 +21,7 @@
 	import { artworkColorCache, fetchArtworkColor } from "$ts/library/artworkLoader";
 
 	import type { Album, Track } from "$ts/util/types";
-    import { parseTags } from "$ts/util/parsers";
+	import { parseTags } from "$ts/util/parsers";
 
 	const view = createPersistedViewState("album", {
 		sortField: "number",
@@ -29,33 +29,62 @@
 		colPreset: "album",
 	});
 
-	let album = $derived(getAlbum(selection.uid) ?? null);
+	let album = $state<Album | null>(null);
+	let tracks = $state<Track[]>([]);
+	let artistAlbums = $state<Album[]>([]);
+	let color = $state("rgb(30, 30, 30)");
+
 	let genres = $derived(album?.genres ? parseTags(album.genres) : null);
 	let tags = $derived(album?.tags ? parseTags(album.tags) : null);
 
-	let color = $state("rgb(30, 30, 30)");
+	async function loadAlbum() {
+		const uid = selection.uid;
+		if (!uid) { album = null; tracks = []; artistAlbums = []; return; }
+		album = await getAlbum(uid);
+		if (!album) { tracks = []; artistAlbums = []; return; }
+		tracks = await getTrackArrayFromUID(album.uid, view.sort);
+		await loadArtistAlbums();
+	}
 
-	let tracks: Track[] = $derived.by(() => {
-		if (!album) return [];
-		return getTrackArrayFromUID(album.uid, view.sort);
-	});
-
-	let artistAlbums: Album[] = $derived.by(() => {
-		if (!album?.album_artist) return [];
+	async function loadArtistAlbums() {
+		if (!album?.album_artist) { artistAlbums = []; return; }
 		const artistName = album.album_artist.name.toLowerCase();
-		return library.albums.filter(a => a.album_artist?.name?.toLowerCase() === artistName);
+		const all = await getAlbums();
+		artistAlbums = all.filter(a => a.album_artist?.name?.toLowerCase() === artistName);
+	}
+
+	// Reload when selection changes
+	$effect(() => {
+		selection.uid;
+		loadAlbum();
 	});
 
+	// Reload tracks when sort changes
+	$effect(() => {
+		view.sort;
+		if (album) getTrackArrayFromUID(album.uid, view.sort).then(t => tracks = t);
+	});
+
+	// Color effect
 	$effect(() => {
 		const uid = selection.uid;
 		if (!uid) return;
 		const cached = artworkColorCache.get(`album:${uid}`);
-		if (cached) {
-			color = cached;
-			return;
-		}
+		if (cached) { color = cached; return; }
 		color = "var(--muted)";
 		fetchArtworkColor(uid, "album").then(c => { color = c; });
+	});
+
+	// Event bus subscriptions
+	$effect(() => {
+		const unsubAlbums = onLibraryChange("albums:changed", loadAlbum);
+		const unsubTracks = onLibraryChange("tracks:changed", async () => {
+			if (album) tracks = await getTrackArrayFromUID(album.uid, view.sort);
+		});
+		const unsubSingle = onSingleChange((uid) => {
+			if (album && uid === album.uid) loadAlbum();
+		});
+		return () => { unsubAlbums(); unsubTracks(); unsubSingle(); };
 	});
 
 	function trackIsGhost(t: Track): boolean {
@@ -130,8 +159,8 @@
 			<h4>More by {album.album_artist?.name}</h4>
 			<ScrollArea orientation="horizontal" class="min-h-0 min-w-0">
 				<div class="grid gap-2 pb-4" style="grid-auto-columns: 150px; grid-auto-flow: column;">
-					{#each artistAlbums as album}
-						<AudioCard title={album.title} subTitle={album.album_artist?.name.toString() ?? ""} artworkUid={album.uid} type="album" />
+					{#each artistAlbums as a}
+						<AudioCard title={a.title} subTitle={a.album_artist?.name.toString() ?? ""} artworkUid={a.uid} type="album" />
 					{/each}
 				</div>
 			</ScrollArea>

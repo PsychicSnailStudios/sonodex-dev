@@ -1,10 +1,7 @@
 <script lang="ts">
-
-	// APP
 	import { invoke } from "@tauri-apps/api/core";
 	import { onMount } from "svelte";
 
-	// COMPONENTS
 	import { X, Plus, ChevronUp, ChevronDown, Star, Disc, Hash } from "lucide-svelte";
 
 	import * as Tabs from "$shadcn/tabs";
@@ -16,11 +13,9 @@
 	import { Toggle } from "$shadcn/toggle/index.js";
 	import { ScrollArea } from "$shadcn/scroll-area/index.js";
 
-	// CUSTOM COMPONENTS
 	import ArtworkEditor from "./ArtworkEditor.svelte";
 	import IconInput from "$lib/components/custom/IconInput.svelte";
 
-	// SCRIPTS
 	import { closeEditModal } from "$ts/ui/editModal.svelte";
 	import { getTrack, reloadLibrary } from "$ts/store/library.svelte";
 	import {
@@ -36,12 +31,10 @@
 	import TagSelector from "$lib/components/custom/tags/TagSelector.svelte";
 
 	import type { TrackAlbumEntry } from "$ts/util/types";
-    import { tagStore } from "$ts/store/tagManager.svelte";
+	import { tagStore } from "$ts/store/tagManager.svelte";
 
-	// PROPS
 	let { uid } = $props<{ uid: string }>();
 
-	// VARIABLES
 	let title = $state("");
 	let artists = $state("");
 	let albumArtist = $state("");
@@ -67,7 +60,7 @@
 
 	onMount(async () => {
 		const lyrics = await invoke("get_track_lyrics", { uid });
-		const track = getTrack(uid);
+		const track = await getTrack(uid);
 		if (!track) return;
 
 		hasLyrics = lyrics != null;
@@ -101,7 +94,6 @@
 		try { tagList = track.tags ? JSON.parse(track.tags) : []; } catch { tagList = []; }
 	});
 
-	// FUNCTIONS
 	function addAlbum() {
 		albums = [...albums, { uid: "", name: "", track_number: null, disc: null }];
 	}
@@ -286,38 +278,17 @@
 						{#each albums as album, i}
 							<div class="flex gap-1 items-center">
 								<div class="flex flex-col">
-									<Button
-										variant="ghost"
-										size="icon"
-										onclick={() => moveUp(i)}
-										disabled={i === 0}
-										class="size-6 text-muted-foreground"
-									>
+									<Button variant="ghost" size="icon" onclick={() => moveUp(i)} disabled={i === 0} class="size-6 text-muted-foreground">
 										<ChevronUp class="size-3" />
 									</Button>
-									<Button
-										variant="ghost"
-										size="icon"
-										onclick={() => moveDown(i)}
-										disabled={i === albums.length - 1}
-										class="size-6 text-muted-foreground"
-									>
+									<Button variant="ghost" size="icon" onclick={() => moveDown(i)} disabled={i === albums.length - 1} class="size-6 text-muted-foreground">
 										<ChevronDown class="size-3" />
 									</Button>
 								</div>
-								<Input
-									placeholder="Album name"
-									bind:value={album.name}
-									class="flex-1"
-								/>
+								<Input placeholder="Album name" bind:value={album.name} class="flex-1" />
 								<IconInput bind:value={album.track_number} placeholder="Track #" type="number" Icon={Hash} classes="w-20" />
 								<IconInput bind:value={album.disc} placeholder="Disc #" type="number" Icon={Disc} classes="w-18" />
-								<Button
-									variant="ghost"
-									size="icon"
-									onclick={() => removeAlbum(i)}
-									class="size-8 shrink-0 text-muted-foreground hover:text-destructive"
-								>
+								<Button variant="ghost" size="icon" onclick={() => removeAlbum(i)} class="size-8 shrink-0 text-muted-foreground hover:text-destructive">
 									<X class="size-4" />
 								</Button>
 							</div>
@@ -381,8 +352,6 @@
 		Write tags to file
 	</label>
 	<div class="flex gap-2">
-		<!-- <Button variant="outline" disabled={hasLyrics} onclick={getLyrics}>Get Lyrics</Button> -->
-		<!-- <Button variant="outline" onclick={() => enrichTrack(uid)}>Enrich</Button> -->
 		<Button variant="outline" onclick={closeEditModal}>Cancel</Button>
 		<Button onclick={save} disabled={saving}>
 			{saving ? "Saving…" : "Save"}

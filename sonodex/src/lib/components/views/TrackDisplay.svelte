@@ -14,29 +14,22 @@
 	import LyricsViewer from "$lib/components/custom/LyricsViewer.svelte";
 	import DownloadButton from "$lib/components/custom/DownloadButton.svelte";
 
-	import { library } from "$ts/store/library.svelte";
+	import { getTrack, getAlbum, onLibraryChange, onSingleChange } from "$ts/store/library.svelte";
 	import { currentTrackTab, selection, setSelection } from "$ts/store/session.svelte";
 	import { openEditModal } from "$ts/ui/editModal.svelte";
 	import { formatDuration } from "$ts/util/helpers";
 	import { playTrackByObject } from "$ts/audio/audioManager.svelte";
 	import { fetchArtworkColor } from "$ts/library/artworkLoader";
-    import { parseTags } from "$ts/util/parsers";
+	import { parseTags } from "$ts/util/parsers";
 
-	let track = $derived(library.trackMap.get(selection.uid) ?? null);
-	let fetchingLyrics = $state(false);
-	let genres = $derived(track?.genres ? parseTags(track.genres) : null);
-	let tags = $derived(track?.tags ? parseTags(track.tags) : null);
+	import type { Track, Album } from "$ts/util/types";
+
+	let track = $state<Track | null>(null);
+	let featuredOnAlbums = $state<Album[]>([]);
 	let color = $state("rgb(30, 30, 30)");
 
-	let featuredOnAlbums = $derived.by(() => {
-		if (!track?.albums) return [];
-		const result = [];
-		for (const entry of track.albums) {
-			const album = library.albumMap.get(entry.uid);
-			if (album) result.push(album);
-		}
-		return result;
-	});
+	let genres = $derived(track?.genres ? parseTags(track.genres) : null);
+	let tags = $derived(track?.tags ? parseTags(track.tags) : null);
 
 	let featuredArtists = $derived.by(() => {
 		if (!track?.artists) return [];
@@ -56,11 +49,42 @@
 		return !!(hasLocal || hasRemote);
 	});
 
+	async function loadTrack() {
+		const uid = selection.uid;
+		if (!uid) { track = null; featuredOnAlbums = []; return; }
+		track = await getTrack(uid);
+		if (!track) { featuredOnAlbums = []; return; }
+		await loadFeaturedAlbums();
+	}
+
+	async function loadFeaturedAlbums() {
+		if (!track?.albums) { featuredOnAlbums = []; return; }
+		const results = await Promise.all(track.albums.map(e => getAlbum(e.uid)));
+		featuredOnAlbums = results.filter((a): a is Album => a !== null);
+	}
+
+	// Reload when selection changes
+	$effect(() => {
+		selection.uid;
+		loadTrack();
+	});
+
+	// Color effect
 	$effect(() => {
 		const uid = selection.uid;
 		if (!uid) return;
 		color = "var(--muted)";
 		fetchArtworkColor(uid, "track").then(c => { color = c; });
+	});
+
+	// Event bus subscriptions
+	$effect(() => {
+		const unsubTracks = onLibraryChange("tracks:changed", loadTrack);
+		const unsubAlbums = onLibraryChange("albums:changed", loadFeaturedAlbums);
+		const unsubSingle = onSingleChange((uid) => {
+			if (track && uid === track.uid) loadTrack();
+		});
+		return () => { unsubTracks(); unsubAlbums(); unsubSingle(); };
 	});
 </script>
 

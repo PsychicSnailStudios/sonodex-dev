@@ -1,4 +1,4 @@
-import { library } from "$ts/store/library.svelte";
+import { getTracks } from "$ts/store/library.svelte";
 import { writeText } from "@tauri-apps/plugin-clipboard-manager";
 import type { Track } from "$ts/util/types";
 
@@ -81,40 +81,47 @@ export function selectTrack(uid: string, orderedUids: string[], event: MouseEven
 	lastClickedUid = uid;
 }
 
-export function getSelectedTracks() {
-	return library.tracks.filter((t) => selectedUids.has(t.uid));
+export async function getSelectedTracks(): Promise<Track[]> {
+	const tracks = await getTracks();
+	return tracks.filter((t) => selectedUids.has(t.uid));
 }
 
-export function copySelectedToClipboard(orderedUids: string[]) {
+export async function copySelectedToClipboard(orderedUids: string[]) {
+	const allTracks = await getTracks();
+	const trackMap = new Map(allTracks.map(t => [t.uid, t]));
 	const tracks = orderedUids
 		.filter((uid) => selectedUids.has(uid))
-		.map((uid) => library.tracks.find((t) => t.uid === uid))
+		.map((uid) => trackMap.get(uid))
 		.filter(Boolean);
 
 	if (tracks.length === 0) return;
 
 	clipboardUids = tracks.map((t) => t!.uid);
-	const trackNames = tracks.map((t) => (t!.title ?? "Unknown Title") + "; " + (t!.album_artist ?? "Unknown Artist")).join("\n");
+	const trackNames = tracks.map((t) => (t!.title ?? "Unknown Title") + "; " + (t!.album_artist?.name ?? "Unknown Artist")).join("\n");
 	writeText(trackNames).catch(() => {});
 }
 
-export function copySelectedNamesToClipboard(orderedUids: string[]) {
+export async function copySelectedNamesToClipboard(orderedUids: string[]) {
+	const allTracks = await getTracks();
+	const trackMap = new Map(allTracks.map(t => [t.uid, t]));
 	const tracks = orderedUids
 		.filter((uid) => selectedUids.has(uid))
-		.map((uid) => library.tracks.find((t) => t.uid === uid))
+		.map((uid) => trackMap.get(uid))
 		.filter(Boolean);
 
 	if (tracks.length === 0) return;
 
-	const trackNames = tracks.map((t) => (t!.title ?? "Unknown Title") + "; " + (t!.album_artist ?? "Unknown Artist")).join("\n");
+	const trackNames = tracks.map((t) => (t!.title ?? "Unknown Title") + "; " + (t!.album_artist?.name ?? "Unknown Artist")).join("\n");
 
 	writeText(trackNames).catch(() => {});
 }
 
-export function copySelectedUIDsToClipboard(orderedUids: string[]) {
+export async function copySelectedUIDsToClipboard(orderedUids: string[]) {
+	const allTracks = await getTracks();
+	const trackMap = new Map(allTracks.map(t => [t.uid, t]));
 	const tracks = orderedUids
 		.filter((uid) => selectedUids.has(uid))
-		.map((uid) => library.tracks.find((t) => t.uid === uid))
+		.map((uid) => trackMap.get(uid))
 		.filter(Boolean);
 
 	const uids = tracks.map((t) => t!.uid).join("\n");

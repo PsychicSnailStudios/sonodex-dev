@@ -26,8 +26,8 @@
 		if (!tracks) return;
 		if (tracks.length === 0) return;
 
-		const uidA = tracks[0].uid;
-		const uidB = tracks[tracks.length - 1].uid;
+		const uidA = tracks[0]?.uid;
+		const uidB = tracks[tracks.length - 1]?.uid;
 		
 		if (!uidA || !uidB) return;
 

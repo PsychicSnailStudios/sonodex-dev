@@ -12,12 +12,12 @@
 	import { generateViewId, trackSelection, setTrackSelectionContext, clearTrackSelection, copySelectedToClipboard } from "$ts/store/trackSelection.svelte"
 	import { removeTracksFromPlaylist, reorderPlaylistTracks, addTracksToPlaylist, parseTracks } from "$ts/audio/playlistManager.svelte"
 	import { parseDiscNumber, buildDiscBreaks, type DiscBreakEntry } from "$ts/util/discHelpers";
+	import { getPlaylist } from "$ts/store/library.svelte";
 
 	// TYPES
 	import type { ColumnState } from "$ts/util/columnConfig.svelte"
 	import type { SortState } from "$ts/util/sortConfig.svelte"
 	import type { Track } from "$ts/util/types"
-	import { library } from "$ts/store/library.svelte";
 
 	// PROPS
 	let { tracks, columns, sort, compact = false, playlistUid = null, albumUid = null, emulateType = null } = $props<{
@@ -107,7 +107,6 @@
 
 	const orderedUids = $derived(sortedTracks.map((t) => t.uid))
 
-	// O(1) position lookup — replaces orderedUids.indexOf() called per row per render
 	const uidIndexMap = $derived.by(() => {
 		const m = new Map<string, number>()
 		for (let i = 0; i < orderedUids.length; i++) m.set(orderedUids[i], i)
@@ -131,7 +130,6 @@
 	const totalHeight = $derived(sortedTracks.length * ROW_HEIGHT)
 	const offsetY = $derived(visibleRange.start * ROW_HEIGHT)
 
-	// disable virtualization when disc breaks are present (album view) — list is small enough
 	const useVirtualization = $derived(!albumUid && sortedTracks.length > 200)
 
 	let dragOverIndex = $state<number | null>(null)
@@ -222,7 +220,8 @@
 		} else {
 			await addTracksToPlaylist(playlistUid, uids);
 
-			const playlist = library.playlistMap.get(playlistUid);
+			// Re-fetch playlist after adding tracks to get current order
+			const playlist = await getPlaylist(playlistUid);
 			if (!playlist) { dragOverIndex = null; endDrag(); return; }
 			const current = parseTracks(playlist.tracks);
 			const currentUids = current.sort((a, b) => a.order - b.order).map((t) => t.uid);
@@ -235,19 +234,17 @@
 			without.splice(insertAt, 0, ...uids);
 			await reorderPlaylistTracks(playlistUid, without);
 		}
-
 		dragOverIndex = null;
 		endDrag();
 	}
 
 	async function handleTableDrop(e: DragEvent) {
-		e.preventDefault()
-		dragOverIndex = null
-		if (!playlistUid || !dragState.payload) return
-		const { uids, sourcePlaylistUid } = dragState.payload
-		if (sourcePlaylistUid !== playlistUid) {
-			await addTracksToPlaylist(playlistUid, uids)
-		}
+		e.preventDefault();
+		if (!playlistUid || dragOverIndex !== null) return;
+		const raw = e.dataTransfer?.getData("text/plain");
+		if (!raw) return;
+		const uids = raw.split(",").map((u) => u.trim()).filter(Boolean);
+		await addTracksToPlaylist(playlistUid, uids)
 		endDrag()
 	}
 </script>

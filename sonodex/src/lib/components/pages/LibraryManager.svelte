@@ -24,8 +24,8 @@
 		getDuplicates,
 	} from "$ts/library/libraryManager";
 	import { enrichAlbums, enrichArtists, enrichTracks, enrichAllAlbums, enrichAllArtists, enrichAllTracks } from "$ts/library/enrichment";
-	import { searchTracks, searchAlbums, searchArtists } from "$ts/store/fuseStore.svelte";
-	import type { DuplicateGroup } from "$ts/util/types";
+	import { searchTracks, searchAlbums, searchArtists, onLibraryChange } from "$ts/store/library.svelte";
+	import type { DuplicateGroup, Track, Album, Artist } from "$ts/util/types";
 	import { scanState } from "$ts/store/session.svelte";
 
 	// ─── Search ───────────────────────────────────────────────────────────────────
@@ -53,20 +53,37 @@
 	let lastAlbumIndex = $state<number | null>(null);
 	let lastArtistIndex = $state<number | null>(null);
 
-	// ─── Filtered lists ───────────────────────────────────────────────────────────
-	const filteredTracks = $derived(
-		(() => {
-			let pool = searchTracks(trackSearch);
-			if (trackFilterMode === "ghosts") pool = pool.filter((t) => !t.remote_path && (!t.path || t.path === t.uid));
-			else if (trackFilterMode === "remote") pool = pool.filter((t) => !!t.remote_path);
-			else if (trackFilterMode === "local") pool = pool.filter((t) => !!t.path && t.path !== t.uid && !t.remote_path);
-			return pool;
-		})()
-	);
+	// ─── Async filtered lists ─────────────────────────────────────────────────────
+	let filteredTracks = $state<Track[]>([]);
+	let filteredAlbums = $state<Album[]>([]);
+	let filteredArtists = $state<Artist[]>([]);
 
-	const filteredAlbums = $derived(searchAlbums(albumSearch));
+	async function loadTracks() {
+		let pool = await searchTracks(trackSearch);
+		if (trackFilterMode === "ghosts") pool = pool.filter((t) => !t.remote_path && (!t.path || t.path === t.uid));
+		else if (trackFilterMode === "remote") pool = pool.filter((t) => !!t.remote_path);
+		else if (trackFilterMode === "local") pool = pool.filter((t) => !!t.path && t.path !== t.uid && !t.remote_path);
+		filteredTracks = pool;
+	}
 
-	const filteredArtists = $derived(searchArtists(artistSearch));
+	async function loadAlbums() {
+		filteredAlbums = await searchAlbums(albumSearch);
+	}
+
+	async function loadArtists() {
+		filteredArtists = await searchArtists(artistSearch);
+	}
+
+	$effect(() => { trackSearch; trackFilterMode; loadTracks(); });
+	$effect(() => { albumSearch; loadAlbums(); });
+	$effect(() => { artistSearch; loadArtists(); });
+
+	$effect(() => {
+		const u1 = onLibraryChange("tracks:changed", loadTracks);
+		const u2 = onLibraryChange("albums:changed", loadAlbums);
+		const u3 = onLibraryChange("artists:changed", loadArtists);
+		return () => { u1(); u2(); u3(); };
+	});
 
 	// ─── Track selection derived ──────────────────────────────────────────────────
 	const selectedTrackUids = $derived(
@@ -225,36 +242,25 @@
 		duplicatesLoaded = true;
 	}
 
-	function onDuplicateResolved(groupKey: string) {
-		duplicates = duplicates.filter((g) => g.tracks[0]?.uid !== groupKey);
+	function onDuplicateResolved(uid: string) {
+		duplicates = duplicates.filter(g => g.tracks[0]?.uid !== uid);
 	}
 </script>
 
-<!-- Dialogs (rendered outside the tab layout so they always work) -->
-<AddToAlbumDialog bind:open={addToAlbumOpen} trackUids={selectedTrackUids} />
-<BlocklistDialog />
+<div class="flex flex-col gap-2 p-4 border-2 h-full w-full overflow-hidden rounded-md">
+	<h1 class="h1">Library Manager</h1>
 
-<div class="flex flex-col gap-2 p-2 border-2 rounded-md h-full w-full overflow-hidden">
-	<h2 class="h2">Library Manager</h2>
-
-	<ScrollArea class="h-full w-full min-h-0 min-w-0">
-		<div class="flex flex-col gap-4 p-2 pr-4">
-			<Tabs.Root value="library" class="flex flex-col min-h-0 flex-1">
-				<Tabs.List class="w-full">
-					<Tabs.Trigger value="library"  class="flex-1">Library</Tabs.Trigger>
-					<Tabs.Trigger value="tracks"   class="flex-1">Tracks</Tabs.Trigger>
-					<Tabs.Trigger value="albums"   class="flex-1">Albums</Tabs.Trigger>
-					<Tabs.Trigger value="artists"  class="flex-1">Artists</Tabs.Trigger>
-					<Tabs.Trigger value="tags"     class="flex-1">Tags</Tabs.Trigger>
-					<Tabs.Trigger value="duplicates" class="flex-1" onclick={loadDuplicates}>Duplicates</Tabs.Trigger>
+	<ScrollArea class="h-full min-h-0 min-w-0 pr-4">
+		<div class="flex flex-col gap-4 pb-4">
+			<Tabs.Root value="database">
+				<Tabs.List>
+					<Tabs.Trigger value="database">Database</Tabs.Trigger>
+					<Tabs.Trigger value="tags">Tags</Tabs.Trigger>
+					<Tabs.Trigger value="tracks">Tracks</Tabs.Trigger>
+					<Tabs.Trigger value="albums">Albums</Tabs.Trigger>
+					<Tabs.Trigger value="artists">Artists</Tabs.Trigger>
+					<Tabs.Trigger value="duplicates" onclick={loadDuplicates}>Duplicates</Tabs.Trigger>
 				</Tabs.List>
-
-				<!-- LIBRARY (paths + federated databases) -->
-				<Tabs.Content value="library">
-					<div class="pt-2">
-						<LibraryDatabaseManager />
-					</div>
-				</Tabs.Content>
 
 				<!-- TRACKS -->
 				<Tabs.Content value="tracks">
@@ -263,22 +269,15 @@
 							<span class="text-sm text-muted-foreground">
 								{filteredTracks.length} {filteredTracks.length === 1 ? "track" : "tracks"}
 							</span>
-							<div class="flex gap-2 items-center">
-								<div class="flex rounded-md border text-xs">
-									{#each (["all", "local", "remote", "ghosts"] as TrackFilterMode[]) as mode}
-										<button
-											class="px-2 py-1 capitalize transition-colors"
-											class:bg-primary={trackFilterMode === mode}
-											class:text-primary-foreground={trackFilterMode === mode}
-											class:text-muted-foreground={trackFilterMode !== mode}
-											onclick={() => (trackFilterMode = mode)}
-										>
-											{mode}
-										</button>
-									{/each}
-								</div>
-								<SearchBar bind:search={trackSearch} searchCount={filteredTracks.length} />
-							</div>
+							<SearchBar bind:search={trackSearch} searchCount={filteredTracks.length} />
+						</div>
+
+						<div class="flex gap-1 flex-wrap">
+							{#each (["all","ghosts","remote","local"] as const) as mode}
+								<Button variant={trackFilterMode === mode ? "default" : "outline"} size="sm" onclick={() => trackFilterMode = mode}>
+									{mode.charAt(0).toUpperCase() + mode.slice(1)}
+								</Button>
+							{/each}
 						</div>
 
 						{#if anyTracksSelected}
@@ -479,7 +478,6 @@
 					<TagManager />
 				</Tabs.Content>
 
-				<!-- DUPLICATES -->
 				<Tabs.Content value="duplicates">
 					<div class="flex flex-col gap-2 pt-2">
 						{#if !duplicatesLoaded}
@@ -498,7 +496,14 @@
 						{/if}
 					</div>
 				</Tabs.Content>
+
+				<Tabs.Content value="database">
+					<LibraryDatabaseManager />
+				</Tabs.Content>
 			</Tabs.Root>
 		</div>
 	</ScrollArea>
 </div>
+
+<AddToAlbumDialog bind:open={addToAlbumOpen} trackUids={selectedTrackUids} />
+<BlocklistDialog />

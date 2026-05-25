@@ -2,8 +2,9 @@
 	import * as ContextMenu from "$shadcn/context-menu/index.js";
 
 	import { nestFolder, moveFolderToRoot, deleteFolder, deleteFolderAndContents } from "$ts/drag/dragdrop_folders";
-	import { library } from "$ts/store/library.svelte";
+	import { getPlaylists, onLibraryChange } from "$ts/store/library.svelte";
 	import type { PlaylistSortField } from "$ts/ui/playlistFolderTree.svelte";
+	import type { Playlist } from "$ts/util/types";
 
 	let {
 		path,
@@ -21,7 +22,17 @@
 		onCreateFolder: (parent: string) => void;
 	}>();
 
-	let playlists = $derived(library.playlists ?? []);
+	let playlists = $state<Playlist[]>([]);
+
+	async function loadPlaylists() {
+		playlists = await getPlaylists();
+	}
+
+	$effect(() => { loadPlaylists(); });
+	$effect(() => {
+		const unsub = onLibraryChange("playlists:changed", loadPlaylists);
+		return unsub;
+	});
 
 	// exclude self and own children from move targets
 	const moveTargets = $derived(
