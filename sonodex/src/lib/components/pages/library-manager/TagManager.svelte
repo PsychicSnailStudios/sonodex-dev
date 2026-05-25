@@ -228,6 +228,7 @@
 					/>
 				</label>
 				{#if items.length > 0}
+					<!-- svelte-ignore node_invalid_placement_ssr -->
 					<button
 						class={buttonVariants({ variant: "destructive", size: "sm" }) + " h-6 text-xs px-2"}
 						onclick={deleteAll}
@@ -297,6 +298,7 @@
       </span>
       <div class="flex items-center gap-2" role="none" onclick={(e) => e.stopPropagation()}>
         {#if visibleGroups.length > 0}
+          <!-- svelte-ignore node_invalid_placement_ssr -->
           <button
             class={buttonVariants({ variant: "destructive", size: "sm" }) + " h-6 text-xs px-2"}
             onclick={deleteAllGroups}

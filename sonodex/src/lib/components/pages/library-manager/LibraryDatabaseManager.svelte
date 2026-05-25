@@ -414,14 +414,13 @@
 <div class="flex flex-col gap-4">
 
 	<!-- Header row -->
-	<div class="flex items-center justify-between">
-		<div>
-			<h4 class="text-sm font-semibold">Connected Libraries</h4>
-			<p class="text-xs text-muted-foreground mt-0.5">
-				Libraries are merged in order — the local default always wins conflicts.
-			</p>
-		</div>
-		<div class="flex gap-2">
+	<div class="flex flex-col gap-1">
+		<h4 class="text-sm font-semibold pt-2">Connected Libraries</h4>
+		<p class="text-xs text-muted-foreground mt-0.5">
+			Libraries are merged in order, the local default always wins conflicts.
+		</p>
+
+		<div class="flex gap-2 pt-2">
 			<Button variant="outline" size="sm" onclick={rescan} disabled={scanState.loading}>
 				{#if scanState.loading}
 					<Loader2 class="w-3.5 h-3.5 mr-1 animate-spin" />
