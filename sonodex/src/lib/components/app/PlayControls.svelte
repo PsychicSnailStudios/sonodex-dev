@@ -61,9 +61,9 @@
 		<span></span>
 		
 		<div class="flex justify-center items-center gap-2">
-			<Button variant="ghost" size="icon" onclick={toggleShuffle}>
+			<Button variant="ghost" size="icon" onclick={toggleShuffle} class="cursor-pointer">
 				{#if player.shuffleType === 0}
-					<Shuffle class="text-muted-foreground" />
+					<Shuffle class="text-muted-foreground hover:text-foreground" />
 				{:else if player.shuffleType === 1}
 					<Shuffle />
 				{:else if player.shuffleType === 2}
@@ -72,7 +72,7 @@
 					<Shuffle />
 				{/if}
 			</Button>
-			<Button variant="ghost" size="icon" onclick={skipBack}>
+			<Button variant="ghost" size="icon" onclick={skipBack} class="cursor-pointer">
 				<SkipBack />
 			</Button>
 			<button
@@ -85,10 +85,10 @@
 					<Play size={20} fill="var(--muted)" color="var(--muted)" />
 				{/if}
 			</button>
-			<Button variant="ghost" size="icon" disabled={!canSkipForward} onclick={skipNext}>
+			<Button variant="ghost" size="icon" disabled={!canSkipForward} onclick={skipNext} class="cursor-pointer">
 				<SkipForward />
 			</Button>
-			<Button variant="ghost" size="icon" onclick={toggleLoop}>
+			<Button variant="ghost" size="icon" onclick={toggleLoop} class="cursor-pointer">
 				{#if player.loopType === 0}
 					<Repeat class="text-muted-foreground" />
 				{:else if player.loopType === 1}
@@ -100,7 +100,7 @@
 		</div>
 
 		<div class="flex justify-center items-center">
-			<Button variant="ghost" size="icon" onclick={toggleMute}>
+			<Button variant="ghost" size="icon" onclick={toggleMute} class="cursor-pointer">
 				{#if player.volume === 0 || player.muted}
 					<VolumeOff class="text-muted-foreground" />
 				{:else if player.volume < 0.25}
