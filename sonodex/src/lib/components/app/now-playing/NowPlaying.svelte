@@ -60,7 +60,7 @@
 
 	<div class="app-now-playing bg-muted grid gap-3 p-2 rounded-md items-center" style="background: linear-gradient(90deg, {color} 0%, transparent 75%)">
 		{#if currentlyPlaying.track !== null}
-			<ArtworkDisplay uid={currentlyPlaying.uid} type="track" size={64} />
+			<ArtworkDisplay entity={currentlyPlaying.track} size={64} />
 
 			<div class="flex flex-col min-w-0">
 				<ScrollingText

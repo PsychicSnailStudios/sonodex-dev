@@ -106,7 +106,7 @@
 			
 		{#if album}
 		<div class="flex gap-4 items-end">
-			<ArtworkDisplay uid={album.uid} size={160} type="album" />
+			<ArtworkDisplay entity={album} size={160} />
 
 			<div class="flex flex-col gap-1">
 				<span class="text-xs text-muted-foreground">{album.format ? album.format : "Album"}</span>

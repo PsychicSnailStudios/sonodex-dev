@@ -93,7 +93,7 @@
 	
 		{#if track}
 			<div class="flex gap-4 items-center">
-				<ArtworkDisplay uid={track.uid} size={160} type="track" />
+				<ArtworkDisplay entity={track} size={160} />
 
 				<div class="flex flex-col gap-1">
 					<h2 class="text-2xl font-bold">{track.title ?? "Unknown Title"}</h2>
@@ -169,7 +169,7 @@
 						<button
 							onclick={() => setSelection(artistUID.toString())}
 							class="flex items-center gap-2 flex-row cursor-pointer p-2 rounded-md bg-muted/50 hover:bg-muted">
-							<ArtworkDisplay uid={artistUID.toString()} type="artist" size={40} />
+							<ArtworkDisplay entity={track.album_artist} size={40} />
 							{track.album_artist.name}
 						</button>
 					{:else}
@@ -210,7 +210,7 @@
 								<button
 									onclick={() => setSelection(album.uid)}
 									class="flex items-center gap-3 cursor-pointer p-2 rounded-md bg-muted/50 hover:bg-muted text-left">
-									<ArtworkDisplay uid={album.uid} type="album" size={48} />
+									<ArtworkDisplay entity={album} size={48} />
 									<div class="flex flex-col">
 										<span class="text-sm font-medium">{album.title}</span>
 										<span class="text-xs text-muted-foreground">{album.album_artist?.name}</span>
@@ -230,7 +230,7 @@
 								<button
 									onclick={() => setSelection(album.uid)}
 									class="flex items-center gap-3 cursor-pointer p-2 rounded-md bg-muted/50 hover:bg-muted text-left">
-									<ArtworkDisplay uid={album.uid} type="album" size={48} />
+									<ArtworkDisplay entity={album} size={48} />
 									<div class="flex flex-col">
 										<span class="text-sm font-medium">{album.title}</span>
 										<span class="text-xs text-muted-foreground">{album.album_artist?.name}</span>

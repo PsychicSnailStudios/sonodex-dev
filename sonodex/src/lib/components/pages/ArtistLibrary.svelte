@@ -82,7 +82,7 @@
 						class="grid items-center px-3 border-b hover:bg-muted/50"
 						style="grid-template-columns: 40px 1fr; height: 56px;"
 					>
-						<ArtworkDisplay uid={artist.uid} type="artist" size={40} />
+						<ArtworkDisplay entity={artist} type="artist" size={40} />
 						<button onclick={() => setSelection(artist.uid)} class="pl-2 text-sm truncate text-left">
 							<p class="text-sm font-medium">{artist.name}</p>
 						</button>
@@ -94,7 +94,7 @@
 				{#each filteredArtists as artist}
 					<button onclick={() => setSelection(artist.uid)} class="flex flex-col items-center gap-2 p-2 rounded-md bg-background border hover:border-primary transition-colors cursor-default">
 						<div class="w-full aspect-square rounded-full bg-muted flex items-center justify-center overflow-hidden">
-							<ArtworkDisplay uid={artist.uid} type="artist" />
+							<ArtworkDisplay entity={artist} />
 						</div>
 						<div class="min-w-0 w-full text-center">
 							<p class="text-sm font-medium">{artist.name}</p>

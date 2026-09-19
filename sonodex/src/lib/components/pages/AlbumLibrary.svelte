@@ -155,7 +155,7 @@
 						class="grid items-center px-3 border-b hover:bg-muted/50"
 						style="grid-template-columns: 40px 1fr 1fr 40px; height: 56px;"
 					>
-						<ArtworkDisplay uid={album.uid} type="album" size={40} />
+						<ArtworkDisplay entity={album} size={40} />
 						<button onclick={() => setSelection(album.uid)} class="pl-2 text-sm truncate text-left">
 							<p class="text-sm font-medium">{album.title}</p>
 						</button>

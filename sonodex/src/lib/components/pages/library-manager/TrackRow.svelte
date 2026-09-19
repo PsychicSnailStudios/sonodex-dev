@@ -1,169 +1,228 @@
 <script lang="ts">
-	import { Pencil, Trash, FolderInput, Paperclip, CloudDownload, FolderOpen, Loader2 } from "lucide-svelte";
-	import * as Tooltip from "$shadcn/tooltip/index.js";
-	import { buttonVariants } from "$shadcn/button/index.js";
-	import ArtworkDisplay from "$lib/components/custom/ArtworkDisplay.svelte";
-	import ArtistsList from "$lib/components/custom/text-display/ArtistsList.svelte";
-	import { setSelection } from "$ts/store/session.svelte";
-	import { openEditModal } from "$ts/ui/editModal.svelte";
-	import { enrichTrack } from "$ts/library/enrichment";
-	import {
-		removeTrackFromLibrary,
-		replaceTrackPath,
-		openTrackInExplorer,
-	} from "$ts/library/libraryManager";
-	import type { Track } from "$ts/util/types";
-	import ScrollingText from "$lib/components/custom/text-display/ScrollingText.svelte";
-	import { Checkbox } from "$shadcn/checkbox/index.js";
 
+	// COMPONENTS
+	import { Pause, Play } from "lucide-svelte";
+	import Button from "$shadcn/button/button.svelte";
+
+	// CUSTOM COMPONENTS
+	import ArtworkDisplay from "$lib/components/custom/ArtworkDisplay.svelte";
+	import TrackTableEditButton from "$lib/components/custom/track-table/TrackRowEditButton.svelte";
+   import TrackRating from "$lib/components/custom/text-display/TrackRating.svelte";
+	import ArtistsList from "$lib/components/custom/text-display/ArtistsList.svelte";
+
+	// SCRIPTS
+	import { setSelection } from "$ts/store/session.svelte";
+	import { trackSelection, selectTrack } from "$ts/store/trackSelection.svelte";
+	import { startDrag, endDrag } from "$ts/store/drag.svelte";
+	import { playTrackByUid, togglePlay } from "$ts/audio/audioManager.svelte";
+	import { formatDuration } from "$ts/util/helpers";
+	import { parseArtistsToString } from "$ts/util/parsers";
+	import { player } from "$ts/audio/audioPlayer.svelte";
+	import type { Track } from "$ts/util/types";
+
+	// PROPS
 	let {
 		track,
-		selected = false,
-		onToggle,
-		onShiftClick,
-	}: {
+		orderedUids,
+		uidIndexMap,
+		viewId,
+		index,
+		compact = false,
+		gridTemplate,
+		showNumber,
+		showArtwork,
+		showTitle,
+		showArtist,
+		showAlbum,
+		showYear,
+		showRating,
+		showDuration,
+		showLabel,
+		showOptions,
+		playlistUid = null,
+	} = $props<{
 		track: Track;
-		selected?: boolean;
-		onToggle?: () => void;
-		onShiftClick?: () => void;
-	} = $props();
+		orderedUids: string[];
+		uidIndexMap: Map<string, number>;
+		index: number;
+    	viewId: string;    
+		compact?: boolean;
+		gridTemplate: string;
+		showNumber: boolean;
+		showArtwork: boolean;
+		showTitle: boolean;
+		showArtist: boolean;
+		showAlbum: boolean;
+		showYear: boolean;
+		showRating: boolean;
+		showDuration: boolean;
+		showLabel: boolean;
+		showOptions: boolean;
+		playlistUid?: string | null;
+	}>();
 
-	const albumList = $derived(track.albums);
+	// VARIABLES
+	const isGhosted = $derived(isGhostTrack());
+	let isSelected = $derived(trackSelection.isSelected(track.uid, viewId));
 
-	let enriching = $state(false);
-
-	async function handleEnrich(e: MouseEvent) {
-		e.stopPropagation();
-		enriching = true;
-		try {
-			await enrichTrack(track.uid);
-		} finally {
-			enriching = false;
-		}
+	function isGhostTrack(): boolean {
+		if (track.remote_path && track.remote_path.length > 0) return false;
+		if (!track.path || track.path === "" || track.path === track.uid) return true;
+		return false;
+	}
+	
+	// FUNCTIONS
+	function handleRowClick(e: MouseEvent) {
+		if ((e.target as HTMLElement).closest("button")) return;
+		selectTrack(track.uid, orderedUids, e, viewId);
 	}
 
-	function handleRowClick(e: MouseEvent) {
-		const target = e.target as HTMLElement;
-		if (target.closest("a, button")) return;
-		if (e.shiftKey) {
-			onShiftClick?.();
+	function handleRowDblClick(e: MouseEvent) {
+		if ((e.target as HTMLElement).closest("button")) return;
+		playTrackByUid(track.uid);
+	}
+
+	function handleDragStart(e: DragEvent) {
+		if (!e.dataTransfer) return;
+
+		let uids: string[];
+		if (trackSelection.isSelected(track.uid, viewId) && trackSelection.count > 1) {
+			uids = orderedUids.filter((uid: string) => trackSelection.isSelected(uid, viewId));
 		} else {
-			onToggle?.();
+			uids = [track.uid];
 		}
+
+		startDrag({ type: "tracks", uids, sourcePlaylistUid: playlistUid });
+		e.dataTransfer.effectAllowed = "move";
+		e.dataTransfer.setData("text/plain", uids.join(","));
+	}
+
+	function handleDragEnd() {
+		endDrag();
+	}
+
+	function getTrackNumber(): string {
+		if (playlistUid) {
+			const idx = uidIndexMap.get(track.uid)
+			return idx != null ? (idx + 1).toString() : "#"
+		}
+		const num = track.albums?.[0]?.track_number
+		return num != null ? num.toString() : "#"
 	}
 </script>
 
-<div class="flex gap-2 items-center">
-	<Checkbox
-		checked={selected}
-		onCheckedChange={(v) => {
-			if (v !== selected) onToggle?.();
-		}}
-	/>
-	<!-- svelte-ignore a11y_click_events_have_key_events -->
-	<!-- svelte-ignore a11y_interactive_supports_focus -->
-	<div
-		class="flex gap-2 p-2 border-2 rounded-md justify-between items-center flex-1 cursor-pointer"
-		class:border-primary={selected}
-		onclick={handleRowClick}
-		onmousedown={(e) => { if (e.shiftKey) e.preventDefault(); }}
-		role="row"
-		aria-selected={selected}
-	>
-		<div class="flex gap-2 items-center min-w-0 flex-1">
-			<ArtworkDisplay uid={track.uid} size={40} type="track" />
-			<div class="min-w-0 grid">
-				{#if track.path != ""}
-					<button
-						onclick={(e) => { e.stopPropagation(); setSelection(track.uid); }}
-						class="text-sm truncate cursor-pointer hover:underline text-left"
-					>
-						<ScrollingText text={track.title ?? "Unknown Track"} hoverOnly />
-					</button>
+<div
+	role="row"
+	class="grid items-center content-center px-3 border-b cursor-pointer select-none transition-colors {isSelected ? 'bg-primary/15 hover:bg-primary/20' : 'hover:bg-muted/50'} {isGhosted ? 'opacity-50 pointer-events-none cursor-not-allowed' : ''}"
+	style="grid-template-columns: {gridTemplate}; height: {compact ? '28px' : '56px'};"
+	onclick={handleRowClick}
+	ondblclick={handleRowDblClick}
+	onkeydown={(e) => { if (e.key === 'Enter') playTrackByUid(track.uid); }}
+	draggable="true"
+	ondragstart={handleDragStart}
+	ondragend={handleDragEnd}
+	tabindex="0"
+>
+	{#if showNumber && showArtwork}
+		<span class=" cursor-auto text-sm pointer-events-none">{getTrackNumber()}</span>
+	{/if}
+
+	{#if showNumber && !showArtwork}
+		<div class="group relative w-full h-full flex items-center justify-start">
+			<span class="text-sm pointer-events-none group-hover:opacity-0">{getTrackNumber()}</span>
+			<div class="cursor-pointer absolute top-0 -left-3 inset-0 w-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+				{#if player.isPlaying && player.track?.uid === track.uid}
+					<Button variant="ghost" size="icon" onclick={() => togglePlay()}>
+						<Pause />
+					</Button>
+				{:else if player.track?.uid === track.uid}
+					<Button variant="ghost" size="icon" onclick={() => togglePlay()}>
+						<Play />
+					</Button>
 				{:else}
-					<button
-						onclick={(e) => { e.stopPropagation(); setSelection(track.uid); }}
-						class="text-sm text-muted-foreground truncate cursor-pointer hover:underline text-left"
-					>
-						<ScrollingText text={track.title ?? "Unknown Track"} hoverOnly />
-					</button>
+					<Button variant="ghost" size="icon" onclick={() => playTrackByUid(track.uid)}>
+						<Play />
+					</Button>
 				{/if}
-				<div class="text-xs text-muted-foreground truncate">
-					<ArtistsList artists={track.artists!} />
-					{#if albumList && albumList!.length > 0}
-						{" · "}
-						{#each albumList as album, i}
-							<button
-								onclick={(e) => { e.stopPropagation(); setSelection(album.uid); }}
-								class="text-xs cursor-pointer hover:underline"
-							>
-								{album.name}{i < albumList!.length - 1 ? "," : ""}
-							</button>
-						{/each}
-					{/if}
-				</div>
 			</div>
 		</div>
+	{/if}
 
-		{#if !selected}
-			<div class="flex gap-2 shrink-0">
-				<Tooltip.Root>
-					<Tooltip.Trigger
-						class={buttonVariants({ variant: "destructive", size: "icon" })}
-						onclick={(e: MouseEvent) => { e.stopPropagation(); removeTrackFromLibrary(track.uid); }}
-					>
-						<Trash />
-					</Tooltip.Trigger>
-					<Tooltip.Content><p>Remove from library</p></Tooltip.Content>
-				</Tooltip.Root>
-
-				<Tooltip.Root>
-					<Tooltip.Trigger
-						class={buttonVariants({ variant: "outline", size: "icon" })}
-						onclick={handleEnrich}
-						disabled={enriching}
-					>
-						{#if enriching}
-							<Loader2 class="animate-spin" />
-						{:else}
-							<CloudDownload />
-						{/if}
-					</Tooltip.Trigger>
-					<Tooltip.Content><p>Fetch metadata via API</p></Tooltip.Content>
-				</Tooltip.Root>
-
-				<Tooltip.Root>
-					<Tooltip.Trigger
-						class={buttonVariants({ variant: "outline", size: "icon" })}
-						onclick={(e: MouseEvent) => { e.stopPropagation(); replaceTrackPath(track.uid); }}
-					>
-						<Paperclip />
-					</Tooltip.Trigger>
-					<Tooltip.Content><p>Replace file path</p></Tooltip.Content>
-				</Tooltip.Root>
-
-				{#if track.path != ""}
-					<Tooltip.Root>
-						<Tooltip.Trigger
-							class={buttonVariants({ variant: "outline", size: "icon" })}
-							onclick={(e: MouseEvent) => { e.stopPropagation(); openTrackInExplorer(track.path); }}
-						>
-							<FolderOpen />
-						</Tooltip.Trigger>
-						<Tooltip.Content><p>Show in file explorer</p></Tooltip.Content>
-					</Tooltip.Root>
+	{#if !compact && showArtwork}
+		<div class="group relative w-full">
+			<ArtworkDisplay entity={track} size={30} />
+			<div class="cursor-pointer absolute top-0 inset-0 -left-1 w-full h-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+				{#if player.isPlaying && player.track?.uid === track.uid}
+					<Button variant="ghost" size="icon" onclick={() => togglePlay()}>
+						<Pause />
+					</Button>
+				{:else if !player.isPlaying && player.track?.uid === track.uid}
+					<Button variant="ghost" size="icon" onclick={() => togglePlay()}>
+						<Play />
+					</Button>
+				{:else}
+					<Button variant="ghost" size="icon" onclick={() => playTrackByUid(track.uid)}>
+						<Play />
+					</Button>
 				{/if}
+			</div>
+		</div>
+	{/if}
 
-				<Tooltip.Root>
-					<Tooltip.Trigger
-						class={buttonVariants({ variant: "outline", size: "icon" })}
-						onclick={(e: MouseEvent) => { e.stopPropagation(); openEditModal({ type: "track", uid: track.uid }); }}
-					>
-						<Pencil />
-					</Tooltip.Trigger>
-					<Tooltip.Content><p>Edit metadata</p></Tooltip.Content>
-				</Tooltip.Root>
+	{#if showTitle}
+		{#if compact}
+			<div class="min-w-0 flex items-center">
+				<span role="button" tabindex="0" onclick={() => setSelection(track.uid)} onkeydown={(e) => { if (e.key === 'Enter') setSelection(track.uid); }} class="text-sm truncate cursor-pointer hover:underline">
+					{track.title ?? "Unknown Title"}
+				</span>
+			</div>
+		{:else}
+			<div class="flex flex-col min-w-0">
+				<div class="min-w-0 flex items-center">
+					<span role="button" tabindex="0" onclick={() => setSelection(track.uid)} onkeydown={(e) => { if (e.key === 'Enter') setSelection(track.uid); }} class="text-sm truncate cursor-pointer hover:underline">
+						{track.title ?? "Unknown Title"}
+					</span>
+				</div>
+				<div class="min-w-0 flex items-center">
+					<span role="button" tabindex="0" onclick={() => { if (track.album_artist?.uid) setSelection(track.album_artist.uid) }} onkeydown={(e) => { if (e.key === 'Enter' && track.album_artist?.uid) setSelection(track.album_artist.uid); }} class="text-xs text-muted-foreground truncate cursor-pointer hover:underline">
+						<ArtistsList artists={track.artists} />
+					</span>
+				</div>
 			</div>
 		{/if}
-	</div>
+	{/if}
+
+	{#if showArtist}
+		<span role="button" tabindex="0" onclick={() => { if (track.album_artist?.uid) setSelection(track.album_artist.uid) }} onkeydown={(e) => { if (e.key === 'Enter' && track.album_artist?.uid) setSelection(track.album_artist.uid); }} class="text-sm truncate cursor-pointer hover:underline">
+			<ArtistsList artists={track.artists} />
+		</span>
+	{/if}
+
+	{#if showAlbum && track.albums?.[0]}
+		<div class="min-w-0 flex items-center pr-4">
+			<span role="button" tabindex="0" onclick={() => { if (track.albums?.[0]?.uid) setSelection(track.albums[0].uid) }} onkeydown={(e) => { if (e.key === 'Enter' && track.albums?.[0]?.uid) setSelection(track.albums[0].uid); }} class="text-sm truncate cursor-pointer hover:underline">
+				{track.albums[0].name ?? "Unknown Album"}
+			</span>
+		</div>
+	{/if}
+
+	{#if showYear}
+		<span class="text-sm pointer-events-none">{track.year ?? "—"}</span>
+	{/if}
+
+	{#if showRating}
+		<TrackRating uid={track.uid} rating={track.rating} tags={track.tags} />
+	{/if}
+
+	{#if showDuration}
+		<span class="text-sm font-mono pointer-events-none">{formatDuration(track.duration_ms)}</span>
+	{/if}
+
+	{#if showLabel}
+		<span class="text-sm truncate pointer-events-none">{track.label ?? "—"}</span>
+	{/if}
+
+	{#if showOptions}
+			<TrackTableEditButton {track} />
+	{/if}
 </div>

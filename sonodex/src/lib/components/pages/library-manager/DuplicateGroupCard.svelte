@@ -51,7 +51,7 @@
 		{#each group.tracks as track}
 			<div class="flex gap-2 p-2 items-center justify-between">
 				<div class="flex gap-2 min-w-0 flex-1">
-					<ArtworkDisplay uid={track.uid} size={36} type="track" />
+					<ArtworkDisplay entity={track} size={36} />
 					<div class="min-w-0 grid">
 						<span class="text-sm truncate">{track.title}</span>
 						<div class="text-xs text-muted-foreground truncate">

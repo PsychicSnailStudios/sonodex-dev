@@ -8,31 +8,33 @@
 
 	// SCRIPTS
 	import { setSelection } from "$ts/store/session.svelte";
-	import { playTrackByUid, queueTracksByObject } from "$ts/audio/audioManager.svelte";
+	import { playTrackByObject, queueTracksByObject } from "$ts/audio/audioManager.svelte";
 	import { getTrackArrayFromUID } from "$ts/store/library.svelte";
 	import type { AudioCatagories } from "$ts/util/types";
 
 	// PROPS
-	let { title, subTitle, artworkUid, type } = $props<{ title: string; subTitle: string | null; artworkUid: string; type: AudioCatagories }>();
+	let { title, subTitle, entity, type } = $props<{ title: string; subTitle: string | null; entity: any; type: AudioCatagories }>();
 
 	// FUNCTIONS
 	async function play(e: MouseEvent) {
 		e.stopPropagation();
+		if (!entity) return;
 		if (type === "track") {
-			playTrackByUid(artworkUid);
+			playTrackByObject(entity);
 		} else {
-			const tracks = await getTrackArrayFromUID(artworkUid);
+			const tracks = await getTrackArrayFromUID(entity.uid);
 			queueTracksByObject(tracks, true);
 		}
 	}
 </script>
 
+{#if entity}
 <button
 	class="w-full text-left flex flex-col gap-2 p-2 rounded-md bg-background border hover:border-primary transition-colors cursor-default justify-start group"
-	onclick={() => setSelection(artworkUid)}
+	onclick={() => setSelection(entity.uid)}
 >
 	<div class="relative w-full">
-		<ArtworkDisplay uid={artworkUid} type={type}>
+		<ArtworkDisplay {entity}>
 			<slot />
 		</ArtworkDisplay>
 		<div class="absolute inset-0 flex items-end justify-end p-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -47,3 +49,4 @@
 		<p class="text-xs text-muted-foreground truncate">{subTitle}</p>
 	</div>
 </button>
+{/if}

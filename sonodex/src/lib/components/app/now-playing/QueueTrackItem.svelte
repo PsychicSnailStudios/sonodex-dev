@@ -85,7 +85,7 @@
 			ondragstart={handleDragStart}
 			ondragend={handleDragEnd}
 		>
-			<ArtworkDisplay uid={track.uid} size={36} type="track" />
+			<ArtworkDisplay entity={track} size={36} />
 			<div class="min-w-0 grid flex-1">
 				<span
 					role="button"

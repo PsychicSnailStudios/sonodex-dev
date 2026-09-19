@@ -133,7 +133,7 @@
 			{#if playlist}
 			<div class="flex gap-4 items-end p-0">
 				<div class="drop-shadow-md">
-					<ArtworkDisplay uid={playlist.uid} size={160} type="playlist">
+					<ArtworkDisplay entity={playlist} size={160}>
 						<DefultPlaylistArt tracks={tracks} />
 					</ArtworkDisplay>
 				</div>
@@ -188,7 +188,7 @@
 						<div class="flex flex-col gap-0.5">
 							{#each filteredTracks as track}
 								<div class="grid gap-2 p-2" style="grid-template-columns: auto auto 1fr auto;">
-									<ArtworkDisplay uid={track.uid} size={30} type="track" />
+									<ArtworkDisplay entity={track} size={30} />
 									<div class="min-w-0 grid">
 										<span class="text-sm font-medium truncate">{track.title}</span>
 										<span class="text-xs text-muted-foreground truncate">{parseArtistsToString(track.artists)}</span>

@@ -70,7 +70,7 @@
 		aria-selected={selected}
 	>
 		<div class="flex gap-2 items-center min-w-0 flex-1">
-			<ArtworkDisplay uid={album.uid} size={40} type="album" />
+			<ArtworkDisplay entity={album} size={40} />
 			<div class="min-w-0 grid">
 				<button
 					onclick={(e) => { e.stopPropagation(); setSelection(album.uid); }}

@@ -64,7 +64,7 @@
 		aria-selected={selected}
 	>
 		<div class="flex gap-2 items-center min-w-0 flex-1">
-			<ArtworkDisplay uid={artist.uid} size={40} type="artist" />
+			<ArtworkDisplay entity={artist} size={40} />
 			<div class="min-w-0 grid">
 				<button
 					onclick={(e) => { e.stopPropagation(); setSelection(artist.uid); }}

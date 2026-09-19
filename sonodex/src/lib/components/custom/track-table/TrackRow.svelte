@@ -150,7 +150,7 @@
 
 	{#if !compact && showArtwork}
 		<div class="group relative w-full">
-			<ArtworkDisplay uid={track.uid} size={30} />
+			<ArtworkDisplay entity={track.uid} size={30} />
 			<div class="cursor-pointer absolute top-0 inset-0 -left-1 w-full h-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
 				{#if player.isPlaying && player.track?.uid === track.uid}
 					<Button variant="ghost" size="icon" onclick={() => togglePlay()}>

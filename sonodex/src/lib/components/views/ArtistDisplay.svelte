@@ -103,7 +103,7 @@
 			{/if}
 
 			<div class="absolute bottom-0 translate-y-1/2 left-4">
-				<ArtworkDisplay uid={artist.uid} size={80} type="artist" />
+				<ArtworkDisplay entity={artist} size={80} />
 			</div>
 		</div>
 

@@ -125,7 +125,7 @@
 
 	async function removePath(libUid: string, path: string) {
 		libStates[libUid].removingPath = path;
-		await invoke("remove_path", { path });
+		await invoke("remove_path", { path: path.trim() });
 		await loadPathsForLib(libUid);
 		await loadLibrary();
 		scanState.status = `Removed ${path}`;

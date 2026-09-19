@@ -467,7 +467,7 @@
 								></div>
 								<span class="relative text-xs text-muted-foreground w-5 shrink-0 text-right tabular-nums">{i + 1}</span>
 								<div class="relative shrink-0">
-									<ArtworkDisplay uid={track.uid} size={36} type="track" />
+									<ArtworkDisplay entity={track} size={36} />
 								</div>
 								<div class="relative min-w-0 flex-1 grid">
 									<button
@@ -515,7 +515,7 @@
 								></div>
 								<span class="relative text-xs text-muted-foreground w-5 shrink-0 text-right tabular-nums">{i + 1}</span>
 								<div class="relative shrink-0">
-									<ArtworkDisplay uid={artist.uid} size={36} type="artist" />
+									<ArtworkDisplay entity={artist} size={36} />
 								</div>
 								<div class="relative min-w-0 flex-1">
 									<button
@@ -560,7 +560,7 @@
 								></div>
 								<span class="relative text-xs text-muted-foreground w-5 shrink-0 text-right tabular-nums">{i + 1}</span>
 								<div class="relative shrink-0">
-									<ArtworkDisplay uid={album.uid} size={36} type="album" />
+									<ArtworkDisplay entity={album} size={36}/>
 								</div>
 								<div class="relative min-w-0 flex-1 grid">
 									<button

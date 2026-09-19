@@ -113,7 +113,7 @@
 		return m
 	})
 
-	// VIRTUALIZATION
+	// VIRTUALIZATION — only used when albumUid is not set
 	const ROW_HEIGHT = $derived(compact ? 28 : 56)
 	const OVERSCAN = 10
 	let scrollTop = $state(0)
@@ -129,8 +129,6 @@
 
 	const totalHeight = $derived(sortedTracks.length * ROW_HEIGHT)
 	const offsetY = $derived(visibleRange.start * ROW_HEIGHT)
-
-	const useVirtualization = $derived(!albumUid && sortedTracks.length > 200)
 
 	let dragOverIndex = $state<number | null>(null)
 	let dragOverPosition = $state<"above" | "below">("below")
@@ -220,7 +218,6 @@
 		} else {
 			await addTracksToPlaylist(playlistUid, uids);
 
-			// Re-fetch playlist after adding tracks to get current order
 			const playlist = await getPlaylist(playlistUid);
 			if (!playlist) { dragOverIndex = null; endDrag(); return; }
 			const current = parseTracks(playlist.tracks);
@@ -351,7 +348,67 @@
 		{/if}
 	</div>
 
-	{#if useVirtualization}
+	{#if albumUid}
+		<ContextMenu.Root>
+			<ContextMenu.Trigger asChild>
+				{#snippet child({ props })}
+					<div {...props}>
+						{#each sortedTracks as track, i (track.uid)}
+							{#if discBreaks.has(track.uid)}
+								{@const entry = discBreaks.get(track.uid)!}
+								<div class="flex items-center gap-2 px-3 py-3 text-xs font-medium text-muted-foreground">
+									<svelte:component this={entry.Icon} class="size-3.5 shrink-0" />
+									<span>{entry.label}</span>
+								</div>
+							{/if}
+							<div
+								class="relative"
+								role="row"
+								tabindex={i}
+								oncontextmenu={() => { contextMenuTrackUid = track.uid }}
+								ondragover={(e) => handleRowDragOver(e, i)}
+								ondragleave={handleRowDragLeave}
+								ondrop={(e) => handleRowDrop(e, i)}
+							>
+								{#if dragOverIndex === i && dragOverPosition === "above"}
+									<div class="absolute top-0 left-0 right-0 h-0.5 bg-primary z-10 pointer-events-none"></div>
+								{/if}
+
+								<TrackRow
+									{track}
+									{orderedUids}
+									{uidIndexMap}
+									index={i}
+									{compact}
+									{gridTemplate}
+									{viewId}
+									showNumber={v.number}
+									showArtwork={v.artwork}
+									showTitle={v.title}
+									showArtist={v.artist}
+									showAlbum={v.album}
+									showYear={v.year}
+									showRating={v.rating}
+									showDuration={v.duration}
+									showLabel={v.label}
+									showOptions={v.options}
+									{playlistUid}
+								/>
+
+								{#if dragOverIndex === i && dragOverPosition === "below"}
+									<div class="absolute bottom-0 left-0 right-0 h-0.5 bg-primary z-10 pointer-events-none"></div>
+								{/if}
+							</div>
+						{/each}
+					</div>
+				{/snippet}
+			</ContextMenu.Trigger>
+			{@const ctxTrack = contextMenuTrackUid ? sortedTracks.find(t => t.uid === contextMenuTrackUid) : null}
+			{#if ctxTrack}
+				<TrackContext track={ctxTrack} />
+			{/if}
+		</ContextMenu.Root>
+	{:else}
 		<ContextMenu.Root>
 			<ContextMenu.Trigger asChild>
 				{#snippet child({ props })}
@@ -406,66 +463,6 @@
 								{/each}
 							</div>
 						</div>
-					</div>
-				{/snippet}
-			</ContextMenu.Trigger>
-			{@const ctxTrack = contextMenuTrackUid ? sortedTracks.find(t => t.uid === contextMenuTrackUid) : null}
-			{#if ctxTrack}
-				<TrackContext track={ctxTrack} />
-			{/if}
-		</ContextMenu.Root>
-	{:else}
-		<ContextMenu.Root>
-			<ContextMenu.Trigger asChild>
-				{#snippet child({ props })}
-					<div {...props}>
-						{#each sortedTracks as track, i (track.uid)}
-							{#if discBreaks.has(track.uid)}
-								{@const entry = discBreaks.get(track.uid)!}
-								<div class="flex items-center gap-2 px-3 py-3 text-xs font-medium text-muted-foreground">
-									<svelte:component this={entry.Icon} class="size-3.5 shrink-0" />
-									<span>{entry.label}</span>
-								</div>
-							{/if}
-							<div
-								class="relative"
-								role="row"
-								tabindex={i}
-								oncontextmenu={() => { contextMenuTrackUid = track.uid }}
-								ondragover={(e) => handleRowDragOver(e, i)}
-								ondragleave={handleRowDragLeave}
-								ondrop={(e) => handleRowDrop(e, i)}
-							>
-								{#if dragOverIndex === i && dragOverPosition === "above"}
-									<div class="absolute top-0 left-0 right-0 h-0.5 bg-primary z-10 pointer-events-none"></div>
-								{/if}
-
-								<TrackRow
-									{track}
-									{orderedUids}
-									{uidIndexMap}
-									index={i}
-									{compact}
-									{gridTemplate}
-									{viewId}
-									showNumber={v.number}
-									showArtwork={v.artwork}
-									showTitle={v.title}
-									showArtist={v.artist}
-									showAlbum={v.album}
-									showYear={v.year}
-									showRating={v.rating}
-									showDuration={v.duration}
-									showLabel={v.label}
-									showOptions={v.options}
-									{playlistUid}
-								/>
-
-								{#if dragOverIndex === i && dragOverPosition === "below"}
-									<div class="absolute bottom-0 left-0 right-0 h-0.5 bg-primary z-10 pointer-events-none"></div>
-								{/if}
-							</div>
-						{/each}
 					</div>
 				{/snippet}
 			</ContextMenu.Trigger>

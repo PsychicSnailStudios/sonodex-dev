@@ -28,7 +28,7 @@
 		{#if artUids.length >= 4}
 			<div class="grid grid-cols-2 w-full h-full gap-2 p-2">
 				{#each artUids.slice(0, 4) as uid}
-					<ArtworkDisplay {uid} type="playlist">
+					<ArtworkDisplay {uid}>
 						<DefultPlaylistArt tracks={tracksByUid.get(uid) ?? []} />
 					</ArtworkDisplay>
 				{/each}
@@ -36,7 +36,7 @@
 		{:else if artUids.length > 0}
 			<div class="grid grid-cols-2 w-full h-full gap-2 p-2">
 				{#each artUids as uid}
-					<ArtworkDisplay {uid} type="playlist">
+					<ArtworkDisplay {uid}>
 						<DefultPlaylistArt tracks={tracksByUid.get(uid) ?? []} />
 					</ArtworkDisplay>
 				{/each}

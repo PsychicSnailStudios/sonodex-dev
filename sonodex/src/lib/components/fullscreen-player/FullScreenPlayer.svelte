@@ -33,7 +33,7 @@
 
 <div class="app-now-playing-wrapper flex flex-col gap-1 bg-muted rounded-md">
 
-	<ArtworkDisplay uid={currentlyPlaying.uid} type="track" size={64} />
+	<ArtworkDisplay entity={currentlyPlaying.track} size={64} />
 
 	<AddToPlaylist track={currentlyPlaying.track!} />
 

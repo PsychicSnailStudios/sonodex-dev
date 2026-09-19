@@ -12,12 +12,10 @@
 
 	// PROPS
 	let {
-		entityType,
-		entityUid,
+		entity,
 		onchange,
 	} = $props<{
-		entityType: "track" | "album" | "artist" | "playlist";
-		entityUid: string;
+		entity: any;
 		onchange?: (path: string | null) => void;
 	}>();
 
@@ -61,7 +59,7 @@
 </script>
 
 <div class="flex justify-around items-start">
-	<ArtworkDisplay uid={entityUid} size={164} type={entityType} previewPath={previewPath} />
+	<ArtworkDisplay entity={entity} size={164} previewPath={previewPath} />
 
 	<div class="flex flex-col gap-2 justify-center pt-1">
 		<Button variant="outline" size="sm" onclick={handleUpload} class="justify-start gap-2">
