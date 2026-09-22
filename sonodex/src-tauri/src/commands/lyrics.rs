@@ -36,14 +36,9 @@ pub async fn fetch_track_lyrics(
 			.map_err(|e| e.to_string())?
 			.ok_or("Track not found")?;
 		let title = track.title.clone().unwrap_or_default();
-		let artist = track.album_artist.as_ref().map(|a| a.name.clone())
-			.or_else(|| {
-				track.artists.as_ref().and_then(|v| v.first()).map(|a| a.name.clone())
-			})
+		let artist = db::resolved_artist_name(&track.album_artist, &track.artists)
 			.unwrap_or_default();
-		let album = track.albums.as_ref()
-			.and_then(|v| v.first())
-			.map(|e| e.name.clone());
+		let album = db::first_album_name(&track.albums);
 		let duration_secs = track.duration_ms.map(|ms| (ms / 1000) as u64);
 		(title, artist, album, duration_secs)
 	};

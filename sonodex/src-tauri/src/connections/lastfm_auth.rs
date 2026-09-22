@@ -94,13 +94,8 @@ pub async fn update_now_playing(profile_uid: &str, track_uid: &str) -> Result<()
         .ok_or_else(|| format!("Track not found: {}", track_uid))?;
 
     let title = track.title.unwrap_or_default();
-    let artist = track.artists.as_ref()
-        .and_then(|v| v.first())
-        .map(|a| a.name.clone())
-        .unwrap_or_default();
-    let album = track.albums.as_ref()
-        .and_then(|v| v.first())
-        .map(|e| e.name.clone());
+    let artist = first_artist(track.artists.as_deref());
+    let album = first_album_name(track.albums.as_deref());
 
     let mut params: Vec<(&str, String)> = vec![
         ("method", "track.updateNowPlaying".into()),
@@ -141,13 +136,8 @@ pub async fn scrobble_track(profile_uid: &str, track_uid: &str) -> Result<(), St
         .ok_or_else(|| format!("Track not found: {}", track_uid))?;
 
     let title = track.title.unwrap_or_default();
-    let artist = track.artists.as_ref()
-        .and_then(|v| v.first())
-        .map(|a| a.name.clone())
-        .unwrap_or_default();
-    let album = track.albums.as_ref()
-        .and_then(|v| v.first())
-        .map(|e| e.name.clone());
+    let artist = first_artist(track.artists.as_deref());
+    let album = first_album_name(track.albums.as_deref());
     let timestamp = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap_or_default()

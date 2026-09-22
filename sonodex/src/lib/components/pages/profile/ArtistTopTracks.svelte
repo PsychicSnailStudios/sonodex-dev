@@ -60,7 +60,7 @@
 				if (!track) continue;
 				let albumUid = "";
 				try {
-					const albums = JSON.parse(track.albums as unknown as string ?? "[]");
+					const albums = JSON.parse(track.albums ?? "[]");
 					albumUid = albums[0]?.uid ?? "";
 				} catch {}
 				if (!albumUid) continue;

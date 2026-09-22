@@ -53,18 +53,14 @@ pub async fn download_track_cmd(
 			.map(|v| v == "true")
 			.unwrap_or(false);
 
-	let artist = track.album_artist.as_ref().map(|a| a.name.clone())
-		.or_else(|| track.artists.as_ref().and_then(|v| v.first()).map(|a| a.name.clone()))
+	let artist = db::resolved_artist_name(&track.album_artist, &track.artists)
 		.unwrap_or_else(|| "Unknown Artist".to_string());
 
-	let album = track.albums.as_ref()
-		.and_then(|v| v.first())
-		.map(|e| e.name.clone())
+	let album = db::first_album_name(&track.albums)
 		.unwrap_or_else(|| "Unknown Album".to_string());
 
-	let track_number = track.albums.as_ref()
-		.and_then(|v| v.first())
-		.map(|e| format!("{:02}", e.track))
+	let track_number = db::first_track_number(&track.albums)
+		.map(|n| format!("{:02}", n))
 		.unwrap_or_else(|| "00".to_string());
 
 	let year = track.year.clone().unwrap_or_else(|| "Unknown Year".to_string());
@@ -148,11 +144,11 @@ pub async fn download_track_cmd(
 		None
 	};
 
-	let track_data_json = serde_json::to_string(&crate::db::TrackData {
-		format: Some(format.clone()),
-		bitrate,
-		is_ghost: Some(false),
-	})
+	let track_data_json = serde_json::to_string(&serde_json::json!({
+		"format": format.clone(),
+		"bitrate": bitrate,
+		"is_ghost": false,
+	}))
 	.ok();
 
 	let meta_update = db::MetadataUpdate {

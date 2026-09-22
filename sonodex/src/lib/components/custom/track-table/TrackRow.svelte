@@ -11,12 +11,13 @@
 	import ArtistsList from "$lib/components/custom/text-display/ArtistsList.svelte";
 
 	// SCRIPTS
+	import { invoke } from "@tauri-apps/api/core";
 	import { setSelection } from "$ts/store/session.svelte";
 	import { trackSelection, selectTrack } from "$ts/store/trackSelection.svelte";
 	import { startDrag, endDrag } from "$ts/store/drag.svelte";
 	import { playTrackByUid, togglePlay } from "$ts/audio/audioManager.svelte";
 	import { formatDuration } from "$ts/util/helpers";
-	import { parseArtistsToString } from "$ts/util/parsers";
+	import { parseArtistsToString, parseAlbumEntries } from "$ts/util/parsers";
 	import { player } from "$ts/audio/audioPlayer.svelte";
 	import type { Track } from "$ts/util/types";
 
@@ -106,8 +107,16 @@
 			const idx = uidIndexMap.get(track.uid)
 			return idx != null ? (idx + 1).toString() : "#"
 		}
-		const num = track.albums?.[0]?.track_number
+		const num = firstAlbum?.track_number
 		return num != null ? num.toString() : "#"
+	}
+
+	let firstAlbum = $derived(parseAlbumEntries(track.albums)[0] ?? null);
+
+	async function goToAlbumArtist() {
+		if (!track.album_artist) return;
+		const uid = await invoke<string | null>("get_artist_uid_by_name", { name: track.album_artist });
+		if (uid) setSelection(uid);
 	}
 </script>
 
@@ -184,7 +193,7 @@
 					</span>
 				</div>
 				<div class="min-w-0 flex items-center">
-					<span role="button" tabindex="0" onclick={() => { if (track.album_artist?.uid) setSelection(track.album_artist.uid) }} onkeydown={(e) => { if (e.key === 'Enter' && track.album_artist?.uid) setSelection(track.album_artist.uid); }} class="text-xs text-muted-foreground truncate cursor-pointer hover:underline">
+					<span role="button" tabindex="0" onclick={goToAlbumArtist} onkeydown={(e) => { if (e.key === 'Enter') goToAlbumArtist(); }} class="text-xs text-muted-foreground truncate cursor-pointer hover:underline">
 						<ArtistsList artists={track.artists} />
 					</span>
 				</div>
@@ -193,15 +202,15 @@
 	{/if}
 
 	{#if showArtist}
-		<span role="button" tabindex="0" onclick={() => { if (track.album_artist?.uid) setSelection(track.album_artist.uid) }} onkeydown={(e) => { if (e.key === 'Enter' && track.album_artist?.uid) setSelection(track.album_artist.uid); }} class="text-sm truncate cursor-pointer hover:underline">
+		<span role="button" tabindex="0" onclick={goToAlbumArtist} onkeydown={(e) => { if (e.key === 'Enter') goToAlbumArtist(); }} class="text-sm truncate cursor-pointer hover:underline">
 			<ArtistsList artists={track.artists} />
 		</span>
 	{/if}
 
-	{#if showAlbum && track.albums?.[0]}
+	{#if showAlbum && firstAlbum}
 		<div class="min-w-0 flex items-center pr-4">
-			<span role="button" tabindex="0" onclick={() => { if (track.albums?.[0]?.uid) setSelection(track.albums[0].uid) }} onkeydown={(e) => { if (e.key === 'Enter' && track.albums?.[0]?.uid) setSelection(track.albums[0].uid); }} class="text-sm truncate cursor-pointer hover:underline">
-				{track.albums[0].name ?? "Unknown Album"}
+			<span role="button" tabindex="0" onclick={() => { if (firstAlbum?.uid) setSelection(firstAlbum.uid) }} onkeydown={(e) => { if (e.key === 'Enter' && firstAlbum?.uid) setSelection(firstAlbum.uid); }} class="text-sm truncate cursor-pointer hover:underline">
+				{firstAlbum?.name ?? "Unknown Album"}
 			</span>
 		</div>
 	{/if}

@@ -1,5 +1,4 @@
 use crate::db::{self, AlbumUpdate, ArtistUpdate, MetadataUpdate};
-use crate::db::{ArtistEntry, TrackAlbumEntry};
 use crate::enrichment::{self, EnrichSettings};
 use crate::library_manager;
 use crate::state::AppState;
@@ -64,14 +63,11 @@ pub async fn enrich_track(
 		let input = enrichment::TrackInput {
 			id,
 			title: track.title,
-			artists: track.artists.as_ref().map(|v| {
-				let names: Vec<String> = v.iter().map(|a| a.name.clone()).collect();
-				serde_json::to_string(&names).unwrap_or_default()
-			}),
-			album_artist: track.album_artist.as_ref().map(|a| a.name.clone()),
-			albums: track.albums.as_ref().and_then(|v| serde_json::to_string(v).ok()),
+			artists: track.artists.clone(),
+			album_artist: track.album_artist.clone(),
+			albums: track.albums.clone(),
 			year: track.year,
-			genres: track.genres.as_ref().and_then(|v| serde_json::to_string(v).ok()),
+			genres: track.genres.clone(),
 			bpm: track.bpm,
 			key: track.key,
 			existing_artwork: artwork,
@@ -134,14 +130,11 @@ pub async fn enrich_all(app: AppHandle, state: State<'_, AppState>) -> Result<()
 				Some(enrichment::TrackInput {
 					id,
 					title: t.title,
-					artists: t.artists.as_ref().map(|v| {
-						let names: Vec<String> = v.iter().map(|a| a.name.clone()).collect();
-						serde_json::to_string(&names).unwrap_or_default()
-					}),
-					album_artist: t.album_artist.as_ref().map(|a| a.name.clone()),
-					albums: t.albums.as_ref().and_then(|v| serde_json::to_string(v).ok()),
+					artists: t.artists.clone(),
+					album_artist: t.album_artist.clone(),
+					albums: t.albums.clone(),
 					year: t.year,
-					genres: t.genres.as_ref().and_then(|v| serde_json::to_string(v).ok()),
+					genres: t.genres.clone(),
 					bpm: t.bpm,
 					key: t.key,
 					existing_artwork: artwork,
@@ -236,8 +229,7 @@ pub async fn enrich_album(
 		(album, track_uids)
 	};
 
-	let artist = album.album_artist.as_ref().map(|a| a.name.clone())
-		.or_else(|| album.artists.as_ref().and_then(|v| v.first()).map(|a| a.name.clone()))
+	let artist = db::resolved_artist_name(&album.album_artist, &album.artists)
 		.ok_or("Album has no artist")?;
 
 	let client = enrichment::make_client()?;
@@ -321,8 +313,7 @@ pub async fn enrich_all_albums(app: AppHandle, state: State<'_, AppState>) -> Re
 	let client = enrichment::make_client()?;
 
 	for album in &albums {
-		let artist = album.album_artist.as_ref().map(|a| a.name.clone())
-			.or_else(|| album.artists.as_ref().and_then(|v| v.first()).map(|a| a.name.clone()));
+		let artist = db::resolved_artist_name(&album.album_artist, &album.artists);
 
 		if let Some(artist) = artist {
 			let result = enrichment::enrich_album_async(
@@ -527,10 +518,7 @@ pub async fn spotify_enrich_track_cmd(
 		.ok_or_else(|| format!("Track not found: {}", uid))?;
 
 	let title = track.title.as_deref().unwrap_or("");
-	let artist = track.artists.as_ref()
-		.and_then(|v| v.first())
-		.map(|a| a.name.clone())
-		.unwrap_or_default();
+	let artist = db::first_artist_name(&track.artists).unwrap_or_default();
 
 	let client = enrichment::make_client()?;
 	let Some(meta) =
@@ -576,8 +564,7 @@ pub async fn spotify_enrich_album_cmd(
 		.map_err(|e| e.to_string())?
 		.ok_or_else(|| format!("Album not found: {}", uid))?;
 
-	let artist = album.album_artist.as_ref().map(|a| a.name.clone())
-		.or_else(|| album.artists.as_ref().and_then(|v| v.first()).map(|a| a.name.clone()))
+	let artist = db::resolved_artist_name(&album.album_artist, &album.artists)
 		.unwrap_or_default();
 
 	let client = enrichment::make_client()?;

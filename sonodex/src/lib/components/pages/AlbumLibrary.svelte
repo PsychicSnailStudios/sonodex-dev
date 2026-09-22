@@ -50,7 +50,7 @@
 			if (field === "name" as SortField) {
 				cmp = a.title.localeCompare(b.title);
 			} else if (field === "artist" as SortField) {
-				cmp = (a.album_artist?.name ?? "").localeCompare(b.album_artist?.name.toString() ?? "");
+				cmp = (a.album_artist ?? "").localeCompare(b.album_artist ?? "");
 			} else if (field === "year" as SortField) {
 				cmp = (a.release_date ?? "").localeCompare(b.release_date ?? "");
 			}
@@ -167,7 +167,7 @@
 		{:else}
 			<MediaGrid>
 				{#each filteredAlbums as album}
-					<AudioCard title={album.title} subTitle={album.album_artist?.name.toString() ?? "Unknown Artist"} artworkUid={album.uid} type="album" />
+					<AudioCard title={album.title} subTitle={album.album_artist ?? "Unknown Artist"} artworkUid={album.uid} type="album" />
 				{/each}
 			</MediaGrid>
 		{/if}

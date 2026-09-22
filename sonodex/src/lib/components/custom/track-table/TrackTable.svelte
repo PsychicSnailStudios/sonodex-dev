@@ -12,6 +12,7 @@
 	import { generateViewId, trackSelection, setTrackSelectionContext, clearTrackSelection, copySelectedToClipboard } from "$ts/store/trackSelection.svelte"
 	import { removeTracksFromPlaylist, reorderPlaylistTracks, addTracksToPlaylist, parseTracks } from "$ts/audio/playlistManager.svelte"
 	import { parseDiscNumber, buildDiscBreaks, type DiscBreakEntry } from "$ts/util/discHelpers";
+	import { parseAlbumEntries } from "$ts/util/parsers";
 	import { getPlaylist } from "$ts/store/library.svelte";
 
 	// TYPES
@@ -46,12 +47,12 @@
 		} else {
 			switch (field) {
 				case "title":    cmp = (a, b) => dir * (a.title ?? "").localeCompare(b.title ?? ""); break
-				case "album":    cmp = (a, b) => dir * ((a.albums?.[0]?.name ?? "").localeCompare(b.albums?.[0]?.name ?? "")); break
+				case "album":    cmp = (a, b) => dir * ((parseAlbumEntries(a.albums)[0]?.name ?? "").localeCompare(parseAlbumEntries(b.albums)[0]?.name ?? "")); break
 				case "year":     cmp = (a, b) => dir * ((a.year ?? "").localeCompare(b.year ?? "")); break
 				case "rating":   cmp = (a, b) => dir * ((a.rating ?? -1) - (b.rating ?? -1)); break
 				case "duration": cmp = (a, b) => dir * ((a.duration_ms ?? 0) - (b.duration_ms ?? 0)); break
 				case "label":    cmp = (a, b) => dir * (a.label ?? "").localeCompare(b.label ?? ""); break
-				case "artist":   cmp = (a, b) => dir * (a.album_artist?.name ?? "").localeCompare(b.album_artist?.name ?? ""); break
+				case "artist":   cmp = (a, b) => dir * (a.album_artist ?? "").localeCompare(b.album_artist ?? ""); break
 				case "number":   cmp = (a, b) => dir * sortByNumber(a, b); break
 				default:         cmp = () => 0
 			}
@@ -151,7 +152,7 @@
 	// FUNCTIONS
 	function sortByNumber(a: Track, b: Track) {
 		if (playlistUid) return 0
-		return (a.albums?.[0]?.track_number ?? 0) - (b.albums?.[0]?.track_number ?? 0)
+		return (parseAlbumEntries(a.albums)[0]?.track_number ?? 0) - (parseAlbumEntries(b.albums)[0]?.track_number ?? 0)
 	}
 
 	function handleTableClick(e: MouseEvent) {

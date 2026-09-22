@@ -139,7 +139,7 @@
 					<ScrollArea class="min-h-0 min-w-0">
 						<div class="grid gap-2 mt-2 pr-4" style="grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));">
 							{#each artistAlbums as album}
-								<AudioCard title={album.title} subTitle={album.album_artist?.name.toString() ?? "Unknown Artist"} artworkUid={album.uid} type="album" />
+								<AudioCard title={album.title} subTitle={album.album_artist ?? "Unknown Artist"} artworkUid={album.uid} type="album" />
 							{/each}
 						</div>
 					</ScrollArea>

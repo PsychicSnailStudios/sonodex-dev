@@ -11,6 +11,12 @@
 	import type { Track, Album, Artist } from "$ts/util/types";
     import { parseArtistsToString } from "$ts/util/parsers";
 
+	async function goToAlbumArtist(name: string | null) {
+		if (!name) return;
+		const uid = await invoke<string | null>("get_artist_uid_by_name", { name });
+		if (uid) setSelection(uid);
+	}
+
 	type Scrobble = {
 		uid: string;
 		timestamp: number;
@@ -159,7 +165,7 @@
 			if (!track) continue;
 			let albumUid = "";
 			try {
-				const albums = JSON.parse(track.albums as unknown as string ?? "[]");
+				const albums = JSON.parse(track.albums ?? "[]");
 				albumUid = albums[0]?.uid ?? "";
 			} catch {}
 			if (!albumUid) continue;
@@ -475,7 +481,7 @@
 										class="text-sm truncate text-left hover:underline font-medium"
 									>{track.title ?? "Unknown"}</button>
 									<button
-										onclick={() => setSelection(track.album_artist!.uid.toString())}
+										onclick={() => goToAlbumArtist(track.album_artist)}
 										class="text-xs text-muted-foreground truncate text-left hover:underline"
 									>{parseArtistsToString(track.artists)}</button>
 								</div>

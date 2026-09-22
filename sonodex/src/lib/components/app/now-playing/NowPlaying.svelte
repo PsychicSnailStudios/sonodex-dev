@@ -22,6 +22,14 @@
 	import { currentlyPlaying, player } from "$ts/audio/audioPlayer.svelte";
 	import { fetchArtworkColor } from "$ts/library/artworkLoader";
    import { parseArtistsToString } from "$ts/util/parsers";
+	import { invoke } from "@tauri-apps/api/core";
+
+	async function goToAlbumArtist() {
+		const name = currentlyPlaying.track?.album_artist ?? null;
+		if (!name) return;
+		const uid = await invoke<string | null>("get_artist_uid_by_name", { name });
+		if (uid) setSelection(uid);
+	}
 
 	// VARIABLES
 	let showQueue = $state(false);
@@ -72,7 +80,7 @@
 				<ScrollingText
 					text={parseArtistsToString(currentlyPlaying.track?.artists ?? null)}
 					class="text-xs text-muted-foreground cursor-pointer hover:underline"
-					onclick={() => setSelection(currentlyPlaying.track?.album_artist!.uid.toString() || "")}
+					onclick={goToAlbumArtist}
 					hoverOnly
 				/>
 			</div>

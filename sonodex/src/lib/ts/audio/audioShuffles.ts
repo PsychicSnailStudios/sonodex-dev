@@ -1,15 +1,16 @@
+import { parseAlbumEntries } from "$ts/util/parsers";
 import type { Track } from "$ts/util/types";
 
 function albumUid(t: Track): string | null {
-	return t.albums?.[0]?.uid ?? null;
+	return parseAlbumEntries(t.albums)[0]?.uid ?? null;
 }
 
 function trackNum(t: Track): number | null {
-	return t.albums?.[0]?.track_number ?? null;
+	return parseAlbumEntries(t.albums)[0]?.track_number ?? null;
 }
 
 function albumArtist(t: Track): string | null {
-	return t.album_artist?.name.trim() || null;
+	return t.album_artist?.trim() || null;
 }
 
 function bpm(t: Track): number | null {

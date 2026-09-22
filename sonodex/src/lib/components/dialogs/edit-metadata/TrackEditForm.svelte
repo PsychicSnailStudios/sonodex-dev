@@ -32,6 +32,7 @@
 
 	import type { TrackAlbumEntry } from "$ts/util/types";
 	import { tagStore } from "$ts/store/tagManager.svelte";
+	import { parseArtists, parseAlbumEntries } from "$ts/util/parsers";
 
 	let { uid } = $props<{ uid: string }>();
 
@@ -65,7 +66,7 @@
 
 		hasLyrics = lyrics != null;
 		title = track.title ?? "";
-		albumArtist = track.album_artist?.name.toString() ?? "";
+		albumArtist = track.album_artist ?? "";
 		originalAlbumArtist = albumArtist;
 		year = track.year ?? "";
 		bpm = track.bpm != null ? String(track.bpm) : "";
@@ -76,18 +77,16 @@
 		artworkPath = track.artwork_path ?? null;
 		path = track.path ?? "";
 
-		const artistArr = track.artists ? track.artists.map(a => a.name.toString()) : [];
+		const artistArr = parseArtists(track.artists);
 		artists = artistArr.join(", ");
 		originalArtists = artistArr;
 
-		albums = track.albums
-			? track.albums.map(a => ({
-				uid: a.uid,
-				name: a.name,
-				track_number: a.track_number ?? null,
-				disc: a.disc ?? null,
-			}))
-			: [];
+		albums = parseAlbumEntries(track.albums).map(a => ({
+			uid: a.uid,
+			name: a.name,
+			track_number: a.track_number ?? null,
+			disc: a.disc ?? null,
+		}));
 		originalAlbumUids = albums.map(a => a.uid).filter(Boolean);
 
 		try { genreList = track.genres ? JSON.parse(track.genres) : []; } catch { genreList = []; }
@@ -180,8 +179,8 @@
 
 			const update: Record<string, any> = {
 				title: title || null,
-				artists: artistArr.length ? JSON.stringify(artistArr.map(name => ({ name, uid: "" }))) : null,
-				album_artist: albumArtist ? { name: albumArtist, uid: "" } : null,
+				artists: artistArr.length ? JSON.stringify(artistArr) : null,
+				album_artist: albumArtist || null,
 				albums: finalAlbumEntries.length ? JSON.stringify(finalAlbumEntries) : null,
 				year: year || null,
 				genres: genreList.length > 0 ? JSON.stringify(genreList) : null,

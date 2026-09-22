@@ -261,12 +261,13 @@ pub fn import_spotify_history_cmd(
 									let an_lower = an.to_lowercase();
 									t.album_artist
 										.as_ref()
-										.map(|a| a.name.to_lowercase())
+										.map(|s| s.to_lowercase())
 										== Some(an_lower.clone())
 										|| t.artists
-											.as_ref()
+											.as_deref()
+											.and_then(|s| serde_json::from_str::<Vec<String>>(s).ok())
 											.map_or(false, |v| {
-												v.iter().any(|a| a.name.to_lowercase() == an_lower)
+												v.iter().any(|a| a.to_lowercase() == an_lower)
 											})
 								})
 						})
@@ -288,10 +289,7 @@ pub fn import_spotify_history_cmd(
 			let album_uid = track_uid.is_empty().then_some(None).unwrap_or_else(|| {
 				all_tracks.iter()
 					.find(|t| t.uid == track_uid)
-					.and_then(|t| t.albums.as_ref())
-					.and_then(|a| a.first())
-					.map(|e| e.uid.clone())
-					.filter(|u| !u.is_empty())
+					.and_then(|t| crate::db::first_album_uid(&t.albums))
 			});
 
 			let scrobble_uid = crate::db::analytics_manager::new_scrobble_uid();

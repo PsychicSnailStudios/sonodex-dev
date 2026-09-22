@@ -9,6 +9,7 @@
 	import { tick } from "svelte";
 	import { getAlbums, getTracks, onLibraryChange, reloadLibrary } from "$ts/store/library.svelte";
 	import { invoke } from "@tauri-apps/api/core";
+	import { parseTags, parseAlbumEntries } from "$ts/util/parsers";
 	import type { Track, Album } from "$ts/util/types";
 
 	let {
@@ -43,7 +44,7 @@
 	const inferredArtists = $derived.by<string[]>(() => {
 		const set = new Set<string>();
 		for (const t of selectedTracks) {
-			if (t.artists) t.artists.forEach(a => set.add(a.name.toString()));
+			parseTags(t.artists).forEach(a => set.add(a));
 		}
 		return [...set];
 	});
@@ -110,7 +111,7 @@
 			});
 
 			for (const t of selectedTracks) {
-				const albumEntries = t.albums ? [...t.albums] : [];
+				const albumEntries = parseAlbumEntries(t.albums);
 				if (!albumEntries.some(e => e.uid === targetUid)) {
 					albumEntries.push({ uid: targetUid, name, track_number: null, disc: null });
 					await invoke("update_track_metadata", {
@@ -129,8 +130,8 @@
 				album: {
 					uid: newUid,
 					title: name,
-					artists: JSON.stringify(inferredArtists.map(n => ({ name: n, uid: "" }))),
-					album_artist: inferredArtists[0] ? { name: inferredArtists[0], uid: "" } : null,
+					artists: JSON.stringify(inferredArtists),
+					album_artist: inferredArtists[0] ?? null,
 					tracks: JSON.stringify(trackEntries),
 					format: null, rating: null, release_date: null,
 					tags: "[]", genres: "[]", credits: null, label: null, artwork_path: null,
@@ -138,7 +139,7 @@
 			});
 
 			for (const t of selectedTracks) {
-				const albumEntries = t.albums ? [...t.albums] : [];
+				const albumEntries = parseAlbumEntries(t.albums);
 				albumEntries.push({ uid: newUid, name, track_number: null, disc: null });
 				await invoke("update_track_metadata", {
 					uid: t.uid,

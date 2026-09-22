@@ -2,6 +2,7 @@ use crate::db::{
 	create_album, create_artist, generate_uid, get_all_albums, get_all_artists, get_setting,
 	update_album, update_track_metadata_by_uid, upsert_track, Album, AlbumUpdate,
 	Artist, MetadataUpdate, Track,
+	first_album_name, resolved_artist_name,
 };
 use lofty::file::AudioFile;
 use lofty::file::TaggedFileExt;
@@ -444,25 +445,14 @@ fn parse_folder_path(path: &Path) -> FilenameMetadata {
 	}
 }
 
-fn artists_to_names(artists: &[crate::db::ArtistEntry]) -> Vec<String> {
-	artists.iter().map(|a| a.name.clone()).collect()
-}
-
-fn names_to_artists(names: &[String]) -> Vec<crate::db::ArtistEntry> {
-	names.iter().map(|n| crate::db::ArtistEntry { uid: String::new(), name: n.clone() }).collect()
-}
-
 pub fn find_remote_local_counterpart(conn: &Connection, incoming: &Track) -> Option<String> {
 	let incoming_title = incoming.title.as_deref()?.to_lowercase();
 
-	// Extract artist name from the new {uid, name} format
 	let incoming_artist_owned: Option<String> = incoming
 		.album_artist
 		.as_ref()
-		.map(|a| a.name.to_lowercase())
-		.or_else(|| {
-			incoming.artists.as_ref().and_then(|v| v.first()).map(|a| a.name.to_lowercase())
-		});
+		.map(|s| s.to_lowercase())
+		.or_else(|| crate::db::first_artist_name(&incoming.artists).map(|s| s.to_lowercase()));
 
 	let incoming_duration = incoming.duration_ms.unwrap_or(0);
 	let incoming_is_remote = incoming
@@ -510,16 +500,9 @@ pub fn find_remote_local_counterpart(conn: &Connection, incoming: &Track) -> Opt
 		}
 
 		let existing_artist: Option<String> = album_artist_json
-			.as_deref()
-			.and_then(|s| serde_json::from_str::<crate::db::ArtistEntry>(s).ok())
-			.map(|a| a.name.to_lowercase())
-			.or_else(|| {
-				artists_json
-					.as_deref()
-					.and_then(|s| serde_json::from_str::<Vec<crate::db::ArtistEntry>>(s).ok())
-					.and_then(|v| v.into_iter().next())
-					.map(|a| a.name.to_lowercase())
-			});
+			.as_ref()
+			.map(|s| s.to_lowercase())
+			.or_else(|| crate::db::first_artist_name(&artists_json).map(|s| s.to_lowercase()));
 
 		if existing_artist == incoming_artist_owned {
 			return Some(uid);
@@ -588,10 +571,10 @@ pub fn merge_paths_into_existing(conn: &Connection, existing_uid: &str, incoming
 		rusqlite::params![
 			existing_uid,
 			incoming.title,
-			crate::db::track_manager::OptJson(incoming.artists.as_ref()),
-			crate::db::track_manager::OptJson(incoming.album_artist.as_ref()),
-			crate::db::track_manager::OptJson(incoming.albums.as_ref()),
-			crate::db::track_manager::OptJson(incoming.genres.as_ref()),
+			incoming.artists,
+			incoming.album_artist,
+			incoming.albums,
+			incoming.genres,
 			incoming.year,
 			incoming.duration_ms,
 			incoming.bpm,
@@ -821,15 +804,11 @@ pub fn read_track_with_settings(
 		}
 	}
 
-	// Build typed artist structs — UIDs patched in by process_track
 	let artists = resolved_artists
 		.as_ref()
-		.map(|names| names_to_artists(names));
+		.and_then(|names| serde_json::to_string(names).ok());
 
-	// Build typed album_artist struct — UID patched in by process_track
-	let album_artist = album_artist_name
-		.as_deref()
-		.map(|name| crate::db::ArtistEntry { uid: String::new(), name: name.to_string() });
+	let album_artist = album_artist_name.clone();
 
 	let tag_album_val = tag_album.filter(|s| !s.trim().is_empty());
 	let filename_album_val = filename_meta.album.filter(|s| !s.trim().is_empty());
@@ -846,15 +825,15 @@ pub fn read_track_with_settings(
 	};
 	let effective_disc = tag_disc_number.or(folder_disc);
 
-	let mut album_entries: Vec<crate::db::TrackAlbumEntry> = Vec::new();
+	let mut album_entries: Vec<serde_json::Value> = Vec::new();
 
 	if let Some(ref a) = primary_album_name {
-		album_entries.push(crate::db::TrackAlbumEntry {
-			uid: String::new(),
-			name: a.clone(),
-			track: tag_track_number.unwrap_or(0) as i32,
-			disc: effective_disc.unwrap_or(0) as i32,
-		});
+		album_entries.push(serde_json::json!({
+			"uid": "",
+			"name": a,
+			"track_number": tag_track_number.unwrap_or(0),
+			"disc": effective_disc.unwrap_or(0),
+		}));
 	}
 
 	if folder_verified {
@@ -862,15 +841,16 @@ pub fn read_track_with_settings(
 			let fa_trimmed = fa.trim();
 			if !fa_trimmed.is_empty() {
 				let already_present = album_entries.iter().any(|e| {
-					e.name.to_lowercase() == fa_trimmed.to_lowercase()
+					e.get("name").and_then(|n| n.as_str()).map(|n| n.to_lowercase())
+						== Some(fa_trimmed.to_lowercase())
 				});
 				if !already_present {
-					album_entries.push(crate::db::TrackAlbumEntry {
-						uid: String::new(),
-						name: fa_trimmed.to_string(),
-						track: tag_track_number.unwrap_or(0) as i32,
-						disc: effective_disc.unwrap_or(0) as i32,
-					});
+					album_entries.push(serde_json::json!({
+						"uid": "",
+						"name": fa_trimmed,
+						"track_number": tag_track_number.unwrap_or(0),
+						"disc": effective_disc.unwrap_or(0),
+					}));
 				}
 			}
 		}
@@ -879,10 +859,12 @@ pub fn read_track_with_settings(
 	let albums = if album_entries.is_empty() {
 		None
 	} else {
-		Some(album_entries)
+		serde_json::to_string(&album_entries).ok()
 	};
 
-	let genres = tag_genres.map(|g| split_on_delimiters(&g, genre_delimiters));
+	let genres = tag_genres
+		.map(|g| split_on_delimiters(&g, genre_delimiters))
+		.and_then(|v| serde_json::to_string(&v).ok());
 
 	let tag_year_val = tag_year.filter(|s| !s.trim().is_empty());
 	let filename_year_val = filename_meta.year.filter(|s| !s.trim().is_empty());
@@ -946,11 +928,11 @@ pub fn read_track_with_settings(
 		format: format.clone(),
 		bitrate,
 		remote_data: None,
-		track_data: Some(crate::db::TrackData {
-			format: format.clone(),
-			bitrate,
-			is_ghost: None,
-		}),
+		track_data: serde_json::to_string(&serde_json::json!({
+			"format": format,
+			"bitrate": bitrate,
+			"is_ghost": null,
+		})).ok(),
 	})
 }
 
@@ -1032,12 +1014,10 @@ fn find_or_create_album_cached(
 	})])
 	.unwrap_or_else(|_| "[]".to_string());
 
-	let album_artist_struct = album_artist_name
-		.map(|n| crate::db::ArtistEntry { uid: String::new(), name: n.to_string() });
-	let artists_struct = album_artist_name
-		.map(|n| vec![crate::db::ArtistEntry { uid: String::new(), name: n.to_string() }]);
-	let genres_parsed: Option<Vec<String>> = genres
-		.and_then(|g| serde_json::from_str(g).ok());
+	let album_artist_val = album_artist_name.map(|n| n.to_string());
+	let artists_val = album_artist_name
+		.and_then(|n| serde_json::to_string(&vec![n.to_string()]).ok());
+	let genres_val = genres.map(|g| g.to_string());
 
 	let album = Album {
 		id: None,
@@ -1045,11 +1025,11 @@ fn find_or_create_album_cached(
 		format: None,
 		title: title.to_string(),
 		rating: None,
-		artists: artists_struct,
-		album_artist: album_artist_struct,
+		artists: artists_val,
+		album_artist: album_artist_val,
 		release_date: year.map(|s| s.to_string()),
 		tags: None,
-		genres: genres_parsed,
+		genres: genres_val,
 		tracks: Some(tracks_json.clone()),
 		credits: None,
 		label: label.map(|s| s.to_string()),
@@ -1098,7 +1078,7 @@ fn find_or_create_album(
 		a.title.to_lowercase() == title_lower
 			&& a.album_artist
 				.as_ref()
-				.map(|ar| ar.name.to_lowercase())
+				.map(|s| s.to_lowercase())
 				== artist_lower
 	}) {
 		let album_id = album.id?;
@@ -1160,12 +1140,10 @@ fn find_or_create_album(
 	})])
 	.unwrap_or_else(|_| "[]".to_string());
 
-	let album_artist_struct = album_artist_name
-		.map(|n| crate::db::ArtistEntry { uid: String::new(), name: n.to_string() });
-	let artists_struct = album_artist_name
-		.map(|n| vec![crate::db::ArtistEntry { uid: String::new(), name: n.to_string() }]);
-	let genres_parsed: Option<Vec<String>> = genres
-		.and_then(|g| serde_json::from_str(g).ok());
+	let album_artist_val = album_artist_name.map(|n| n.to_string());
+	let artists_val = album_artist_name
+		.and_then(|n| serde_json::to_string(&vec![n.to_string()]).ok());
+	let genres_val = genres.map(|g| g.to_string());
 
 	let album = Album {
 		id: None,
@@ -1173,11 +1151,11 @@ fn find_or_create_album(
 		format: None,
 		title: title.to_string(),
 		rating: None,
-		artists: artists_struct,
-		album_artist: album_artist_struct,
+		artists: artists_val,
+		album_artist: album_artist_val,
 		release_date: year.map(|s| s.to_string()),
 		tags: None,
-		genres: genres_parsed,
+		genres: genres_val,
 		tracks: Some(tracks_json),
 		credits: None,
 		label: label.map(|s| s.to_string()),
@@ -1304,49 +1282,51 @@ pub fn process_track_cached(
 		.map(|v| v == "true")
 		.unwrap_or(true);
 
-	let mut artist_uid_map: HashMap<String, String> = HashMap::new();
-
 	if create_albums {
-		if let Some(albums_arr) = &track.albums {
-			let mut updated_album_entries: Vec<crate::db::TrackAlbumEntry> = Vec::new();
+		if let Some(albums_str) = &track.albums {
+			if let Ok(albums_arr) = serde_json::from_str::<Vec<serde_json::Value>>(albums_str) {
+				let mut updated_album_entries: Vec<serde_json::Value> = Vec::new();
 
-			let album_artist_name: Option<&str> = track.album_artist.as_ref().map(|a| a.name.as_str());
-			let genres_str: Option<String> = track.genres.as_ref()
-				.map(|v| serde_json::to_string(v).unwrap_or_default());
+				let album_artist_name: Option<&str> = track.album_artist.as_deref();
+				let genres_str: Option<String> = track.genres.clone();
 
-			for album_entry in albums_arr {
-				if !album_entry.name.is_empty() {
-					let track_number = if album_entry.track > 0 { Some(album_entry.track as u32) } else { None };
+				for album_entry in &albums_arr {
+					let entry_name = album_entry.get("name").and_then(|n| n.as_str()).unwrap_or("");
+					if !entry_name.is_empty() {
+						let entry_track_number = album_entry.get("track_number").and_then(|n| n.as_i64());
+						let entry_disc = album_entry.get("disc").and_then(|n| n.as_i64());
+						let track_number = entry_track_number.filter(|n| *n > 0).map(|n| n as u32);
 
-					if let Some((_album_id, album_uid)) = find_or_create_album_cached(
-						conn,
-						album_cache,
-						&album_entry.name,
-						album_artist_name,
-						track.year.as_deref(),
-						genres_str.as_deref(),
-						track.artwork_blob.clone(),
-						&track_uid,
-						track_title,
-						track_number,
-						track.label.as_deref(),
-					) {
-						updated_album_entries.push(crate::db::TrackAlbumEntry {
-							uid: album_uid,
-							name: album_entry.name.clone(),
-							track: album_entry.track,
-							disc: album_entry.disc,
-						});
+						if let Some((_album_id, album_uid)) = find_or_create_album_cached(
+							conn,
+							album_cache,
+							entry_name,
+							album_artist_name,
+							track.year.as_deref(),
+							genres_str.as_deref(),
+							track.artwork_blob.clone(),
+							&track_uid,
+							track_title,
+							track_number,
+							track.label.as_deref(),
+						) {
+							updated_album_entries.push(serde_json::json!({
+								"uid": album_uid,
+								"name": entry_name,
+								"track_number": entry_track_number.unwrap_or(0),
+								"disc": entry_disc.unwrap_or(0),
+							}));
+						}
 					}
 				}
-			}
 
-			if !updated_album_entries.is_empty() {
-				if let Ok(patched_albums) = serde_json::to_string(&updated_album_entries) {
-					let _ = conn.execute(
-						"UPDATE tracks SET albums = ?1 WHERE uid = ?2",
-						rusqlite::params![patched_albums, track_uid],
-					);
+				if !updated_album_entries.is_empty() {
+					if let Ok(patched_albums) = serde_json::to_string(&updated_album_entries) {
+						let _ = conn.execute(
+							"UPDATE tracks SET albums = ?1 WHERE uid = ?2",
+							rusqlite::params![patched_albums, track_uid],
+						);
+					}
 				}
 			}
 		}
@@ -1355,101 +1335,24 @@ pub fn process_track_cached(
 	if create_artists {
 		let mut all_names: Vec<String> = Vec::new();
 
-		if let Some(ref artists) = track.artists {
-			for a in artists {
-				if !all_names.iter().any(|n: &String| n.to_lowercase() == a.name.to_lowercase()) {
-					all_names.push(a.name.clone());
+		if let Some(names) = track.artists.as_deref()
+			.and_then(|s| serde_json::from_str::<Vec<String>>(s).ok())
+		{
+			for name in names {
+				if !all_names.iter().any(|n: &String| n.to_lowercase() == name.to_lowercase()) {
+					all_names.push(name);
 				}
 			}
 		}
 		if let Some(ref aa) = track.album_artist {
-			if !aa.name.is_empty() && !all_names.iter().any(|n: &String| n.to_lowercase() == aa.name.to_lowercase()) {
-				all_names.push(aa.name.clone());
+			if !aa.is_empty() && !all_names.iter().any(|n: &String| n.to_lowercase() == aa.to_lowercase()) {
+				all_names.push(aa.clone());
 			}
 		}
 
 		for name in &all_names {
 			if !name.is_empty() {
-				if let Some((_, uid)) = find_or_create_artist_cached(conn, artist_cache, name) {
-					artist_uid_map.insert(name.to_lowercase(), uid);
-				}
-			}
-		}
-
-		if let Some(ref artists) = track.artists {
-			let patched: Vec<crate::db::ArtistEntry> = artists.iter().map(|a| {
-				let uid = artist_uid_map.get(&a.name.to_lowercase()).cloned().unwrap_or_default();
-				crate::db::ArtistEntry { uid, name: a.name.clone() }
-			}).collect();
-			if let Ok(json) = serde_json::to_string(&patched) {
-				let _ = conn.execute(
-					"UPDATE tracks SET artists = ?1 WHERE uid = ?2",
-					rusqlite::params![json, track_uid],
-				);
-			}
-		}
-
-		if let Some(ref aa) = track.album_artist {
-			let uid = artist_uid_map.get(&aa.name.to_lowercase()).cloned().unwrap_or_default();
-			let patched = crate::db::ArtistEntry { uid, name: aa.name.clone() };
-			if let Ok(json) = serde_json::to_string(&patched) {
-				let _ = conn.execute(
-					"UPDATE tracks SET album_artist = ?1 WHERE uid = ?2",
-					rusqlite::params![json, track_uid],
-				);
-			}
-		}
-
-		if let Some(ref album_entries) = track.albums {
-			for album_entry in album_entries {
-				if !album_entry.uid.is_empty() {
-					let cache_key_iter = album_cache.iter().find(|(_, v)| v.1 == album_entry.uid);
-					if let Some((_, (album_id, _, _, _))) = cache_key_iter {
-						let album_id = *album_id;
-						let mut needs_update = false;
-						let mut update = AlbumUpdate {
-							format: None, title: None, rating: None,
-							artists: None, album_artist: None, release_date: None,
-							tags: None, genres: None, tracks: None,
-							credits: None, label: None, artwork_blob: None,
-							artwork_path: None, emulate_type: None,
-						};
-
-						let row: Option<(Option<String>, Option<String>)> = conn
-							.query_row(
-								"SELECT artists, album_artist FROM albums WHERE id = ?1",
-								rusqlite::params![album_id],
-								|row| Ok((row.get(0)?, row.get(1)?)),
-							)
-							.ok();
-
-						if let Some((artists_json, aa_json)) = row {
-							if let Some(artists_str) = artists_json {
-								if let Ok(artists) = serde_json::from_str::<Vec<crate::db::ArtistEntry>>(&artists_str) {
-									let patched: Vec<crate::db::ArtistEntry> = artists.iter().map(|a| {
-										let uid = artist_uid_map.get(&a.name.to_lowercase()).cloned().unwrap_or_default();
-										crate::db::ArtistEntry { uid, name: a.name.clone() }
-									}).collect();
-									update.artists = serde_json::to_string(&patched).ok();
-									needs_update = true;
-								}
-							}
-							if let Some(aa_str) = aa_json {
-								if let Ok(aa) = serde_json::from_str::<crate::db::ArtistEntry>(&aa_str) {
-									if let Some(uid) = artist_uid_map.get(&aa.name.to_lowercase()) {
-										let patched = crate::db::ArtistEntry { uid: uid.clone(), name: aa.name.clone() };
-										update.album_artist = serde_json::to_string(&patched).ok();
-										needs_update = true;
-									}
-								}
-							}
-						}
-
-						if needs_update {
-							let _ = update_album(conn, album_id, &update);
-						}
-					}
-				}
+				find_or_create_artist_cached(conn, artist_cache, name);
 			}
 		}
 	}
@@ -1649,7 +1552,7 @@ pub fn scan_directory_with_progress(conn: &Connection, dir: &str, app: &AppHandl
 		existing.into_iter().filter_map(|a| {
 			let id = a.id?;
 			let title_lower = a.title.to_lowercase();
-			let artist_lower = a.album_artist.as_ref().map(|ar| ar.name.to_lowercase()).unwrap_or_default();
+			let artist_lower = a.album_artist.as_ref().map(|s| s.to_lowercase()).unwrap_or_default();
 			let tracks_json = a.tracks.unwrap_or_else(|| "[]".to_string());
 			Some(((title_lower, artist_lower), (id, a.uid, tracks_json, a.label)))
 		}).collect()
@@ -1697,24 +1600,14 @@ pub fn scan_directory_with_progress(conn: &Connection, dir: &str, app: &AppHandl
 				if let (Some(ref settings), Some(ref client), Some(ref rt)) =
 					(&enrich_settings, &http_client, &rt)
 				{
-					let artists_plain = track.artists.as_ref().map(|v| {
-						let names: Vec<String> = v.iter().map(|a| a.name.clone()).collect();
-						serde_json::to_string(&names).unwrap_or_default()
-					});
-					let album_artist_plain = track.album_artist.as_ref().map(|a| a.name.clone());
-					let albums_str = track.albums.as_ref()
-						.and_then(|v| serde_json::to_string(v).ok());
-					let genres_str = track.genres.as_ref()
-						.and_then(|v| serde_json::to_string(v).ok());
-
 					let track_input = crate::enrichment::TrackInput {
 						id: 0,
 						title: track.title.clone(),
-						artists: artists_plain,
-						album_artist: album_artist_plain,
-						albums: albums_str,
+						artists: track.artists.clone(),
+						album_artist: track.album_artist.clone(),
+						albums: track.albums.clone(),
 						year: track.year.clone(),
-						genres: genres_str,
+						genres: track.genres.clone(),
 						bpm: track.bpm,
 						key: track.key.clone(),
 						existing_artwork: track.artwork_blob.clone(),
@@ -1728,19 +1621,17 @@ pub fn scan_directory_with_progress(conn: &Connection, dir: &str, app: &AppHandl
 					)) {
 						track.title = result.title.or(track.title);
 						if let Some(enriched_artists) = result.artists {
-							if let Ok(names) = serde_json::from_str::<Vec<String>>(&enriched_artists) {
-								track.artists = Some(names_to_artists(&names));
-							}
+							track.artists = Some(enriched_artists);
 						}
 						if let Some(enriched_aa) = result.album_artist {
-							track.album_artist = Some(crate::db::ArtistEntry { uid: String::new(), name: enriched_aa });
+							track.album_artist = Some(enriched_aa);
 						}
 						if let Some(albums_str) = result.albums {
-							track.albums = serde_json::from_str(&albums_str).ok().or(track.albums);
+							track.albums = Some(albums_str);
 						}
 						track.year = result.year.or(track.year);
 						if let Some(genres_str) = result.genres {
-							track.genres = serde_json::from_str(&genres_str).ok().or(track.genres);
+							track.genres = Some(genres_str);
 						}
 						track.bpm = result.bpm.or(track.bpm);
 						track.key = result.key.or(track.key);
@@ -1767,15 +1658,19 @@ pub fn scan_directory_with_progress(conn: &Connection, dir: &str, app: &AppHandl
 				let track_for_process = crate::db::Track { uid: actual_uid, ..track.clone() };
 				process_track_cached(conn, &track_for_process, &mut album_cache, &mut artist_cache);
 
-				if let Some(ref tags) = track.tags {
-					for name in tags {
+				if let Some(names) = track.tags.as_deref()
+					.and_then(|s| serde_json::from_str::<Vec<String>>(s).ok())
+				{
+					for name in &names {
 						crate::db::tag_manager::ensure_tag(
 							conn, name, crate::db::tag_manager::TagKind::Tag,
 						);
 					}
 				}
-				if let Some(ref genres) = track.genres {
-					for name in genres {
+				if let Some(names) = track.genres.as_deref()
+					.and_then(|s| serde_json::from_str::<Vec<String>>(s).ok())
+				{
+					for name in &names {
 						crate::db::tag_manager::ensure_tag(
 							conn, name, crate::db::tag_manager::TagKind::Genre,
 						);
@@ -1783,10 +1678,14 @@ pub fn scan_directory_with_progress(conn: &Connection, dir: &str, app: &AppHandl
 				}
 
 				if auto_enrich_albums {
-					if let Some(ref albums) = track.albums {
-						for entry in albums {
-							if !entry.uid.is_empty() && !scanned_album_uids.contains(&entry.uid) {
-								scanned_album_uids.push(entry.uid.clone());
+					if let Some(entries) = track.albums.as_deref()
+						.and_then(|s| serde_json::from_str::<Vec<serde_json::Value>>(s).ok())
+					{
+						for entry in entries {
+							if let Some(uid) = entry.get("uid").and_then(|u| u.as_str()) {
+								if !uid.is_empty() && !scanned_album_uids.contains(&uid.to_string()) {
+									scanned_album_uids.push(uid.to_string());
+								}
 							}
 						}
 					}
@@ -1795,12 +1694,9 @@ pub fn scan_directory_with_progress(conn: &Connection, dir: &str, app: &AppHandl
 				if auto_fetch_lyrics {
 					if let (Some(ref client), Some(ref rt)) = (&http_client, &rt) {
 						let title = track.title.as_deref().unwrap_or("").to_string();
-						let artist = track.album_artist.as_ref().map(|a| a.name.clone())
-							.or_else(|| track.artists.as_ref().and_then(|v| v.first()).map(|a| a.name.clone()))
+						let artist = resolved_artist_name(&track.album_artist, &track.artists)
 							.unwrap_or_default();
-						let album = track.albums.as_ref()
-							.and_then(|v| v.first())
-							.map(|e| e.name.clone());
+						let album = first_album_name(&track.albums);
 						let duration_secs = track.duration_ms.map(|ms| (ms / 1000) as u64);
 
 						if !title.is_empty() && !artist.is_empty() {
@@ -1857,8 +1753,7 @@ pub fn scan_directory_with_progress(conn: &Connection, dir: &str, app: &AppHandl
 			let albums = crate::db::get_all_albums(conn).unwrap_or_default();
 			for album_uid in &scanned_album_uids {
 				if let Some(album) = albums.iter().find(|a| &a.uid == album_uid) {
-					let artist = album.album_artist.as_ref().map(|a| a.name.clone())
-						.or_else(|| album.artists.as_ref().and_then(|v| v.first()).map(|a| a.name.clone()));
+					let artist = resolved_artist_name(&album.album_artist, &album.artists);
 
 					if let Some(artist) = artist {
 						let result = rt.block_on(crate::enrichment::enrich_album_async(

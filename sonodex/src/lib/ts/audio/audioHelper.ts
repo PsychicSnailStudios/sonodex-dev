@@ -39,8 +39,13 @@ export interface RemoteData {
 	is_ghost?: boolean;
 }
 
+export function parseTrackData(json: string | null): TrackData {
+	try { return json ? JSON.parse(json) : {}; } catch { return {}; }
+}
+
 export function isGhostTrack(track: Track): boolean {
-	if (track.track_data!.is_ghost === true) return true;
+	const data = parseTrackData(track.track_data);
+	if (data.is_ghost === true) return true;
 	if (track.remote_path && track.remote_path.length > 0) return false;
 	if (!track.path || track.path === "" || track.path === track.uid) return true;
 	return false;
@@ -48,12 +53,13 @@ export function isGhostTrack(track: Track): boolean {
 
 export async function markGhost(track: Track, isGhost: boolean) {
 	try {
-		track.track_data!.is_ghost = isGhost;
+		const data = parseTrackData(track.track_data);
+		data.is_ghost = isGhost;
+		track.track_data = JSON.stringify(data);
 		let uid = track.uid;
-		let td = track.track_data!;
 		await invoke("update_track_metadata", {
 			uid,
-			update: { track_data: td },
+			update: { track_data: track.track_data },
 		});
 	} catch {}
 }

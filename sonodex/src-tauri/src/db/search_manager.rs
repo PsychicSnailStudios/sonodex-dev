@@ -1,5 +1,5 @@
 use rusqlite::{params, Connection, Result};
-use crate::db::track_manager::{Track, ArtistEntry, TrackAlbumEntry, UserOptions, TrackData, OptJson};
+use crate::db::track_manager::Track;
 use crate::db::album_manager::{Album};
 use crate::db::artist_manager::Artist;
 
@@ -24,7 +24,7 @@ pub fn search_tracks(conn: &Connection, query: &str) -> Result<Vec<Track>> {
             -- Score: lower = better match priority (we ORDER ASC)
             CASE
                 WHEN LOWER(COALESCE(title, '')) LIKE ?1 THEN 0
-                WHEN LOWER(COALESCE(JSON_EXTRACT(album_artist, '$.name'), '')) LIKE ?1 THEN 1
+                WHEN LOWER(COALESCE(album_artist, '')) LIKE ?1 THEN 1
                 WHEN LOWER(COALESCE(artists, '')) LIKE ?1 THEN 2
                 WHEN LOWER(COALESCE(albums, '')) LIKE ?1 THEN 3
                 WHEN LOWER(COALESCE(tags, '')) LIKE ?1 THEN 4
@@ -34,7 +34,7 @@ pub fn search_tracks(conn: &Connection, query: &str) -> Result<Vec<Track>> {
         FROM tracks
         WHERE
             LOWER(COALESCE(title, '')) LIKE ?1
-            OR LOWER(COALESCE(JSON_EXTRACT(album_artist, '$.name'), '')) LIKE ?1
+            OR LOWER(COALESCE(album_artist, '')) LIKE ?1
             OR LOWER(COALESCE(artists, '')) LIKE ?1
             OR LOWER(COALESCE(albums, '')) LIKE ?1
             OR LOWER(COALESCE(tags, '')) LIKE ?1
@@ -50,13 +50,13 @@ pub fn search_tracks(conn: &Connection, query: &str) -> Result<Vec<Track>> {
                 path: row.get(2)?,
                 last_modified: row.get(3)?,
                 title: row.get(4)?,
-                artists: row.get::<_, OptJson<Vec<ArtistEntry>>>(5)?.0,
-                album_artist: row.get::<_, OptJson<ArtistEntry>>(6)?.0,
-                albums: row.get::<_, OptJson<Vec<TrackAlbumEntry>>>(7)?.0,
-                genres: row.get::<_, OptJson<Vec<String>>>(8)?.0,
+                artists: row.get(5)?,
+                album_artist: row.get(6)?,
+                albums: row.get(7)?,
+                genres: row.get(8)?,
                 year: row.get(9)?,
                 rating: row.get(10)?,
-                tags: row.get::<_, OptJson<Vec<String>>>(11)?.0,
+                tags: row.get(11)?,
                 duration_ms: row.get(12)?,
                 bpm: row.get(13)?,
                 key: row.get(14)?,
@@ -67,10 +67,10 @@ pub fn search_tracks(conn: &Connection, query: &str) -> Result<Vec<Track>> {
                 artwork_blob: None,
                 artwork_path: row.get(19)?,
                 artwork_thumb: row.get(20)?,
-                user_options: row.get::<_, OptJson<UserOptions>>(21)?.0,
+                user_options: row.get(21)?,
                 remote_path: row.get(22)?,
-                remote_data: row.get::<_, OptJson<TrackData>>(23)?.0,
-                track_data: row.get::<_, OptJson<TrackData>>(24)?.0,
+                remote_data: row.get(23)?,
+                track_data: row.get(24)?,
             })
         })?
         .collect::<Result<Vec<_>>>()?;
@@ -93,7 +93,7 @@ pub fn search_albums(conn: &Connection, query: &str) -> Result<Vec<Album>> {
             emulate_type,
             CASE
                 WHEN LOWER(COALESCE(title, '')) LIKE ?1 THEN 0
-                WHEN LOWER(COALESCE(JSON_EXTRACT(album_artist, '$.name'), '')) LIKE ?1 THEN 1
+                WHEN LOWER(COALESCE(album_artist, '')) LIKE ?1 THEN 1
                 WHEN LOWER(COALESCE(artists, '')) LIKE ?1 THEN 2
                 WHEN LOWER(COALESCE(release_date, '')) LIKE ?1 THEN 3
                 WHEN LOWER(COALESCE(tags, '')) LIKE ?1 THEN 4
@@ -103,7 +103,7 @@ pub fn search_albums(conn: &Connection, query: &str) -> Result<Vec<Album>> {
         FROM albums
         WHERE
             LOWER(COALESCE(title, '')) LIKE ?1
-            OR LOWER(COALESCE(JSON_EXTRACT(album_artist, '$.name'), '')) LIKE ?1
+            OR LOWER(COALESCE(album_artist, '')) LIKE ?1
             OR LOWER(COALESCE(artists, '')) LIKE ?1
             OR LOWER(COALESCE(release_date, '')) LIKE ?1
             OR LOWER(COALESCE(tags, '')) LIKE ?1
@@ -119,11 +119,11 @@ pub fn search_albums(conn: &Connection, query: &str) -> Result<Vec<Album>> {
                 format: row.get(2)?,
                 title: row.get(3)?,
                 rating: row.get(4)?,
-                artists: row.get::<_, OptJson<Vec<ArtistEntry>>>(5)?.0,
-                album_artist: row.get::<_, OptJson<ArtistEntry>>(6)?.0,
+                artists: row.get(5)?,
+                album_artist: row.get(6)?,
                 release_date: row.get(7)?,
-                tags: row.get::<_, OptJson<Vec<String>>>(8)?.0,
-                genres: row.get::<_, OptJson<Vec<String>>>(9)?.0,
+                tags: row.get(8)?,
+                genres: row.get(9)?,
                 tracks: row.get(10)?,
                 credits: row.get(11)?,
                 label: row.get(12)?,
@@ -226,13 +226,13 @@ pub fn get_tracks_by_uids(conn: &Connection, uids: &[String]) -> Result<Vec<Trac
                 path: row.get(2)?,
                 last_modified: row.get(3)?,
                 title: row.get(4)?,
-                artists: row.get::<_, OptJson<Vec<ArtistEntry>>>(5)?.0,
-                album_artist: row.get::<_, OptJson<ArtistEntry>>(6)?.0,
-                albums: row.get::<_, OptJson<Vec<TrackAlbumEntry>>>(7)?.0,
-                genres: row.get::<_, OptJson<Vec<String>>>(8)?.0,
+                artists: row.get(5)?,
+                album_artist: row.get(6)?,
+                albums: row.get(7)?,
+                genres: row.get(8)?,
                 year: row.get(9)?,
                 rating: row.get(10)?,
-                tags: row.get::<_, OptJson<Vec<String>>>(11)?.0,
+                tags: row.get(11)?,
                 duration_ms: row.get(12)?,
                 bpm: row.get(13)?,
                 key: row.get(14)?,
@@ -243,10 +243,10 @@ pub fn get_tracks_by_uids(conn: &Connection, uids: &[String]) -> Result<Vec<Trac
                 artwork_blob: None,
                 artwork_path: row.get(19)?,
                 artwork_thumb: row.get(20)?,
-                user_options: row.get::<_, OptJson<UserOptions>>(21)?.0,
+                user_options: row.get(21)?,
                 remote_path: row.get(22)?,
-                remote_data: row.get::<_, OptJson<TrackData>>(23)?.0,
-                track_data: row.get::<_, OptJson<TrackData>>(24)?.0,
+                remote_data: row.get(23)?,
+                track_data: row.get(24)?,
             })
         })?
         .collect::<Result<Vec<_>>>()?;
@@ -256,19 +256,29 @@ pub fn get_tracks_by_uids(conn: &Connection, uids: &[String]) -> Result<Vec<Trac
 
 // ─── Artist albums ────────────────────────────────────────────────────────────
 //
-// Returns all albums where album_artist->uid matches any of the provided UIDs.
-// Also catches featured appearances via a JSON LIKE scan on the artists array.
-// akaUids is the list of alias artist UIDs to include alongside the primary.
+// Returns all albums whose album_artist matches the artist's name (or one of
+// its aka names). Also catches featured appearances via a LIKE scan on the
+// artists JSON array (a plain array of name strings).
+// aka_uids is the list of alias artist UIDs to include alongside the primary.
 
 pub fn get_artist_albums(conn: &Connection, artist_uid: &str, aka_uids: &[String]) -> Result<Vec<Album>> {
-    // Build a combined set of UIDs to match (primary + all akas)
+    // Resolve every uid (primary + akas) to its artist name
     let mut all_uids = vec![artist_uid.to_string()];
     all_uids.extend_from_slice(aka_uids);
 
-    // Build OR conditions for each uid
-    let uid_conditions: Vec<String> = all_uids.iter().enumerate()
+    let names: Vec<String> = all_uids.iter()
+        .filter_map(|uid| crate::db::artist_manager::get_artist_by_uid(conn, uid).ok().flatten())
+        .map(|a| a.name)
+        .collect();
+
+    if names.is_empty() {
+        return Ok(vec![]);
+    }
+
+    // Build OR conditions for each name
+    let name_conditions: Vec<String> = names.iter().enumerate()
         .map(|(i, _)| format!(
-            "JSON_EXTRACT(album_artist, '$.uid') = ?{idx} OR LOWER(artists) LIKE ?{like_idx}",
+            "LOWER(album_artist) = ?{idx} OR LOWER(artists) LIKE ?{like_idx}",
             idx = i * 2 + 1,
             like_idx = i * 2 + 2,
         ))
@@ -280,18 +290,19 @@ pub fn get_artist_albums(conn: &Connection, artist_uid: &str, aka_uids: &[String
          FROM albums
          WHERE {}
          ORDER BY album_artist, title",
-        uid_conditions.join(" OR ")
+        name_conditions.join(" OR ")
     );
 
     let mut stmt = conn.prepare(&sql)?;
 
-    // Interleave uid and LIKE pattern for each uid
-    let params_vec: Vec<Box<dyn rusqlite::ToSql>> = all_uids.iter()
-        .flat_map(|uid| {
-            let like_pattern = format!("%\"uid\":\"{}\"%", uid);
-            let uid_val: Box<dyn rusqlite::ToSql> = Box::new(uid.clone());
+    // Interleave the exact-match value and LIKE pattern for each name
+    let params_vec: Vec<Box<dyn rusqlite::ToSql>> = names.iter()
+        .flat_map(|name| {
+            let lower = name.to_lowercase();
+            let like_pattern = format!("%\"{}\"%", lower);
+            let eq_val: Box<dyn rusqlite::ToSql> = Box::new(lower);
             let like_val: Box<dyn rusqlite::ToSql> = Box::new(like_pattern);
-            vec![uid_val, like_val]
+            vec![eq_val, like_val]
         })
         .collect();
 
@@ -303,11 +314,11 @@ pub fn get_artist_albums(conn: &Connection, artist_uid: &str, aka_uids: &[String
                 format: row.get(2)?,
                 title: row.get(3)?,
                 rating: row.get(4)?,
-                artists: row.get::<_, OptJson<Vec<ArtistEntry>>>(5)?.0,
-                album_artist: row.get::<_, OptJson<ArtistEntry>>(6)?.0,
+                artists: row.get(5)?,
+                album_artist: row.get(6)?,
                 release_date: row.get(7)?,
-                tags: row.get::<_, OptJson<Vec<String>>>(8)?.0,
-                genres: row.get::<_, OptJson<Vec<String>>>(9)?.0,
+                tags: row.get(8)?,
+                genres: row.get(9)?,
                 tracks: row.get(10)?,
                 credits: row.get(11)?,
                 label: row.get(12)?,

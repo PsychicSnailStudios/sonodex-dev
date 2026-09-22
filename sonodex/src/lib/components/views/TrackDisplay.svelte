@@ -20,7 +20,8 @@
 	import { formatDuration } from "$ts/util/helpers";
 	import { playTrackByObject } from "$ts/audio/audioManager.svelte";
 	import { fetchArtworkColor } from "$ts/library/artworkLoader";
-	import { parseTags } from "$ts/util/parsers";
+	import { parseTags, parseArtists, parseAlbumEntries } from "$ts/util/parsers";
+	import { invoke } from "@tauri-apps/api/core";
 
 	import type { Track, Album } from "$ts/util/types";
 
@@ -31,17 +32,30 @@
 	let genres = $derived(track?.genres ? parseTags(track.genres) : null);
 	let tags = $derived(track?.tags ? parseTags(track.tags) : null);
 
-	let featuredArtists = $derived.by(() => {
+	let featuredArtistNames = $derived.by(() => {
 		if (!track?.artists) return [];
-		const main = track.album_artist?.name?.toLowerCase() ?? "";
-		return track.artists.filter(a => a.name.toLowerCase() !== main);
+		const main = (track.album_artist ?? "").toLowerCase();
+		return parseArtists(track.artists).filter(n => n.toLowerCase() !== main);
 	});
 
-	let featuredArtistUIDs = $derived(
-		featuredArtists.map(a => ({ name: a.name, uid: a.uid }))
-	);
+	let featuredArtistEntries = $state<{ name: string; uid: string | null }[]>([]);
+	let albumArtistUid = $state<string | null>(null);
 
-	let artistUID = $derived(track?.album_artist?.uid ?? "");
+	$effect(() => {
+		const names = featuredArtistNames;
+		Promise.all(
+			names.map(async (name) => ({
+				name,
+				uid: await invoke<string | null>("get_artist_uid_by_name", { name }),
+			}))
+		).then((entries) => { featuredArtistEntries = entries; });
+	});
+
+	$effect(() => {
+		const name = track?.album_artist ?? null;
+		if (!name) { albumArtistUid = null; return; }
+		invoke<string | null>("get_artist_uid_by_name", { name }).then((uid) => { albumArtistUid = uid; });
+	});
 
 	let isNotGhost = $derived(() => {
 		const hasLocal = track?.path && track.path !== "" && track.path !== track.uid;
@@ -59,7 +73,7 @@
 
 	async function loadFeaturedAlbums() {
 		if (!track?.albums) { featuredOnAlbums = []; return; }
-		const results = await Promise.all(track.albums.map(e => getAlbum(e.uid)));
+		const results = await Promise.all(parseAlbumEntries(track.albums).map(e => getAlbum(e.uid)));
 		featuredOnAlbums = results.filter((a): a is Album => a !== null);
 	}
 
@@ -102,7 +116,7 @@
 						<span>|</span>
 						<div>
 							{#if track.albums}
-							{@const albumList = track.albums}
+							{@const albumList = parseAlbumEntries(track.albums)}
 							{#each albumList as album, i}
 								<button onclick={() => setSelection(album.uid)} class="text-sm truncate cursor-pointer hover:underline">
 									{album.name}{i < albumList.length - 1 ? "," : ""}
@@ -167,22 +181,22 @@
 
 					{#if track.album_artist}
 						<button
-							onclick={() => setSelection(artistUID.toString())}
+							onclick={() => { if (albumArtistUid) setSelection(albumArtistUid); }}
 							class="flex items-center gap-2 flex-row cursor-pointer p-2 rounded-md bg-muted/50 hover:bg-muted">
-							<ArtworkDisplay entity={track.album_artist} size={40} />
-							{track.album_artist.name}
+							<ArtworkDisplay entity={{ uid: albumArtistUid ?? "" }} size={40} />
+							{track.album_artist}
 						</button>
 					{:else}
 						<p class="text-muted-foreground text-sm">No album artist available.</p>
 					{/if}
 
 					<h4 class="text-foreground text-lg mt-4">Featured Artists</h4>
-					{#if featuredArtists.length > 0}
-						{#each featuredArtistUIDs as { name: artistName, uid: featArtistUID }}
+					{#if featuredArtistEntries.length > 0}
+						{#each featuredArtistEntries as { name: artistName, uid: featArtistUID }}
 							<button
-								onclick={() => setSelection(featArtistUID.toString())}
+								onclick={() => { if (featArtistUID) setSelection(featArtistUID); }}
 								class="flex items-center gap-2 flex-row cursor-pointer p-2 mb-2 rounded-md bg-muted/50 hover:bg-muted">
-								<ArtworkDisplay uid={featArtistUID.toString()} type="artist" size={40} />
+								<ArtworkDisplay entity={{ uid: featArtistUID ?? "" }} size={40} />
 								{artistName}
 							</button>
 						{/each}
@@ -213,7 +227,7 @@
 									<ArtworkDisplay entity={album} size={48} />
 									<div class="flex flex-col">
 										<span class="text-sm font-medium">{album.title}</span>
-										<span class="text-xs text-muted-foreground">{album.album_artist?.name}</span>
+										<span class="text-xs text-muted-foreground">{album.album_artist}</span>
 									</div>
 								</button>
 							{/each}
@@ -233,7 +247,7 @@
 									<ArtworkDisplay entity={album} size={48} />
 									<div class="flex flex-col">
 										<span class="text-sm font-medium">{album.title}</span>
-										<span class="text-xs text-muted-foreground">{album.album_artist?.name}</span>
+										<span class="text-xs text-muted-foreground">{album.album_artist}</span>
 									</div>
 								</button>
 							{/each}

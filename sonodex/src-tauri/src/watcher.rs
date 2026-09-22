@@ -218,23 +218,27 @@ fn process_event(
 						Ok(_) => {
 							crate::scanner::process_track(&conn, &track);
 
-							if let Some(ref tags) = track.tags {
-									for name in tags {
-										crate::db::tag_manager::ensure_tag(
-											&conn,
-											name,
-											crate::db::tag_manager::TagKind::Tag,
-										);
-									}
+							if let Some(names) = track.tags.as_deref()
+								.and_then(|s| serde_json::from_str::<Vec<String>>(s).ok())
+							{
+								for name in &names {
+									crate::db::tag_manager::ensure_tag(
+										&conn,
+										name,
+										crate::db::tag_manager::TagKind::Tag,
+									);
+								}
 							}
-							if let Some(ref genres) = track.genres {
-									for name in genres {
-										crate::db::tag_manager::ensure_tag(
-											&conn,
-											name,
-											crate::db::tag_manager::TagKind::Genre,
-										);
-									}
+							if let Some(names) = track.genres.as_deref()
+								.and_then(|s| serde_json::from_str::<Vec<String>>(s).ok())
+							{
+								for name in &names {
+									crate::db::tag_manager::ensure_tag(
+										&conn,
+										name,
+										crate::db::tag_manager::TagKind::Genre,
+									);
+								}
 							}
 
 							eprintln!("[watcher] Upserted + processed: {:?}", path);

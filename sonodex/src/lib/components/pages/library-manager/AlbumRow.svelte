@@ -50,6 +50,12 @@
 			onToggle?.();
 		}
 	}
+
+	async function goToAlbumArtist() {
+		if (!album.album_artist) return;
+		const uid = await invoke<string | null>("get_artist_uid_by_name", { name: album.album_artist });
+		if (uid) setSelection(uid);
+	}
 </script>
 
 <div class="flex gap-2 items-center">
@@ -79,14 +85,14 @@
 					{album.title}
 				</button>
 				<div class="text-xs text-muted-foreground truncate">
-					{#if album.artists!.length > 0}
+					{#if parseArtists(album.artists).length > 0}
 						<ArtistsList artists={album.artists!} />
 					{:else if album.album_artist}
 						<button
-							onclick={(e) => { e.stopPropagation(); setSelection(album.album_artist!.uid.toString()); }}
+							onclick={(e) => { e.stopPropagation(); goToAlbumArtist(); }}
 							class="text-xs cursor-pointer hover:underline"
 						>
-							{album.album_artist.name}
+							{album.album_artist}
 						</button>
 					{:else}
 						—

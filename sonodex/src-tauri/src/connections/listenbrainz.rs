@@ -3,7 +3,7 @@ use rusqlite::Connection;
 use serde::{Deserialize, Serialize};
 
 use crate::db::settings_manager::{get_setting, set_setting};
-use crate::db::track_manager::get_track_by_uid;
+use crate::db::track_manager::{get_track_by_uid, first_artist_name, first_album_name};
 
 const LB_API: &str = "https://api.listenbrainz.org/1";
 
@@ -83,17 +83,8 @@ pub async fn submit_listen(profile_uid: &str, track_uid: &str, timestamp: i64) -
 		.ok_or_else(|| format!("Track not found: {}", track_uid))?;
 
 	let track_name = track.title.unwrap_or_default();
-	let artist_name = track
-		.artists
-		.as_ref()
-		.and_then(|v| v.first())
-		.map(|a| a.name.clone())
-		.unwrap_or_default();
-	let release_name = track
-		.albums
-		.as_ref()
-		.and_then(|v| v.first())
-		.map(|e| e.name.clone());
+	let artist_name = first_artist_name(&track.artists).unwrap_or_default();
+	let release_name = first_album_name(&track.albums);
 
 	let body = SubmitListens {
 		listen_type: "single".to_string(),
@@ -136,17 +127,8 @@ pub async fn update_now_playing(profile_uid: &str, track_uid: &str) -> Result<()
 		.ok_or_else(|| format!("Track not found: {}", track_uid))?;
 
 	let track_name = track.title.unwrap_or_default();
-	let artist_name = track
-		.artists
-		.as_ref()
-		.and_then(|v| v.first())
-		.map(|a| a.name.clone())
-		.unwrap_or_default();
-	let release_name = track
-		.albums
-		.as_ref()
-		.and_then(|v| v.first())
-		.map(|e| e.name.clone());
+	let artist_name = first_artist_name(&track.artists).unwrap_or_default();
+	let release_name = first_album_name(&track.albums);
 
 	let body = SubmitListens {
 		listen_type: "playing_now".to_string(),

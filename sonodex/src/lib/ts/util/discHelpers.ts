@@ -40,8 +40,15 @@ export function getDiscIcon(emulateType: string | null | undefined): any {
 	}
 }
 
-export function parseDiscNumber(albums: TrackAlbumEntry[] | null | undefined, albumUid: string): number | null {
-	if (!albums) return null;
+export function parseDiscNumber(albumsJson: string | null | undefined, albumUid: string): number | null {
+	if (!albumsJson) return null;
+	let albums: TrackAlbumEntry[];
+	try {
+		albums = JSON.parse(albumsJson);
+		if (!Array.isArray(albums)) return null;
+	} catch {
+		return null;
+	}
 	const match = albums.find(e => e.uid === albumUid);
 	if (!match) return null;
 	const disc = match.disc;

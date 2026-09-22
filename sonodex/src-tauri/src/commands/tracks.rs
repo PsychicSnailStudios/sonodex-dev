@@ -112,23 +112,20 @@ pub fn write_track_tags(
 		tag.set_title(title.clone());
 	}
 	if let Some(ref artists_json) = &update.artists {
-		if let Ok(artists) = serde_json::from_str::<Vec<crate::db::ArtistEntry>>(artists_json) {
-			let joined = artists.iter().map(|a| a.name.as_str()).collect::<Vec<_>>().join(", ");
-			tag.set_artist(joined);
+		if let Ok(names) = serde_json::from_str::<Vec<String>>(artists_json) {
+			tag.set_artist(names.join(", "));
 		}
 	}
-	if let Some(ref album_artist_json) = &update.album_artist {
-		if let Ok(album_artist) = serde_json::from_str::<crate::db::ArtistEntry>(album_artist_json) {
-			tag.insert(lofty::tag::TagItem::new(
-				lofty::tag::ItemKey::AlbumArtist,
-				lofty::tag::ItemValue::Text(album_artist.name.clone()),
-			));
-		}
+	if let Some(ref album_artist) = &update.album_artist {
+		tag.insert(lofty::tag::TagItem::new(
+			lofty::tag::ItemKey::AlbumArtist,
+			lofty::tag::ItemValue::Text(album_artist.clone()),
+		));
 	}
 	if let Some(ref albums_json) = &update.albums {
-		if let Ok(albums) = serde_json::from_str::<Vec<crate::db::TrackAlbumEntry>>(albums_json) {
-			if let Some(entry) = albums.first() {
-				tag.set_album(entry.name.clone());
+		if let Ok(albums) = serde_json::from_str::<Vec<serde_json::Value>>(albums_json) {
+			if let Some(name) = albums.first().and_then(|a| a.get("name")).and_then(|n| n.as_str()) {
+				tag.set_album(name.to_string());
 			}
 		}
 	}
@@ -301,11 +298,11 @@ pub async fn replace_track_path(
 			) {
 				let meta = MetadataUpdate {
 					title: fresh_track.title,
-					artists: fresh_track.artists.as_ref().and_then(|v| serde_json::to_string(v).ok()),
-					album_artist: fresh_track.album_artist.as_ref().and_then(|a| serde_json::to_string(a).ok()),
-					albums: fresh_track.albums.as_ref().and_then(|v| serde_json::to_string(v).ok()),
+					artists: fresh_track.artists,
+					album_artist: fresh_track.album_artist,
+					albums: fresh_track.albums,
 					year: fresh_track.year,
-					genres: fresh_track.genres.as_ref().and_then(|v| serde_json::to_string(v).ok()),
+					genres: fresh_track.genres,
 					bpm: fresh_track.bpm,
 					rating: fresh_track.rating,
 					key: fresh_track.key,

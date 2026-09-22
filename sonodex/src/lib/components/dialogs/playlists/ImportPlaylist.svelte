@@ -9,6 +9,7 @@
 	import { createStubTrack } from "$ts/library/entitySync";
 	import { profileState } from "$ts/store/profiles.svelte";
 	import { createPlaylist } from "$ts/audio/playlistManager.svelte";
+	import { parseArtists, parseAlbumEntries } from "$ts/util/parsers";
 	import type { Track, ParsedTrack, ImportState } from "$ts/util/types";
 
 	let {
@@ -188,11 +189,11 @@
 			const trackTitle = (track.title ?? "").toLowerCase();
 			if (trackTitle !== titleLower) continue;
 			const artistMatch =
-				(track.artists ?? []).some(a => a.name.toLowerCase() === artistLower) ||
-				(track.album_artist?.name ?? "").toLowerCase() === artistLower;
+				parseArtists(track.artists).some(a => a.toLowerCase() === artistLower) ||
+				(track.album_artist ?? "").toLowerCase() === artistLower;
 			if (!artistMatch) continue;
 			if (parsed.album) {
-				if ((track.albums ?? []).some(a => a.name.toLowerCase() === parsed.album.toLowerCase())) return track;
+				if (parseAlbumEntries(track.albums).some(a => a.name.toLowerCase() === parsed.album.toLowerCase())) return track;
 			} else {
 				return track;
 			}
@@ -203,8 +204,8 @@
 				const trackTitle = (track.title ?? "").toLowerCase();
 				if (trackTitle !== titleLower) continue;
 				const artistMatch =
-					(track.artists ?? []).some(a => a.name.toLowerCase() === artistLower) ||
-					(track.album_artist?.name ?? "").toLowerCase() === artistLower;
+					parseArtists(track.artists).some(a => a.toLowerCase() === artistLower) ||
+					(track.album_artist ?? "").toLowerCase() === artistLower;
 				if (artistMatch) return track;
 			}
 		}

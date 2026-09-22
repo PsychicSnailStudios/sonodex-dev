@@ -1,16 +1,22 @@
 <script lang="ts">
-   import { setSelection } from "$ts/store/session.svelte";
-    import type { ArtistEntry } from "$ts/util/types";
+	import { invoke } from "@tauri-apps/api/core";
+	import { setSelection } from "$ts/store/session.svelte";
+	import { parseArtists } from "$ts/util/parsers";
 
-	// PROPS
-	let { artists } = $props<{ artists: ArtistEntry[] }>();
+	let { artists } = $props<{ artists: string | null }>();
 
+	let names = $derived(parseArtists(artists));
+
+	async function goToArtist(name: string) {
+		const uid = await invoke<string | null>("get_artist_uid_by_name", { name });
+		if (uid) setSelection(uid);
+	}
 </script>
 
-{#if artists}
-		{#each artists as artist, i}
-			<button onclick={() => setSelection(artist.uid)} class="text-sm truncate cursor-pointer hover:underline">
-				<p class="text-sm leading-relaxed">{artist.name}{i < artists.length - 1 ? ", " : ""}</p>
-			</button>
-		{/each}
+{#if names.length > 0}
+	{#each names as name, i}
+		<button onclick={() => goToArtist(name)} class="text-sm truncate cursor-pointer hover:underline">
+			<p class="text-sm leading-relaxed">{name}{i < names.length - 1 ? ", " : ""}</p>
+		</button>
+	{/each}
 {/if}

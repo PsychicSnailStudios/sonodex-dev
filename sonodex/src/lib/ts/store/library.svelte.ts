@@ -1,6 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { SortState } from "$ts/util/sortConfig.svelte";
-import { parseUidType } from "$ts/util/parsers";
+import { parseUidType, parseAlbumEntries } from "$ts/util/parsers";
 import { loadTags } from '$ts/store/tagManager.svelte';
 
 import type { Track, Album, Artist, Playlist, Lyrics, Library } from "$ts/util/types";
@@ -227,9 +227,9 @@ function sortTracks(
 			case "title":
 				return track.title ?? "";
 			case "artist":
-				return track.album_artist?.name.toString() ?? "";
+				return track.album_artist ?? "";
 			case "album":
-				return track.albums?.[0]?.name ?? "";
+				return parseAlbumEntries(track.albums)[0]?.name ?? "";
 			case "year":
 				return track.year ?? "";
 			case "duration":

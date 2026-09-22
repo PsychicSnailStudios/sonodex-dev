@@ -13,7 +13,7 @@ import {
 	setQueuedTracks,
 } from "$ts/audio/audioPlayer.svelte";
 import { buildAudioGraph, audioCtx, applyEqToGraph } from "$ts/audio/audioGraph.svelte";
-import { isLocalPath, pathToSrc, isGhostTrack, markGhost, triggerOfflineMode, checkOnline } from "$ts/audio/audioHelper";
+import { isLocalPath, pathToSrc, isGhostTrack, markGhost, triggerOfflineMode, checkOnline, parseTrackData } from "$ts/audio/audioHelper";
 import { spacedShuffle, smartShuffle } from "$ts/audio/audioShuffles";
 
 let audio: HTMLAudioElement | null = null;
@@ -136,8 +136,8 @@ async function playTrack(track: Track) {
 	const hasLocal = isLocalPath(track.path);
 	const hasRemote = !!(track.remote_path && track.remote_path.length > 0);
 
-	const localBr = (track.track_data ? track.track_data.bitrate : null) ?? track.bitrate ?? 0;
-	const remoteBr = (track.remote_data ? track.remote_data.bitrate : null) ?? 0;
+	const localBr = (parseTrackData(track.track_data).bitrate ?? null) ?? track.bitrate ?? 0;
+	const remoteBr = (parseTrackData(track.remote_data).bitrate ?? null) ?? 0;
 
 	const preferLocal = hasLocal && (!hasRemote || localBr >= remoteBr);
 

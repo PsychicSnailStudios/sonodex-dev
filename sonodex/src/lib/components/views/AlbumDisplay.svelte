@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { Pencil } from "lucide-svelte";
+	import { invoke } from "@tauri-apps/api/core";
 
 	import { ScrollArea } from "$shadcn/scroll-area/index.js";
 	import Button from "$shadcn/button/button.svelte";
@@ -36,6 +37,13 @@
 
 	let genres = $derived(album?.genres ? parseTags(album.genres) : null);
 	let tags = $derived(album?.tags ? parseTags(album.tags) : null);
+	let albumArtistUid = $state<string | null>(null);
+
+	$effect(() => {
+		const name = album?.album_artist ?? null;
+		if (!name) { albumArtistUid = null; return; }
+		invoke<string | null>("get_artist_uid_by_name", { name }).then((uid) => { albumArtistUid = uid; });
+	});
 
 	async function loadAlbum() {
 		const uid = selection.uid;
@@ -48,9 +56,9 @@
 
 	async function loadArtistAlbums() {
 		if (!album?.album_artist) { artistAlbums = []; return; }
-		const artistName = album.album_artist.name.toLowerCase();
+		const artistName = album.album_artist.toLowerCase();
 		const all = await getAlbums();
-		artistAlbums = all.filter(a => a.album_artist?.name?.toLowerCase() === artistName);
+		artistAlbums = all.filter(a => (a.album_artist ?? "").toLowerCase() === artistName);
 	}
 
 	// Reload when selection changes
@@ -113,8 +121,8 @@
 				<h2 class="text-2xl font-bold">{album.title}</h2>
 				<div class="flex gap-3 text-sm text-muted-foreground flex-wrap">
 					{#if album.album_artist}
-						<span role="button" tabindex="0" onclick={() => setSelection(album.album_artist!.uid.toString())} onkeydown={(e) => { if (e.key === 'Enter') setSelection(album.album_artist!.uid.toString()); }} class="text-sm truncate cursor-pointer hover:underline">
-							{album.album_artist.name}
+						<span role="button" tabindex="0" onclick={() => { if (albumArtistUid) setSelection(albumArtistUid); }} onkeydown={(e) => { if (e.key === 'Enter' && albumArtistUid) setSelection(albumArtistUid); }} class="text-sm truncate cursor-pointer hover:underline">
+							{album.album_artist}
 						</span>
 					{/if}
 					{#if album.release_date}
@@ -156,11 +164,11 @@
 		{/if}
 
 		<div class="flex flex-col gap-2 w-full pt-4">
-			<h4>More by {album.album_artist?.name}</h4>
+			<h4>More by {album.album_artist}</h4>
 			<ScrollArea orientation="horizontal" class="min-h-0 min-w-0">
 				<div class="grid gap-2 pb-4" style="grid-auto-columns: 150px; grid-auto-flow: column;">
 					{#each artistAlbums as a}
-						<AudioCard title={a.title} subTitle={a.album_artist?.name.toString() ?? ""} artworkUid={a.uid} type="album" />
+						<AudioCard title={a.title} subTitle={a.album_artist ?? ""} artworkUid={a.uid} type="album" />
 					{/each}
 				</div>
 			</ScrollArea>

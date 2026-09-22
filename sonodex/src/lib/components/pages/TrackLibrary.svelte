@@ -6,6 +6,7 @@
 	import { createPersistedViewState } from "$ts/store/session.svelte";
 	import { getTracks, onLibraryChange } from "$ts/store/library.svelte";
 	import { createColumnState } from "$ts/util/columnConfig.svelte";
+	import { parseAlbumEntries } from "$ts/util/parsers";
 	import type { Track } from "$ts/util/types";
 
 	const cols = createColumnState("library");
@@ -23,8 +24,8 @@
 		if (q.length < 2) return allTracks;
 		return allTracks.filter(t =>
 			(t.title?.toLowerCase().includes(q)) ||
-			(t.album_artist?.name?.toString().toLowerCase().includes(q)) ||
-			(t.albums?.[0]?.name?.toLowerCase().includes(q)) ||
+			(t.album_artist?.toLowerCase().includes(q)) ||
+			(parseAlbumEntries(t.albums)[0]?.name?.toLowerCase().includes(q)) ||
 			(t.year?.toLowerCase().includes(q))
 		);
 	});

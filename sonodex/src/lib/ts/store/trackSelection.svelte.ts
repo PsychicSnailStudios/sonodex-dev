@@ -97,7 +97,7 @@ export async function copySelectedToClipboard(orderedUids: string[]) {
 	if (tracks.length === 0) return;
 
 	clipboardUids = tracks.map((t) => t!.uid);
-	const trackNames = tracks.map((t) => (t!.title ?? "Unknown Title") + "; " + (t!.album_artist?.name ?? "Unknown Artist")).join("\n");
+	const trackNames = tracks.map((t) => (t!.title ?? "Unknown Title") + "; " + (t!.album_artist ?? "Unknown Artist")).join("\n");
 	writeText(trackNames).catch(() => {});
 }
 
@@ -111,7 +111,7 @@ export async function copySelectedNamesToClipboard(orderedUids: string[]) {
 
 	if (tracks.length === 0) return;
 
-	const trackNames = tracks.map((t) => (t!.title ?? "Unknown Title") + "; " + (t!.album_artist?.name ?? "Unknown Artist")).join("\n");
+	const trackNames = tracks.map((t) => (t!.title ?? "Unknown Title") + "; " + (t!.album_artist ?? "Unknown Artist")).join("\n");
 
 	writeText(trackNames).catch(() => {});
 }
@@ -129,5 +129,5 @@ export async function copySelectedUIDsToClipboard(orderedUids: string[]) {
 	writeText(uids).catch(() => {});
 }
 export function copySelectedNameToClipboard(track: Track) {
-	writeText((track.title ?? "Unknown Title") + "; " + (track.album_artist?.name ?? "Unknown Artist")).catch(() => {});
+	writeText((track.title ?? "Unknown Title") + "; " + (track.album_artist ?? "Unknown Artist")).catch(() => {});
 }
