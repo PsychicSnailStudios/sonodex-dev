@@ -28,3 +28,4 @@ src-tauri/target
 # Bun
 .bun-cache
 sonodex/.svelte-kit/generated/server/internal.js
+/sonodex/.svelte-kit
