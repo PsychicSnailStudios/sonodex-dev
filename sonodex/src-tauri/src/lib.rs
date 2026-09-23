@@ -273,6 +273,7 @@ pub fn run() {
 			// Artists
 			commands::artists::get_artists,
 			commands::artists::get_artist,
+			commands::artists::get_artist_uid_by_name,
 			commands::artists::get_artist_profile_art,
 			commands::artists::get_artist_banner_art,
 			commands::artists::create_artist_entry,

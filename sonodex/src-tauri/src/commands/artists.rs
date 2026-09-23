@@ -22,6 +22,13 @@ pub fn get_artist(state: State<AppState>, uid: String) -> Result<Option<Artist>,
 }
 
 #[tauri::command]
+pub fn get_artist_uid_by_name(state: State<AppState>, name: String) -> Result<Option<String>, String> {
+	let profile_uid = state.get_uid();
+	let conn = open_merged_conn(&profile_uid);
+	db::get_artist_uid_by_name(&conn, &name).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 pub fn get_artist_profile_art(
 	state: State<AppState>,
 	uid: String,

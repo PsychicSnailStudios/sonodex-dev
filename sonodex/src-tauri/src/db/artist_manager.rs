@@ -1,4 +1,5 @@
 use rusqlite::{params, Connection, Result};
+use rusqlite::OptionalExtension;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -134,6 +135,15 @@ pub fn get_artist_by_uid(conn: &Connection, uid: &str) -> Result<Option<Artist>>
 	} else {
 		Ok(None)
 	}
+}
+
+pub fn get_artist_uid_by_name(conn: &Connection, name: &str) -> Result<Option<String>> {
+	conn.query_row(
+		"SELECT uid FROM artists WHERE LOWER(name) = LOWER(?1) LIMIT 1",
+		params![name],
+		|row| row.get(0),
+	)
+	.optional()
 }
 
 pub fn get_artist_profile_art(conn: &Connection, id: i64) -> Result<Option<Vec<u8>>> {

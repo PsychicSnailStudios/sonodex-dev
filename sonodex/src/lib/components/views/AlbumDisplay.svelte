@@ -168,7 +168,7 @@
 			<ScrollArea orientation="horizontal" class="min-h-0 min-w-0">
 				<div class="grid gap-2 pb-4" style="grid-auto-columns: 150px; grid-auto-flow: column;">
 					{#each artistAlbums as a}
-						<AudioCard title={a.title} subTitle={a.album_artist ?? ""} artworkUid={a.uid} type="album" />
+						<AudioCard title={a.title} subTitle={a.album_artist ?? ""} entity={a} type="album" />
 					{/each}
 				</div>
 			</ScrollArea>

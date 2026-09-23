@@ -7,6 +7,8 @@
 	import { openEditModal } from "$ts/ui/editModal.svelte";
 	import { removeAlbum } from "$ts/library/libraryManager";
 	import { setSelection } from "$ts/store/session.svelte";
+	import { invoke } from "@tauri-apps/api/core";
+	import { parseArtists } from "$ts/util/parsers";
 	import type { Album } from "$ts/util/types";
     import { enrichAlbum } from "$ts/library/enrichment";
     import ArtistsList from "$lib/components/custom/text-display/ArtistsList.svelte";

@@ -12,12 +12,16 @@
 
 	// PROPS
 	let {
-		entity,
+		entityType,
+		entityUid,
 		onchange,
 	} = $props<{
-		entity: any;
+		entityType: string;
+		entityUid: string;
 		onchange?: (path: string | null) => void;
 	}>();
+
+	let entity = $derived({ uid: entityUid });
 
 	// VARIABLES
 	let previewPath = $state<string | null>(null);

@@ -167,7 +167,7 @@
 		{:else}
 			<MediaGrid>
 				{#each filteredAlbums as album}
-					<AudioCard title={album.title} subTitle={album.album_artist ?? "Unknown Artist"} artworkUid={album.uid} type="album" />
+					<AudioCard title={album.title} subTitle={album.album_artist ?? "Unknown Artist"} entity={album} type="album" />
 				{/each}
 			</MediaGrid>
 		{/if}

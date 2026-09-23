@@ -62,7 +62,7 @@
 				role="region"
 				aria-label="Playlist"
 			>
-				<AudioCard title={playlist.title} subTitle={playlist.owner} artworkUid={playlist.uid} type="playlist">
+				<AudioCard title={playlist.title} subTitle={playlist.owner} entity={playlist} type="playlist">
 					<DefultPlaylistArt tracks={getTrackArrayFromUID(playlist.uid)} />
 				</AudioCard>
 			</div>
