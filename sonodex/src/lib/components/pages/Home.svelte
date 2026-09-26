@@ -12,6 +12,8 @@
 	
 	// CUSTOM COMPONENTS
 	import TopTracks from "$lib/components/pages/profile/Analytics.svelte";
+   import Resume from "$lib/components/pages/profile/Resume.svelte";
+   import Explore from "$lib/components/pages/profile/Explore.svelte";
 	import AddProfile from "$lib/components/dialogs/profile/AddProfile.svelte";
 	import EditProfile from "$lib/components/dialogs/profile/EditProfile.svelte";
 	import SwichProfile from "$lib/components/dialogs/profile/SwichProfile.svelte";
@@ -76,17 +78,12 @@
 		</div>
 	</div>
 
-	<ScrollArea class="min-h-0 min-w-0">
-		<TopTracks />
+	<ScrollArea class="flex-1 min-h-0 min-w-0">
+		<div class="flex flex-col gap-6 p-2 pr-3">
+			<Resume />
+			<Explore />
+			<TopTracks />
+		</div>
 	</ScrollArea>
-
-	<!-- <Tabs.Root value="statistics" class="flex flex-col min-h-0 flex-1">
-		<Tabs.List class="w-full">
-			<Tabs.Trigger value="statistics" class="flex-1">Stats</Tabs.Trigger>
-			<Tabs.Trigger value="feed" class="flex-1">Feed</Tabs.Trigger>
-			<Tabs.Trigger value="manager" class="flex-1">Library</Tabs.Trigger>
-			<Tabs.Trigger value="settings" class="flex-1">Settings</Tabs.Trigger>
-		</Tabs.List>
-	</Tabs.Root> -->
 
 </div>

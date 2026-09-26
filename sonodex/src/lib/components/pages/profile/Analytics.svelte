@@ -3,13 +3,12 @@
 	import { invoke } from "@tauri-apps/api/core";
 
 	import ArtworkDisplay from "$lib/components/custom/ArtworkDisplay.svelte";
-	import { ScrollArea } from "$shadcn/scroll-area/index.js";
 	import { Button } from "$shadcn/button/index.js";
 
-	import { getAlbum, getArtist, getTrack, library } from "$ts/store/library.svelte";
+	import { getAlbum, getArtist, getTrackArray } from "$ts/store/library.svelte";
 	import { setSelection } from "$ts/store/session.svelte";
 	import type { Track, Album, Artist } from "$ts/util/types";
-    import { parseArtistsToString } from "$ts/util/parsers";
+    import { parseArtistsToString, parseAlbumEntries } from "$ts/util/parsers";
 
 	async function goToAlbumArtist(name: string | null) {
 		if (!name) return;
@@ -120,68 +119,61 @@
 		);
 	}
 
-	function computeTopTracks(scrobbles: Scrobble[], n: number): TopTrack[] {
+	function tally(scrobbles: Scrobble[], keyOf: (s: Scrobble) => string | null): Map<string, { plays: number; ms: number }> {
 		const map = new Map<string, { plays: number; ms: number }>();
 		for (const s of scrobbles) {
-			if (!s.track_uid) continue;
-			const e = map.get(s.track_uid) ?? { plays: 0, ms: 0 };
+			const key = keyOf(s);
+			if (!key) continue;
+			const e = map.get(key) ?? { plays: 0, ms: 0 };
 			e.plays++;
 			e.ms += s.duration_played;
-			map.set(s.track_uid, e);
+			map.set(key, e);
 		}
-		return [...map.entries()]
-			.sort((a, b) => b[1].plays - a[1].plays)
-			.slice(0, n)
-			.flatMap(([uid, { plays, ms }]) => {
-				const track = getTrack(uid);
-				if (!track) return [];
-				return [{ track, plays, ms }];
-			});
+		return map;
 	}
 
-	function computeTopArtists(scrobbles: Scrobble[], n: number): TopArtist[] {
-		const map = new Map<string, { plays: number; ms: number }>();
-		for (const s of scrobbles) {
-			if (!s.artist_uid) continue;
-			const e = map.get(s.artist_uid) ?? { plays: 0, ms: 0 };
-			e.plays++;
-			e.ms += s.duration_played;
-			map.set(s.artist_uid, e);
-		}
+	function rankTop(map: Map<string, { plays: number; ms: number }>, n: number): [string, { plays: number; ms: number }][] {
 		return [...map.entries()]
 			.sort((a, b) => b[1].plays - a[1].plays)
-			.slice(0, n)
-			.flatMap(([uid, { plays, ms }]) => {
-				const artist = getArtist(uid);
-				if (!artist) return [];
-				return [{ artist, plays, ms }];
-			});
+			.slice(0, n);
 	}
 
-	function computeTopAlbums(scrobbles: Scrobble[], n: number): TopAlbum[] {
-		const map = new Map<string, { plays: number; ms: number }>();
-		for (const s of scrobbles) {
-			const track = library.tracks.find(t => t.uid === s.track_uid);
-			if (!track) continue;
-			let albumUid = "";
-			try {
-				const albums = JSON.parse(track.albums ?? "[]");
-				albumUid = albums[0]?.uid ?? "";
-			} catch {}
-			if (!albumUid) continue;
-			const e = map.get(albumUid) ?? { plays: 0, ms: 0 };
-			e.plays++;
-			e.ms += s.duration_played;
-			map.set(albumUid, e);
-		}
-		return [...map.entries()]
-			.sort((a, b) => b[1].plays - a[1].plays)
-			.slice(0, n)
-			.flatMap(([uid, { plays, ms }]) => {
-				const album = getAlbum(uid);
-				if (!album) return [];
-				return [{ album, plays, ms }];
-			});
+	async function computeTopTracks(scrobbles: Scrobble[], n: number): Promise<TopTrack[]> {
+		const ranked = rankTop(tally(scrobbles, s => s.track_uid || null), n);
+		if (ranked.length === 0) return [];
+		const tracks = await getTrackArray(ranked.map(([uid]) => uid));
+		const trackMap = new Map(tracks.map(t => [t.uid, t]));
+		return ranked.flatMap(([uid, { plays, ms }]) => {
+			const track = trackMap.get(uid);
+			if (!track) return [];
+			return [{ track, plays, ms }];
+		});
+	}
+
+	async function computeTopArtists(scrobbles: Scrobble[], n: number): Promise<TopArtist[]> {
+		const ranked = rankTop(tally(scrobbles, s => s.artist_uid || null), n);
+		if (ranked.length === 0) return [];
+		const artists = await Promise.all(ranked.map(([uid]) => getArtist(uid)));
+		return ranked.flatMap(([, { plays, ms }], i) => {
+			const artist = artists[i];
+			if (!artist) return [];
+			return [{ artist, plays, ms }];
+		});
+	}
+
+	async function computeTopAlbums(scrobbles: Scrobble[], n: number): Promise<TopAlbum[]> {
+		const uniqueTrackUids = [...new Set(scrobbles.map(s => s.track_uid).filter(Boolean))];
+		const tracks = uniqueTrackUids.length > 0 ? await getTrackArray(uniqueTrackUids) : [];
+		const trackAlbumMap = new Map(tracks.map(t => [t.uid, parseAlbumEntries(t.albums)[0]?.uid ?? null]));
+
+		const ranked = rankTop(tally(scrobbles, s => trackAlbumMap.get(s.track_uid) ?? null), n);
+		if (ranked.length === 0) return [];
+		const albums = await Promise.all(ranked.map(([uid]) => getAlbum(uid)));
+		return ranked.flatMap(([, { plays, ms }], i) => {
+			const album = albums[i];
+			if (!album) return [];
+			return [{ album, plays, ms }];
+		});
 	}
 
 	function computeActivity(scrobbles: Scrobble[], p: Period): ActivityBar[] {
@@ -303,13 +295,38 @@
 	}
 
 	let filtered = $derived(filteredScrobbles(period));
-	let topTracks = $derived(computeTopTracks(filtered, topN));
-	let topArtists = $derived(computeTopArtists(filtered, topN));
-	let topAlbums = $derived(computeTopAlbums(filtered, topN));
 	let activity = $derived(computeActivity(filtered, period));
 	let maxActivity = $derived(Math.max(1, ...activity.map(a => a.count)));
 	let totalMs = $derived(filtered.reduce((a, s) => a + s.duration_played, 0));
 	let totalPlays = $derived(filtered.length);
+
+	let topTracks = $state<TopTrack[]>([]);
+	let topArtists = $state<TopArtist[]>([]);
+	let topAlbums = $state<TopAlbum[]>([]);
+	let topLoading = $state(false);
+	let topGeneration = 0;
+
+	$effect(() => {
+		const scrobbles = filtered;
+		const n = topN;
+		const generation = ++topGeneration;
+		topLoading = true;
+
+		Promise.all([
+			computeTopTracks(scrobbles, n),
+			computeTopArtists(scrobbles, n),
+			computeTopAlbums(scrobbles, n),
+		]).then(([tracks, artists, albums]) => {
+			if (generation !== topGeneration) return;
+			topTracks = tracks;
+			topArtists = artists;
+			topAlbums = albums;
+			topLoading = false;
+		}).catch(e => {
+			console.error("Top lists failed to compute", e);
+			if (generation === topGeneration) topLoading = false;
+		});
+	});
 
 	onMount(async () => {
 		try {
@@ -322,7 +339,7 @@
 	});
 </script>
 
-<div class="flex flex-col h-full w-full overflow-hidden gap-3 p-2">
+<div class="flex flex-col gap-3">
 
 	<!-- Header -->
 	<div class="flex items-center justify-between gap-2 flex-wrap shrink-0">
@@ -372,8 +389,7 @@
 		</div>
 	</div>
 
-	<ScrollArea class="flex-1 min-h-0 w-full">
-		<div class="flex flex-col gap-4 pr-3">
+		<div class="flex flex-col gap-4">
 
 			<!-- Summary stats -->
 			<div class="grid grid-cols-3 gap-2">
@@ -448,7 +464,7 @@
 
 			<!-- Top Tracks -->
 			{#if activeTab === "tracks"}
-				{#if loading}
+				{#if topLoading}
 					<div class="flex flex-col gap-1">
 						{#each Array(5) as _}
 							<div class="flex gap-2 p-2 items-center animate-pulse">
@@ -497,7 +513,7 @@
 
 			<!-- Top Artists -->
 			{#if activeTab === "artists"}
-				{#if loading}
+				{#if topLoading}
 					<div class="flex flex-col gap-1">
 						{#each Array(5) as _}
 							<div class="flex gap-2 p-2 items-center animate-pulse">
@@ -541,7 +557,7 @@
 
 			<!-- Top Albums -->
 			{#if activeTab === "albums"}
-				{#if loading}
+				{#if topLoading}
 					<div class="flex flex-col gap-1">
 						{#each Array(5) as _}
 							<div class="flex gap-2 p-2 items-center animate-pulse">
@@ -586,5 +602,4 @@
 			{/if}
 
 		</div>
-	</ScrollArea>
 </div>

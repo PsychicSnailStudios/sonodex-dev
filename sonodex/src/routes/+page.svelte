@@ -9,7 +9,8 @@
 	import NowPlaying from "$lib/components/app/now-playing/NowPlaying.svelte";
 	import AppNavigation from "$lib/components/app/AppNavigation.svelte";
 
-	import HomeView from "$lib/components/pages/Profile.svelte";
+	import HomeView from "$lib/components/pages/Home.svelte";
+	import SearchView from "$lib/components/pages/LibrarySearch.svelte";
 	import PlaylistsView from "$lib/components/pages/PlaylistsLibrary.svelte";
 	import TracksView from "$lib/components/pages/TrackLibrary.svelte";
 	import AlbumsView from "$lib/components/pages/AlbumLibrary.svelte";
@@ -156,8 +157,8 @@
 				<Resizable.Pane minSize={minViewWidth}>
 					{#if activeView.id === "home"}
 						<HomeView />
-					{:else if activeView.id === "music"}
-						<MusicView />
+					{:else if activeView.id === "search"}
+						<SearchView />
 					{:else if activeView.id === "tracks"}
 						<TracksView />
 					{:else if activeView.id === "albums"}
